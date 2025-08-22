@@ -1,6 +1,5 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
-import type { Metadata } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -8,15 +7,9 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Giornalone Restart",
   description: "Gestionale vendite & appuntamenti - Restart Fitness Club",
-
-  // collega il manifest PWA
-  manifest: "/manifest.json",
-
-  // colore barra browser / splash
-  themeColor: "#2563eb",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
