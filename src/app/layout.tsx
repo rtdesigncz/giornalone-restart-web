@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 
   // colore barra browser / splash
-  themeColor: "#2563eb",
+  themeColor: "#1eb4b9",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
