@@ -1,5 +1,7 @@
+// src/app/page.tsx
 "use client";
 
+import { Suspense } from "react";
 import AppShell from "@/components/AppShell";
 import TopbarFilters from "@/components/TopbarFilters";
 import SummaryCards from "@/components/SummaryCards";
@@ -11,20 +13,34 @@ export default function Home() {
     <AppShell>
       <section className="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 space-y-8">
         {/* Filtri */}
-        <TopbarFilters />
+        <Suspense fallback={null}>
+          <TopbarFilters />
+        </Suspense>
 
         {/* Riepiloghi */}
-        <SummaryCards />
+        <Suspense fallback={null}>
+          <SummaryCards />
+        </Suspense>
 
         {/* Sezioni principali */}
-        <EntriesSection title="TOUR SPONTANEI" />
-        <EntriesSection title="APPUNTAMENTI RINNOVI E INTEGRAZIONI" />
-        <EntriesSection title="APPUNTAMENTI (Pianificazione)" />
-        <EntriesSection title="APPUNTAMENTI VERIFICHE DEL BISOGNO" />
+        <Suspense fallback={null}>
+          <EntriesSection title="TOUR SPONTANEI" />
+        </Suspense>
+        <Suspense fallback={null}>
+          <EntriesSection title="APPUNTAMENTI RINNOVI E INTEGRAZIONI" />
+        </Suspense>
+        <Suspense fallback={null}>
+          <EntriesSection title="APPUNTAMENTI (Pianificazione)" />
+        </Suspense>
+        <Suspense fallback={null}>
+          <EntriesSection title="APPUNTAMENTI VERIFICHE DEL BISOGNO" />
+        </Suspense>
 
         {/* Pulsante export report PDF */}
         <div className="flex justify-end mt-8">
-          <ExportReportButton />
+          <Suspense fallback={null}>
+            <ExportReportButton />
+          </Suspense>
         </div>
       </section>
     </AppShell>
