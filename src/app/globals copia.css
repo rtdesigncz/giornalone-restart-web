@@ -24,14 +24,11 @@ html, body {
     font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
   }
   h1, h2, h3 { @apply font-semibold tracking-[-0.01em]; }
-
-  /* Stile base tabelle */
   table th { @apply text-[11px] uppercase tracking-wide text-slate-500 text-left; }
   table td { @apply text-[13px] text-slate-800 text-left; }
 }
 
 @layer components {
-  /* === BUTTONS === */
   .btn { @apply inline-flex items-center justify-center rounded-md border text-sm px-3 py-2 transition; }
   .btn-xs { @apply text-xs px-2 py-1; }
   .btn-brand { background: var(--brand); color:#fff; border-color:var(--brand); }
@@ -43,11 +40,14 @@ html, body {
   .btn-icon { @apply rounded-md border; width:34px; height:34px; }
   .btn-icon-xs { width:30px; height:30px; }
 
-  /* === INPUTS === */
-  .input { @apply w-full min-w-0 block border rounded-md px-2 py-1 text-sm bg-white h-9; }
-  .select { @apply w-full min-w-0 block border rounded-md px-2 py-1 text-sm bg-white h-9; }
+  /* INPUT/SELECT full width dentro celle tabella */
+  .input {
+    @apply w-full min-w-0 block border rounded-md px-2 py-1 text-sm bg-white h-9;
+  }
+  .select {
+    @apply w-full min-w-0 block border rounded-md px-2 py-1 text-sm bg-white h-9;
+  }
 
-  /* === CARDS / TAGS === */
   .card { @apply border rounded-lg bg-[var(--surface)]; }
   .tag {
     @apply inline-flex items-center rounded-full border text-[12px] px-2 py-1;
@@ -56,7 +56,7 @@ html, body {
     background: #e6fbfc;
   }
 
-  /* === TABLES === */
+  /* Tabelle flat + compatte */
   .table-flat thead { @apply bg-slate-50; }
   .table-flat th, .table-flat td { @apply align-top; }
   .table-compact th, .table-compact td { @apply px-2 py-1; }
@@ -66,20 +66,10 @@ html, body {
   .table-dividers th, .table-dividers td { border-right: 1px solid var(--line); }
   .table-dividers th:last-child, .table-dividers td:last-child { border-right: none; }
 
-  /* Celle standard per intestazioni e corpo (usate in EntriesSection) */
-  .th { @apply px-3 py-2 text-left text-slate-600 text-xs font-semibold whitespace-nowrap; }
-  .td { @apply px-3 py-2 align-middle text-slate-800; }
-
   /* Azioni */
   .actions-cell { @apply whitespace-normal; }
   .actions-cell .btn { @apply btn-xs; }
   .actions-icons { @apply flex flex-wrap gap-2; }
-
-  /* Icon button compatto (WA/Telefono ecc.) */
-  .icon-btn {
-    @apply h-8 w-8 rounded-lg border border-slate-300 bg-white flex items-center justify-center
-           hover:bg-slate-50 active:scale-[.98];
-  }
 }
 
 /* Checkbox più grandi */
