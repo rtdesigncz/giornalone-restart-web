@@ -1,6 +1,6 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -8,15 +8,17 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// nuovo export per viewport (colore barra browser / splash)
+export const viewport: Viewport = {
+  themeColor: "#1eb4b9",
+};
+
 export const metadata: Metadata = {
   title: "Giornalone Restart",
   description: "Gestionale appuntamenti - Restart Fitness Club",
 
   // collega il manifest PWA
   manifest: "/manifest.json",
-
-  // colore barra browser / splash (brand teal)
-  themeColor: "#1eb4b9",
 
   // icone
   icons: {
