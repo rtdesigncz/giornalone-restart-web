@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Giornalone Restart",
-  description: "Gestionale vendite & appuntamenti - Restart Fitness Club",
+  description: "Gestionale appuntamenti - Restart Fitness Club",
 
   // collega il manifest PWA
   manifest: "/manifest.json",
