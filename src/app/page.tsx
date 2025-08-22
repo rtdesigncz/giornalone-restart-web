@@ -10,39 +10,27 @@ import ExportReportButton from "@/components/ExportReportButton";
 
 export default function Home() {
   return (
-    <AppShell>
-      <section className="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 space-y-8">
-        {/* Filtri */}
-        <Suspense fallback={null}>
+    <Suspense fallback={null}>
+      <AppShell>
+        <section className="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 space-y-8">
+          {/* Filtri */}
           <TopbarFilters />
-        </Suspense>
 
-        {/* Riepiloghi */}
-        <Suspense fallback={null}>
+          {/* Riepiloghi */}
           <SummaryCards />
-        </Suspense>
 
-        {/* Sezioni principali */}
-        <Suspense fallback={null}>
+          {/* Sezioni principali */}
           <EntriesSection title="TOUR SPONTANEI" />
-        </Suspense>
-        <Suspense fallback={null}>
           <EntriesSection title="APPUNTAMENTI RINNOVI E INTEGRAZIONI" />
-        </Suspense>
-        <Suspense fallback={null}>
           <EntriesSection title="APPUNTAMENTI (Pianificazione)" />
-        </Suspense>
-        <Suspense fallback={null}>
           <EntriesSection title="APPUNTAMENTI VERIFICHE DEL BISOGNO" />
-        </Suspense>
 
-        {/* Pulsante export report PDF */}
-        <div className="flex justify-end mt-8">
-          <Suspense fallback={null}>
+          {/* Pulsante export report PDF */}
+          <div className="flex justify-end mt-8">
             <ExportReportButton />
-          </Suspense>
-        </div>
-      </section>
-    </AppShell>
+          </div>
+        </section>
+      </AppShell>
+    </Suspense>
   );
 }
