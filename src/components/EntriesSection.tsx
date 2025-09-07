@@ -188,6 +188,17 @@ export default function EntriesSection({ title }: { title: string }) {
     return () => { active = false; };
   }, [title, scope, dateParam, fromParam, toParam, q, consulente, tipo, missOnly, vendutoOnly]);
 
+  // <-- listener per aggiornare subito la UI quando il popup segna “contattato”
+  useEffect(() => {
+    const handler = (ev: any) => {
+      const id = ev?.detail?.id as string | undefined;
+      if (!id) return;
+      setRows(prev => prev.map(r => r.id === id ? { ...r, contattato: true } : r));
+    };
+    window.addEventListener("telefonico:contattato", handler as any);
+    return () => window.removeEventListener("telefonico:contattato", handler as any);
+  }, []);
+
   // ---- INSERT (+ edit)
   const handleAdd = async () => {
     if (isMobile) {
