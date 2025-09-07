@@ -1,7 +1,7 @@
 // src/components/EntryCard.tsx
 "use client";
 
-import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle, Copy } from "lucide-react";
 
 type Entry = {
   id: string;
@@ -17,6 +17,7 @@ type Entry = {
   comeback: boolean;
   miss: boolean;
   venduto: boolean;
+  contattato?: boolean; // NEW
   note?: string | null;
   consulente_id?: string | null;
   tipo_abbonamento_id?: string | null;
@@ -30,6 +31,9 @@ export default function EntryCard({
   onCall,
   onToggleMiss,
   onToggleVenduto,
+  onTogglePresentato,   // opzionale per altre sezioni
+  onToggleContattato,   // NEW per telefonici
+  onDuplicate,
 }: {
   row: Entry;
   onEdit: (row: Entry) => void;
@@ -38,13 +42,20 @@ export default function EntryCard({
   onCall: (row: Entry) => void;
   onToggleMiss: (row: Entry) => void;
   onToggleVenduto: (row: Entry) => void;
+  onTogglePresentato?: (row: Entry) => void;
+  onToggleContattato?: (row: Entry) => void;
+  onDuplicate: (row: Entry) => void;
 }) {
   const cons = row?.consulente?.name ?? row?.consulente?.nome ?? "";
   const tipo = row?.tipo_abbonamento?.name ?? row?.tipo_abbonamento?.nome ?? "";
   const ora = row.entry_time ? row.entry_time.slice(0, 5) : "";
 
+  const isTelefonici = row.section === "APPUNTAMENTI TELEFONICI";
+
   const badge =
-    row.venduto
+    isTelefonici
+      ? "bg-slate-50 text-slate-700 border border-slate-200"
+      : row.venduto
       ? "bg-green-50 text-green-700 border border-green-200"
       : row.miss
       ? "bg-rose-50 text-rose-700 border border-rose-200"
@@ -58,46 +69,55 @@ export default function EntryCard({
             {row.nome ?? ""} {row.cognome ?? ""}
           </div>
           <div className="text-[12px] text-slate-500 truncate">
-            {ora ? `${ora} · ` : ""}
+            {!isTelefonici && ora ? `${ora} · ` : ""}
             {cons}
-            {tipo ? ` · ${tipo}` : ""}
+            {!isTelefonici && tipo ? ` · ${tipo}` : ""}
           </div>
         </div>
+
+        {/* Toggle area (varia per sezione) */}
         <div className="flex items-center gap-2">
-          {/* Venduto / Miss toggle */}
-          <button
-            className={`h-9 w-9 rounded-lg flex items-center justify-center border ${
-              row.venduto
-                ? "bg-green-600 text-white border-green-600"
-                : "border-slate-300 text-slate-600"
-            }`}
-            title="Venduto"
-            onClick={() => onToggleVenduto(row)}
-          >
-            <CheckCircle className="h-5 w-5" />
-          </button>
-          <button
-            className={`h-9 w-9 rounded-lg flex items-center justify-center border ${
-              row.miss
-                ? "bg-rose-600 text-white border-rose-600"
-                : "border-slate-300 text-slate-600"
-            }`}
-            title="Miss"
-            onClick={() => onToggleMiss(row)}
-          >
-            <XCircle className="h-5 w-5" />
-          </button>
+          {isTelefonici ? (
+            <button
+              className={`h-9 w-9 rounded-lg flex items-center justify-center border ${
+                row.contattato ? "bg-emerald-600 text-white border-emerald-600" : "border-slate-300 text-slate-600"
+              }`}
+              title="Contattato"
+              onClick={() => onToggleContattato?.(row)}
+            >
+              <CheckCircle className="h-5 w-5" />
+            </button>
+          ) : (
+            <>
+              <button
+                className={`h-9 w-9 rounded-lg flex items-center justify-center border ${
+                  row.venduto ? "bg-green-600 text-white border-green-600" : "border-slate-300 text-slate-600"
+                }`}
+                title="Venduto"
+                onClick={() => onToggleVenduto(row)}
+              >
+                <CheckCircle className="h-5 w-5" />
+              </button>
+              <button
+                className={`h-9 w-9 rounded-lg flex items-center justify-center border ${
+                  row.miss ? "bg-rose-600 text-white border-rose-600" : "border-slate-300 text-slate-600"
+                }`}
+                title="Miss"
+                onClick={() => onToggleMiss(row)}
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Telefono / Fonte / Note */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
         {row.telefono && <div>📞 {row.telefono}</div>}
-        {row.fonte && <div>🏷️ {row.fonte}</div>}
+        {!isTelefonici && row.fonte && <div>🏷️ {row.fonte}</div>}
         {row.note && <div className="truncate">📝 {row.note}</div>}
       </div>
 
-      {/* Azioni (solo icone) */}
       <div className="mt-3 flex items-center gap-3">
         <button
           className="h-9 w-9 rounded-lg border border-slate-300 flex items-center justify-center"
@@ -119,6 +139,13 @@ export default function EntryCard({
           title="Modifica"
         >
           <Pencil className="h-5 w-5" />
+        </button>
+        <button
+          className="h-9 w-9 rounded-lg border border-slate-300 flex items-center justify-center"
+          onClick={() => onDuplicate(row)}
+          title="Duplica in…"
+        >
+          <Copy className="h-5 w-5" />
         </button>
         <button
           className="h-9 w-9 rounded-lg border border-rose-300 text-rose-700 flex items-center justify-center"

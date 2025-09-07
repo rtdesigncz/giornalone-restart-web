@@ -12,7 +12,7 @@ export default function Home() {
   return (
     <Suspense fallback={null}>
       <AppShell>
-        <section className="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 space-y-8">
+        <section className="px-3 md:px-4 lg:px-6 xl:px-8 py-6 space-y-8">
           {/* Filtri */}
           <TopbarFilters />
 
@@ -24,6 +24,8 @@ export default function Home() {
           <EntriesSection title="APPUNTAMENTI RINNOVI E INTEGRAZIONI" />
           <EntriesSection title="APPUNTAMENTI (Pianificazione)" />
           <EntriesSection title="APPUNTAMENTI VERIFICHE DEL BISOGNO" />
+          {/* Nuova sezione in fondo */}
+          <EntriesSection title="APPUNTAMENTI TELEFONICI" />
 
           {/* Pulsante export report PDF */}
           <div className="flex justify-end mt-8">

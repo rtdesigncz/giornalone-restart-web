@@ -4,7 +4,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { Settings } from "lucide-react";
 
 function parseISO(s: string) {
@@ -54,11 +54,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const humanDate = formatHeaderDate(sp);
-  const humanChip = humanDate.charAt(0).toUpperCase() + humanDate.slice(1);
 
   const scope = sp.get("scope") ?? "day";
   const currentDate = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const isToday = scope === "day" && currentDate === todayISO;
+
+  const humanDate = formatHeaderDate(sp);
+  const humanChip = humanDate.charAt(0).toUpperCase() + humanDate.slice(1);
 
   function apply(params: Record<string, string | undefined>) {
     const next = new URLSearchParams(sp.toString());
@@ -79,42 +82,82 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     apply({ scope: "day", date: iso, from: undefined, to: undefined });
   }
 
-  // Date picker
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerKey, setPickerKey] = useState(0);
+  // Chip stile
+  const chipBase =
+    "relative inline-flex items-center gap-2 rounded-full px-3 py-1.5 border cursor-pointer select-none";
+  const chipText = "text-[15px] md:text-[16px] font-semibold";
+  const chipNormal = `tag ${chipBase}`;
+  const chipToday =
+    `${chipBase} bg-teal-50 border-teal-200 text-teal-800 ring-1 ring-teal-200`;
 
-  function openDatePicker() {
-    if (scope !== "day") return;
-    const el = dateInputRef.current;
-    if (!el) return;
-    setPickerOpen(true);
-    // @ts-ignore
-    if (el.showPicker) el.showPicker();
-    else el.click();
-  }
+  const TodayBadge = () =>
+    isToday ? (
+      <span className="ml-1 inline-flex items-center rounded-full bg-teal-600 text-white text-[10px] font-semibold px-2 py-[2px] uppercase tracking-wide">
+        Oggi
+      </span>
+    ) : null;
 
-  function hardClosePicker() {
-    const el = dateInputRef.current;
-    if (el) el.blur();
-    const active = document.activeElement as HTMLElement | null;
-    if (active && typeof active.blur === "function") active.blur();
-    setPickerKey((k) => k + 1);
-    setPickerOpen(false);
-  }
+  // Chip con input date overlay
+  const DateChip = ({
+    value,
+    onChange,
+    isTodayStyle,
+    label,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    isTodayStyle?: boolean;
+    label: string;
+  }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!pickerOpen) return;
-    const onDocMouseDown = () => hardClosePicker();
-    document.addEventListener("mousedown", onDocMouseDown, true);
-    return () => document.removeEventListener("mousedown", onDocMouseDown, true);
-  }, [pickerOpen]);
+    const openPicker = () => {
+      const el = inputRef.current;
+      if (!el) return;
+      // @ts-ignore
+      if (typeof el.showPicker === "function") {
+        // @ts-ignore
+        el.showPicker();
+      } else {
+        el.focus();
+        el.click();
+      }
+    };
+
+    return (
+      <div
+        className={isTodayStyle ? chipToday : chipNormal}
+        title="Cambia data"
+        aria-label="Cambia data"
+        onClick={openPicker}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openPicker();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        <span className={chipText}>{label}</span>
+        <TodayBadge />
+        <input
+          ref={inputRef}
+          type="date"
+          aria-label="Seleziona data"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 z-10 opacity-0 cursor-pointer"
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Header desktop */}
-      <header className="bg-white border-b hidden md:block">
-        <div className="max-w-[1600px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between">
+      {/* Header desktop (sticky) */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b shadow-sm hidden md:block">
+        <div className="px-3 md:px-4 lg:px-6 xl:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Image
               src="https://iili.io/FsM5Q3v.png"
@@ -129,35 +172,52 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="text-sm text-slate-500">Restart Fitness Club</div>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            {scope === "day" && (
+            {scope === "day" ? (
               <>
-                <button className="btn btn-ghost" onClick={() => shiftDay(-1)}>←</button>
-                <button type="button" className="tag" onClick={openDatePicker}>{humanChip}</button>
-                <button className="btn btn-ghost" onClick={() => shiftDay(1)}>→</button>
-                <button className="btn" onClick={goToday}>Oggi</button>
-                <input
-                  key={pickerKey}
-                  ref={dateInputRef}
-                  type="date"
-                  className="sr-only"
+                <button
+                  className="btn btn-ghost"
+                  title="Giorno precedente"
+                  onClick={() => shiftDay(-1)}
+                >
+                  ←
+                </button>
+
+                <DateChip
                   value={currentDate}
-                  onChange={(e) => {
-                    apply({ scope: "day", date: e.target.value, from: undefined, to: undefined });
-                    setTimeout(hardClosePicker, 0);
-                  }}
-                  onBlur={hardClosePicker}
+                  onChange={(v) =>
+                    apply({ scope: "day", date: v, from: undefined, to: undefined })
+                  }
+                  isTodayStyle={isToday}
+                  label={humanChip}
                 />
+
+                <button
+                  className="btn btn-ghost"
+                  title="Giorno successivo"
+                  onClick={() => shiftDay(1)}
+                >
+                  →
+                </button>
+
+                <button className="btn" onClick={goToday} title="Vai ad oggi">
+                  Oggi
+                </button>
               </>
+            ) : (
+              <span className={`${chipText} tag`}>{humanChip}</span>
             )}
-            {scope !== "day" && <span className="tag">{humanChip}</span>}
-            <Link href="/settings" className="btn btn-brand">Impostazioni</Link>
+
+            <Link href="/settings" className="btn btn-brand">
+              Impostazioni
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* Header mobile */}
-      <header className="bg-white border-b md:hidden">
+      {/* Header mobile (sticky) */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b shadow-sm md:hidden">
         <div className="flex flex-col items-center gap-2 py-3">
           <Image
             src="https://iili.io/FsM5Q3v.png"
@@ -167,40 +227,55 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             className="rounded"
             priority
           />
-          <div className="flex items-center justify-between w-full px-4">
+          <div className="flex items-center justify-between w-full px-3 md:px-4 lg:px-6 xl:px-8">
             <div className="text-xl font-semibold">Giornalone</div>
-            <Link href="/settings" className="btn btn-ghost p-2">
+            <Link href="/settings" className="btn btn-ghost p-2" aria-label="Impostazioni">
               <Settings className="h-5 w-5" />
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            {scope === "day" && (
+            {scope === "day" ? (
               <>
-                <button className="btn btn-ghost" onClick={() => shiftDay(-1)}>←</button>
-                <button type="button" className="tag" onClick={openDatePicker}>{humanChip}</button>
-                <button className="btn btn-ghost" onClick={() => shiftDay(1)}>→</button>
-                <button className="btn" onClick={goToday}>Oggi</button>
-                <input
-                  key={pickerKey}
-                  ref={dateInputRef}
-                  type="date"
-                  className="sr-only"
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => shiftDay(-1)}
+                  title="Giorno precedente"
+                >
+                  ←
+                </button>
+
+                <DateChip
                   value={currentDate}
-                  onChange={(e) => {
-                    apply({ scope: "day", date: e.target.value, from: undefined, to: undefined });
-                    setTimeout(hardClosePicker, 0);
-                  }}
-                  onBlur={hardClosePicker}
+                  onChange={(v) =>
+                    apply({ scope: "day", date: v, from: undefined, to: undefined })
+                  }
+                  isTodayStyle={isToday}
+                  label={humanChip}
                 />
+
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => shiftDay(1)}
+                  title="Giorno successivo"
+                >
+                  →
+                </button>
+
+                <button className="btn" onClick={goToday} title="Vai ad oggi">
+                  Oggi
+                </button>
               </>
+            ) : (
+              <span className={`${chipText} tag`}>{humanChip}</span>
             )}
-            {scope !== "day" && <span className="tag">{humanChip}</span>}
           </div>
         </div>
       </header>
 
+      {/* Contenuto */}
       <main className="flex-1">{children}</main>
 
+      {/* Footer */}
       <footer className="py-6 text-center text-xs text-slate-500">
         © 2025 <span className="font-medium">Progettato da Roberto Tavano</span>
       </footer>

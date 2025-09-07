@@ -19,6 +19,9 @@ const BRAND = rgb(0.102, 0.706, 0.722); // #1AB4B8
 const SLATE = rgb(0.39, 0.45, 0.55);
 const TEXT = rgb(0.1, 0.1, 0.1);
 
+// Zebra (molto leggero, niente righe divisorie)
+const ZEBRA = rgb(0.97, 0.98, 0.985);
+
 const SECTIONS = [
   "TOUR SPONTANEI",
   "APPUNTAMENTI RINNOVI E INTEGRAZIONI",
@@ -92,7 +95,7 @@ export async function GET(req: Request) {
       });
     };
 
-    // colonne ottimizzate
+    // colonne ottimizzate (lasciate uguali)
     const columns = [
       { label: "Ora", width: 55 },
       { label: "Nome", width: 115 },
@@ -103,52 +106,118 @@ export async function GET(req: Request) {
       { label: "Miss", width: 50 },
       { label: "Venduto", width: 60 },
     ];
+    const TABLE_W = columns.reduce((a, c) => a + c.width, 0);
 
+    // layout righe: compatto, senza divisori
+    const ROW_H = 16; // altezza riga compatta
+    const ROW_GAP = 2; // piccolo gap ottico
+
+    // Helpers di pagina / intestazioni (usati anche in paginazione)
     let page = addPage();
     let y = PAGE_H - M;
 
-    // Header
-    if (logoImg) {
-      const logoW = 120;
-      const ratio = logoImg.height / logoImg.width;
-      const logoH = logoW * ratio;
-      page.drawImage(logoImg, { x: M, y: y - logoH + 8, width: logoW, height: logoH });
-      drawText(page, "Giornalone Restart", M + logoW + 14, y - 6, { size: 18, bold: true, color: BRAND });
-    }
-
-    drawText(page, `Report del ${formatDateItalian(date)}`, PAGE_W - 160, y - 6, {
-      size: 11,
-      color: SLATE,
-    });
-
-    y -= 40;
-    hr(page, y);
-    y -= 20;
-
-    // sezioni
-    for (const section of SECTIONS) {
-      drawText(page, section, M, y, { size: 13, bold: true, color: BRAND });
-      y -= 18;
-
-      const subset = rows.filter((r: any) => r.section === section);
-      if (subset.length === 0) {
-        drawText(page, "Nessun dato per questa sezione.", M, y, { size: 10, color: SLATE });
-        y -= 20;
-        continue;
+    const drawPageHeader = () => {
+      // Logo + titolo + data (come in origine)
+      if (logoImg) {
+        const logoW = 120;
+        const ratio = logoImg.height / logoImg.width;
+        const logoH = logoW * ratio;
+        page.drawImage(logoImg, { x: M, y: y - logoH + 8, width: logoW, height: logoH });
+        drawText(page, "Giornalone Restart", M + logoW + 14, y - 6, {
+          size: 18,
+          bold: true,
+          color: BRAND,
+        });
+      } else {
+        drawText(page, "Giornalone Restart", M, y - 6, {
+          size: 18,
+          bold: true,
+          color: BRAND,
+        });
       }
 
-      // intestazioni
+      drawText(page, `Report del ${formatDateItalian(date)}`, PAGE_W - 160, y - 6, {
+        size: 11,
+        color: SLATE,
+      });
+
+      y -= 40;
+      hr(page, y); // sottolineatura dell’header principale (ok mantenere)
+      y -= 20;
+    };
+
+    const drawSectionHeader = (section: string, cont = false) => {
+      drawText(page, cont ? `${section} (continua)` : section, M, y, {
+        size: 13,
+        bold: true,
+        color: BRAND,
+      });
+      y -= 18;
+
+      // Header colonne
       let cx = M;
       for (const c of columns) {
         drawText(page, c.label, cx + 2, y, { size: 9.5, bold: true, color: SLATE });
         cx += c.width;
       }
-      y -= 12;
-      hr(page, y);
-      y -= 8;
+      y -= 10; // micro spazio prima delle righe
+    };
 
-      // righe
+    const needSpace = (h: number) => y - h < M;
+
+    const newPaged = (section: string, cont = true) => {
+      page = addPage();
+      y = PAGE_H - M;
+      drawPageHeader();
+      drawSectionHeader(section, cont);
+    };
+
+    // --- Intestazione prima pagina
+    drawPageHeader();
+
+    // sezioni
+    for (const section of SECTIONS) {
+      const subset = rows.filter((r: any) => r.section === section);
+
+      // sezione vuota -> messaggio e continua
+      if (subset.length === 0) {
+        if (needSpace(18)) {
+          newPaged(section, true);
+        }
+        drawText(page, section, M, y, { size: 13, bold: true, color: BRAND });
+        y -= 18;
+        drawText(page, "Nessun dato per questa sezione.", M, y, { size: 10, color: SLATE });
+        y -= 20;
+        continue;
+      }
+
+      // prima di disegnare header sezione, assicurati spazio
+      if (needSpace(18 + 10 + 8)) {
+        newPaged(section, true);
+      }
+      drawSectionHeader(section, false);
+
+      // righe con zebra + paginazione
+      let rowIndex = 0;
       for (const r of subset) {
+        // Se non c'è spazio per la prossima riga, nuova pagina e header sezione/colonne.
+        if (needSpace(ROW_H + ROW_GAP)) {
+          newPaged(section, true);
+        }
+
+        // zebra (solo sul blocco riga, senza linee)
+        const zebraOn = rowIndex % 2 === 1;
+        if (zebraOn) {
+          page.drawRectangle({
+            x: M - 2,
+            y: y - ROW_H,
+            width: TABLE_W + 4,
+            height: ROW_H,
+            color: ZEBRA,
+          });
+        }
+
+        // dati riga
         let cx2 = M;
         const dataRow = [
           toHHMM(r.entry_time),
@@ -160,15 +229,19 @@ export async function GET(req: Request) {
           r.miss ? "Si" : "",
           r.venduto ? "Si" : "",
         ];
+
         for (let i = 0; i < columns.length; i++) {
-          drawText(page, dataRow[i], cx2 + 2, y, { size: 9.5 });
+          // testo riga compatto
+          drawText(page, dataRow[i], cx2 + 2, y - 4, { size: 9.5 });
           cx2 += columns[i].width;
         }
-        y -= 18;
-        hr(page, y);
-        y -= 6;
+
+        y -= ROW_H + ROW_GAP;
+        rowIndex++;
       }
-      y -= 20; // margine extra tra sezioni
+
+      // margine extra tra sezioni
+      y -= 12;
     }
 
     const bytes = await pdf.save();
