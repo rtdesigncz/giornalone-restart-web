@@ -829,7 +829,7 @@ export default function EntriesSection({ title }: { title: string }) {
     );
   };
 
-  // ====== MODALE MOBILE (nuova/modifica)
+  // ====== MODALE MOBILE (nuova/modifica) — RIPRISTINATO e con ORA sempre visibile ======
   const closeModal = () => { setModalOpen(false); setModalEditingId(null); setModalDraft({}); };
 
   const saveModal = async () => {
@@ -1015,6 +1015,164 @@ export default function EntriesSection({ title }: { title: string }) {
             <div className="flex justify-end gap-2 pt-2">
               <button className="btn btn-ghost" onClick={() => setDupOpen(false)}>Annulla</button>
               <button className="btn btn-brand" onClick={saveDuplicate}>Duplica</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODALE MOBILE NUOVA/MODIFICA (VISIBILE SOLO SU MOBILE) ===== */}
+      {modalOpen && (
+        <div className="md:hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-md p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {modalEditingId ? "Modifica riga" : "Nuova riga"}
+              </h3>
+              <button className="btn btn-ghost btn-icon" onClick={closeModal}><X size={16} /></button>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-slate-500">Data</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={(modalDraft.entry_date as string) ?? dateParam}
+                  onChange={(e) => setModalDraft({ ...modalDraft, entry_date: e.target.value })}
+                />
+              </div>
+
+              {/* ORA: ora sempre visibile (anche per telefonici) */}
+              <div>
+                <label className="text-xs text-slate-500">Ora</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={(modalDraft.entry_time as string) ?? ""}
+                  onChange={(e) => setModalDraft({ ...modalDraft, entry_time: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-slate-500">Nome</label>
+                  <input
+                    className="input"
+                    value={(modalDraft.nome as string) ?? ""}
+                    onChange={(e) => setModalDraft({ ...modalDraft, nome: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">Cognome</label>
+                  <input
+                    className="input"
+                    value={(modalDraft.cognome as string) ?? ""}
+                    onChange={(e) => setModalDraft({ ...modalDraft, cognome: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500">Telefono</label>
+                <input
+                  className="input"
+                  value={(modalDraft.telefono as string) ?? ""}
+                  onChange={(e) => setModalDraft({ ...modalDraft, telefono: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500">Consulente</label>
+                <select
+                  className="select"
+                  value={(modalDraft.consulente_id as string) ?? ""}
+                  onChange={(e) => setModalDraft({ ...modalDraft, consulente_id: e.target.value || null })}
+                >
+                  <option value="">—</option>
+                  {consulenti.map((c) => (
+                    <option key={c.id} value={c.id}>{lbl(c)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* NOTE sempre */}
+              <div>
+                <label className="text-xs text-slate-500">Note</label>
+                <input
+                  className="input"
+                  value={(modalDraft.note as string) ?? ""}
+                  onChange={(e) => setModalDraft({ ...modalDraft, note: e.target.value })}
+                />
+              </div>
+
+              {/* Switch a seconda della sezione */}
+              {isTelefonici ? (
+                <div className="flex items-center gap-4 pt-1">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="check-lg"
+                      checked={!!modalDraft.contattato}
+                      onChange={(e) => setModalDraft({ ...modalDraft, contattato: e.target.checked })}
+                    />
+                    <span>Contattato</span>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-4 pt-1">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="check-lg"
+                      checked={!!modalDraft.miss}
+                      onChange={(e) => setModalDraft({
+                        ...modalDraft,
+                        miss: e.target.checked,
+                        venduto: e.target.checked ? false : modalDraft.venduto
+                      })}
+                    />
+                    <span>Miss</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="check-lg"
+                      checked={!!modalDraft.venduto}
+                      onChange={(e) => setModalDraft({
+                        ...modalDraft,
+                        venduto: e.target.checked,
+                        miss: e.target.checked ? false : modalDraft.miss
+                      })}
+                    />
+                    <span>Venduto</span>
+                  </label>
+                  {hasPresentato && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="check-lg"
+                        checked={!!modalDraft.presentato}
+                        onChange={(e) => setModalDraft({ ...modalDraft, presentato: e.target.checked })}
+                      />
+                      <span>Presentato</span>
+                    </label>
+                  )}
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="check-lg"
+                      checked={!!modalDraft.comeback}
+                      onChange={(e) => setModalDraft({ ...modalDraft, comeback: e.target.checked })}
+                    />
+                    <span>Come Back</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button className="btn btn-ghost" onClick={closeModal}>Annulla</button>
+              <button className="btn btn-brand" onClick={saveModal}>Salva</button>
             </div>
           </div>
         </div>
