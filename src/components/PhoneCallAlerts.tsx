@@ -186,7 +186,7 @@ export default function PhoneCallAlerts() {
       return;
     }
 
-    // 2) avvisa il resto dell'app che questo id è stato segnato contattato (UI immediata)
+    // 2) avvisa il resto dell'app che questo id è stato segnato contattatoo (UI immediata)
     window.dispatchEvent(new CustomEvent("telefonico:contattato", { detail: { id: e.id } }));
 
     // 3) chiudi localmente & non farlo più riapparire (stessa chiave)

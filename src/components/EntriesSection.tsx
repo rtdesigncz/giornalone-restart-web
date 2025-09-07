@@ -1031,7 +1031,7 @@ export default function EntriesSection({ title }: { title: string }) {
         </div>
       )}
 
-      {/* ===== MODALE MOBILE NUOVA/MODIFICA (VISIBILE SOLO SU MOBILE) ===== */}
+      {/* ===== MODALE MOBILE NUOVA/MODIFICA (VISIBILE SOLO MOBILE) ===== */}
       {modalOpen && (
         <div className="md:hidden fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg w-full max-w-md p-4 space-y-3">

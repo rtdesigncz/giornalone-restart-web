@@ -7,11 +7,15 @@ import TopbarFilters from "@/components/TopbarFilters";
 import SummaryCards from "@/components/SummaryCards";
 import EntriesSection from "@/components/EntriesSection";
 import ExportReportButton from "@/components/ExportReportButton";
+import PhoneCallAlerts from "@/components/PhoneCallAlerts"; // 👈 nuovo import
 
 export default function Home() {
   return (
     <Suspense fallback={null}>
       <AppShell>
+        {/* Overlay per promemoria appuntamenti telefonici */}
+        <PhoneCallAlerts />
+
         <section className="px-3 md:px-4 lg:px-6 xl:px-8 py-6 space-y-8">
           {/* Filtri */}
           <TopbarFilters />
