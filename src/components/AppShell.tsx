@@ -209,6 +209,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className={`${chipText} tag`}>{humanChip}</span>
             )}
 
+            {/* NEW: Pulsante Reportistica (desktop) */}
+            <Link href="/reportistica" className="btn">
+              Reportistica
+            </Link>
+
             <Link href="/settings" className="btn btn-brand">
               Impostazioni
             </Link>
@@ -229,9 +234,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="flex items-center justify-between w-full px-3 md:px-4 lg:px-6 xl:px-8">
             <div className="text-xl font-semibold">Giornalone</div>
-            <Link href="/settings" className="btn btn-ghost p-2" aria-label="Impostazioni">
-              <Settings className="h-5 w-5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              {/* NEW: Pulsante Reportistica (mobile) */}
+              <Link href="/reportistica" className="btn btn-ghost px-3 py-2 text-sm">
+                Reportistica
+              </Link>
+              <Link href="/settings" className="btn btn-ghost p-2" aria-label="Impostazioni">
+                <Settings className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {scope === "day" ? (
