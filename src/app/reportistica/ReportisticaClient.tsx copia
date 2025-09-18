@@ -73,7 +73,7 @@ export default function ReportisticaClient() {
   const [resp, setResp] = useState<ReportResponse | null>(null);
   const [error, setError] = useState<string>("");
 
-  // Opzioni (arrivano dall'API)
+  // Opzioni dropdown (arrivano dall'API)
   const optsSezioni = useMemo(() => {
     const o = new Set<string>([...SEZIONI_PRESET, ...(resp?.meta?.options?.sezioni ?? [])]);
     return Array.from(o);
@@ -98,6 +98,8 @@ export default function ReportisticaClient() {
     const pushBool = (yes: boolean, no: boolean, key: string) => {
       if (yes && !no) p.append(key, "true");
       else if (!yes && no) p.append(key, "false");
+      // yes && no  => no filter
+      // !yes && !no => no filter
     };
     pushBool(presentatoYes, presentatoNo, "presentato");
     pushBool(vendutoYes, vendutoNo, "venduto");
@@ -170,10 +172,10 @@ export default function ReportisticaClient() {
   ]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* FILTRI (sidebar sticky) */}
-      <aside className="w-full lg:w-80 flex-shrink-0">
-        <div className="rounded-xl border bg-white shadow-sm p-4 space-y-4 lg:sticky lg:top-20">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* FILTRI */}
+      <aside className="lg:col-span-1">
+        <div className="rounded-xl border bg-white shadow-sm p-4 space-y-4">
           <h2 className="text-lg font-semibold">Filtri</h2>
 
           {/* Data / Periodo */}
@@ -205,19 +207,9 @@ export default function ReportisticaClient() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  className="input"
-                />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
                 <span className="text-slate-500 text-sm">→</span>
-                <input
-                  type="date"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="input"
-                />
+                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input" />
               </div>
             )}
           </div>
@@ -252,10 +244,7 @@ export default function ReportisticaClient() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Consulenti</label>
-              <button
-                className="text-xs text-slate-500 hover:underline"
-                onClick={() => setConsulenti([])}
-              >
+              <button className="text-xs text-slate-500 hover:underline" onClick={() => setConsulenti([])}>
                 Azzera
               </button>
             </div>
@@ -277,10 +266,7 @@ export default function ReportisticaClient() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Tipologia abbonamento</label>
-              <button
-                className="text-xs text-slate-500 hover:underline"
-                onClick={() => setTipi([])}
-              >
+              <button className="text-xs text-slate-500 hover:underline" onClick={() => setTipi([])}>
                 Azzera
               </button>
             </div>
@@ -304,19 +290,11 @@ export default function ReportisticaClient() {
               <div className="text-sm font-medium mb-1">Presentato</div>
               <div className="flex items-center gap-4">
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={presentatoYes}
-                    onChange={(e) => setPresentatoYes(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={presentatoYes} onChange={(e) => setPresentatoYes(e.target.checked)} />
                   <span>Sì</span>
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={presentatoNo}
-                    onChange={(e) => setPresentatoNo(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={presentatoNo} onChange={(e) => setPresentatoNo(e.target.checked)} />
                   <span>No</span>
                 </label>
               </div>
@@ -325,19 +303,11 @@ export default function ReportisticaClient() {
               <div className="text-sm font-medium mb-1">Venduto</div>
               <div className="flex items-center gap-4">
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={vendutoYes}
-                    onChange={(e) => setVendutoYes(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={vendutoYes} onChange={(e) => setVendutoYes(e.target.checked)} />
                   <span>Sì</span>
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={vendutoNo}
-                    onChange={(e) => setVendutoNo(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={vendutoNo} onChange={(e) => setVendutoNo(e.target.checked)} />
                   <span>No</span>
                 </label>
               </div>
@@ -346,19 +316,11 @@ export default function ReportisticaClient() {
               <div className="text-sm font-medium mb-1">Miss</div>
               <div className="flex items-center gap-4">
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={missYes}
-                    onChange={(e) => setMissYes(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={missYes} onChange={(e) => setMissYes(e.target.checked)} />
                   <span>Sì</span>
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={missNo}
-                    onChange={(e) => setMissNo(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={missNo} onChange={(e) => setMissNo(e.target.checked)} />
                   <span>No</span>
                 </label>
               </div>
@@ -374,8 +336,8 @@ export default function ReportisticaClient() {
         </div>
       </aside>
 
-      {/* RISULTATI (full width area) */}
-      <section className="flex-1">
+      {/* RISULTATI */}
+      <section className="lg:col-span-3">
         <div className="rounded-xl border bg-white shadow-sm p-4">
           {error ? (
             <div className="text-red-600">{error}</div>

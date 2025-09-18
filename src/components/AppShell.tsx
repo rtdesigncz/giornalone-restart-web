@@ -4,8 +4,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useRef } from "react";
-import { Settings } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Menu } from "lucide-react";
 
 function parseISO(s: string) {
   const [y, m, d] = s.split("-").map(Number);
@@ -54,6 +54,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const [menuOpenDesktop, setMenuOpenDesktop] = useState(false);
+  const [menuOpenMobile, setMenuOpenMobile] = useState(false);
 
   const scope = sp.get("scope") ?? "day";
   const currentDate = sp.get("date") ?? new Date().toISOString().slice(0, 10);
@@ -115,9 +117,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const el = inputRef.current;
       if (!el) return;
       // @ts-ignore
-      if (typeof el.showPicker === "function") {
+      if (typeof (el as any).showPicker === "function") {
         // @ts-ignore
-        el.showPicker();
+        (el as any).showPicker();
       } else {
         el.focus();
         el.click();
@@ -152,6 +154,50 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   };
+
+  const MenuDropdown = ({
+    open,
+    setOpen,
+  }: {
+    open: boolean;
+    setOpen: (v: boolean) => void;
+  }) => (
+    <div className="relative">
+      <button
+        className="btn btn-ghost p-2"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
+          <Link
+            href="/reportistica"
+            className="block px-4 py-2 hover:bg-slate-100"
+            onClick={() => setOpen(false)}
+          >
+            Reportistica
+          </Link>
+          <Link
+            href="/consulenze"
+            className="block px-4 py-2 hover:bg-slate-100"
+            onClick={() => setOpen(false)}
+          >
+            Consulenze
+          </Link>
+          <Link
+            href="/settings"
+            className="block px-4 py-2 hover:bg-slate-100"
+            onClick={() => setOpen(false)}
+          >
+            Impostazioni
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -206,17 +252,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               </>
             ) : (
-              <span className={`${chipText} tag`}>{humanChip}</span>
+              <span className={`tag ${chipText}`}>{humanChip}</span>
             )}
 
-            {/* NEW: Pulsante Reportistica (desktop) */}
-            <Link href="/reportistica" className="btn">
-              Reportistica
-            </Link>
-
-            <Link href="/settings" className="btn btn-brand">
-              Impostazioni
-            </Link>
+            {/* === Burger menu (DESKTOP) — raggruppa i link === */}
+            <MenuDropdown open={menuOpenDesktop} setOpen={setMenuOpenDesktop} />
           </div>
         </div>
       </header>
@@ -234,15 +274,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="flex items-center justify-between w-full px-3 md:px-4 lg:px-6 xl:px-8">
             <div className="text-xl font-semibold">Giornalone</div>
-            <div className="flex items-center gap-2">
-              {/* NEW: Pulsante Reportistica (mobile) */}
-              <Link href="/reportistica" className="btn btn-ghost px-3 py-2 text-sm">
-                Reportistica
-              </Link>
-              <Link href="/settings" className="btn btn-ghost p-2" aria-label="Impostazioni">
-                <Settings className="h-5 w-5" />
-              </Link>
-            </div>
+            {/* === Burger menu (MOBILE) — stessi link === */}
+            <MenuDropdown open={menuOpenMobile} setOpen={setMenuOpenMobile} />
           </div>
           <div className="flex items-center gap-2">
             {scope === "day" ? (
@@ -277,7 +310,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               </>
             ) : (
-              <span className={`${chipText} tag`}>{humanChip}</span>
+              <span className={`tag ${chipText}`}>{humanChip}</span>
             )}
           </div>
         </div>
