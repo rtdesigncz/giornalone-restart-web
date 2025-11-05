@@ -26,21 +26,20 @@ const SECTIONS = [
   "APPUNTAMENTI VERIFICHE DEL BISOGNO",
 ];
 
-// --- Helpers tolleranti ---
 function toHHMM(t?: string | null) {
   if (!t) return "";
-  const [hh = "", mm = ""] = String(t).split(":");
-  return hh && mm ? `${hh}:${mm}` : String(t);
+  const [hh, mm] = String(t).split(":");
+  return `${hh}:${mm}`;
 }
-function formatDateItalian(d?: string | null) {
-  if (!d) return "";
-  const [y = "", m = "", g = ""] = d.split("-");
-  return y && m && g ? `${g}-${m}-${y}` : d;
+function formatDateItalian(d: string) {
+  const [y, m, g] = d.split("-");
+  return `${g}-${m}-${y}`;
 }
 
 // Parser booleani con supporto multi (Sì/No)
 function parseBoolMulti(params: URLSearchParams, key: string): boolean | undefined {
   const vals = params.getAll(key).map((v) => v.toLowerCase());
+  // nessuno o entrambi → undefined (niente filtro)
   if (vals.length === 0) return undefined;
   const hasTrue = vals.includes("true");
   const hasFalse = vals.includes("false");
@@ -55,13 +54,10 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const format = (url.searchParams.get("format") || "pdf").toLowerCase();
 
-    // Date di input (possono anche mancare)
+    // Date
     const date = url.searchParams.get("date") || undefined;
     const from = url.searchParams.get("from") || undefined;
     const to = url.searchParams.get("to") || undefined;
-
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const hasRange = Boolean(from && to);
 
     // Filtri multipli (array)
     const sections = url.searchParams.getAll("section");
@@ -93,9 +89,9 @@ export async function GET(req: Request) {
     // 2) Query principale su entries_v (supporto IN per array)
     let qbView = supabase.from("entries_v").select("*");
 
-    if (hasRange) qbView = qbView.gte("entry_date", from!).lte("entry_date", to!);
+    if (from && to) qbView = qbView.gte("entry_date", from).lte("entry_date", to);
     else if (date) qbView = qbView.eq("entry_date", date);
-    else qbView = qbView.eq("entry_date", todayISO);
+    else qbView = qbView.eq("entry_date", new Date().toISOString().slice(0, 10));
 
     if (sections.length) qbView = qbView.in("section", sections);
     if (venduto !== undefined) qbView = qbView.eq("venduto", venduto);
@@ -113,9 +109,9 @@ export async function GET(req: Request) {
     // 3) Filtro "presentato" incrociando con entries (se richiesto)
     if (presentato !== undefined) {
       let qbEntries = supabase.from("entries").select("id");
-      if (hasRange) qbEntries = qbEntries.gte("entry_date", from!).lte("entry_date", to!);
+      if (from && to) qbEntries = qbEntries.gte("entry_date", from).lte("entry_date", to);
       else if (date) qbEntries = qbEntries.eq("entry_date", date);
-      else qbEntries = qbEntries.eq("entry_date", todayISO);
+      else qbEntries = qbEntries.eq("entry_date", new Date().toISOString().slice(0, 10));
 
       if (sections.length) qbEntries = qbEntries.in("section", sections);
       if (venduto !== undefined) qbEntries = qbEntries.eq("venduto", venduto);
@@ -139,7 +135,7 @@ export async function GET(req: Request) {
       rows = rows.filter((r) => allowed.has(r.id));
     }
 
-    // Normalizzo al formato atteso dal client
+    // Normalizzo al formato atteso dal client (unica dichiarazione!)
     const normalized = rows.map((r) => ({
       ...r,
       consulente: r.consulente_name ? { name: r.consulente_name } : null,
@@ -188,9 +184,7 @@ export async function GET(req: Request) {
       const resp = await fetch(logoUrl);
       const buf = await resp.arrayBuffer();
       logoImg = await pdf.embedPng(buf);
-    } catch {
-      // niente logo: va bene uguale
-    }
+    } catch {}
 
     const addPage = () => pdf.addPage([PAGE_W, PAGE_H]);
     const drawText = (
@@ -248,13 +242,9 @@ export async function GET(req: Request) {
           color: BRAND,
         });
       }
-
       const when = date
         ? `Report del ${formatDateItalian(date)}`
-        : hasRange
-          ? `Report dal ${formatDateItalian(from)} al ${formatDateItalian(to)}`
-          : `Report del ${formatDateItalian(todayISO)}`;
-
+        : `Report dal ${formatDateItalian(from!)} al ${formatDateItalian(to!)}`;
       drawText(page, when, PAGE_W - 220, y - 6, { size: 11, color: SLATE });
       y -= 40;
       hr(page, y);
@@ -345,22 +335,16 @@ export async function GET(req: Request) {
     }
 
     const bytes = await pdf.save();
-
-    const filenameTag = date
-      ? date
-      : hasRange
-        ? `${from}_to_${to}`
-        : todayISO;
-
     return new NextResponse(Buffer.from(bytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="giornalone_report_${filenameTag}.pdf"`,
+        "Content-Disposition": `attachment; filename="giornalone_report_${
+          date ? date : `${from}_to_${to}`
+        }.pdf"`,
       },
     });
   } catch (e: any) {
-    // Ritorna sempre JSON con errore leggibile lato client
     return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
   }
 }
