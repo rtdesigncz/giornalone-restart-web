@@ -94,16 +94,18 @@ export default function AgentWidget() {
                                 ? "bg-brand text-white rounded-br-none"
                                 : "bg-white text-slate-700 border border-slate-200 rounded-bl-none"
                         )}>
-                            <ReactMarkdown
-                                components={{
-                                    ul: ({ node, ...props }: any) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
-                                    li: ({ node, ...props }: any) => <li className="leading-relaxed" {...props} />,
-                                    strong: ({ node, ...props }: any) => <strong className="font-bold text-brand-ink" {...props} />,
-                                    p: ({ node, ...props }: any) => <p className="mb-2 last:mb-0" {...props} />,
-                                }}
-                            >
-                                {m.content}
-                            </ReactMarkdown>
+                            <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+                                <ReactMarkdown
+                                    components={{
+                                        ul: ({ node, ...props }: any) => <ul className="list-none space-y-3 my-3 pl-0" {...props} />,
+                                        li: ({ node, ...props }: any) => <li className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm" {...props} />,
+                                        strong: ({ node, ...props }: any) => <strong className="font-semibold text-brand-ink" {...props} />,
+                                        p: ({ node, ...props }: any) => <p className="mb-2 last:mb-0" {...props} />,
+                                    }}
+                                >
+                                    {m.content.replace(/\. \*/g, ".\n\n*").replace(/\* \*\*/g, "\n\n* **")}
+                                </ReactMarkdown>
+                            </div>
                         </div>
 
                         {/* SQL & Data Preview (Assistant only) */}
