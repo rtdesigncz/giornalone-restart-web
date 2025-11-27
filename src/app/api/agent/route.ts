@@ -163,7 +163,23 @@ export async function POST(req: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `You are a helpful assistant. Summarize the data in Italian.\n\nQuestion: ${message}\nSQL Used: ${sqlQuery}\nData: ${JSON.stringify(data)}\n\nAnswer:` }]
+                    parts: [{
+                        text: `
+You are a helpful assistant for a gym management dashboard.
+Your goal is to explain the data clearly and concisely in Italian.
+
+DATA: ${JSON.stringify(data)}
+QUESTION: ${message}
+
+RULES FOR THE ANSWER:
+1. Start with a direct summary sentence (e.g., "Mario Rossi ha 5 appuntamenti...").
+2. If there is a list of items (like appointments), use a bulleted list.
+3. Format dates as DD/MM/YYYY.
+4. Use **BOLD** for key statuses (e.g., **Venduto**, **Miss**, **Presentato**).
+5. Be clean and professional. Avoid clutter.
+6. If the data is empty, say "Non ho trovato nessun dato."
+
+Answer:` }]
                 }]
             }),
         });
