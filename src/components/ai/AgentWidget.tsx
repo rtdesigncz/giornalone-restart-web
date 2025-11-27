@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Sparkles, Database } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 
 type Message = {
@@ -93,7 +94,16 @@ export default function AgentWidget() {
                                 ? "bg-brand text-white rounded-br-none"
                                 : "bg-white text-slate-700 border border-slate-200 rounded-bl-none"
                         )}>
-                            {m.content}
+                            <ReactMarkdown
+                                components={{
+                                    ul: ({ node, ...props }: any) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
+                                    li: ({ node, ...props }: any) => <li className="leading-relaxed" {...props} />,
+                                    strong: ({ node, ...props }: any) => <strong className="font-bold text-brand-ink" {...props} />,
+                                    p: ({ node, ...props }: any) => <p className="mb-2 last:mb-0" {...props} />,
+                                }}
+                            >
+                                {m.content}
+                            </ReactMarkdown>
                         </div>
 
                         {/* SQL & Data Preview (Assistant only) */}
