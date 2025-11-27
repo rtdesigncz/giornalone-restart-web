@@ -127,6 +127,7 @@ export default function AgendaTable({ section }: { section: string }) {
     const getWhatsAppLink = (row: any) => {
         const tel = cleanPhone(row.telefono);
         if (!tel) return "";
+        if (row.section === "TOUR SPONTANEI") return `https://wa.me/${tel}`;
         const dateIT = new Date(row.entry_date).toLocaleDateString("it-IT", { day: "numeric", month: "long" });
         const msg = `Ciao ${row.nome}, ti ricordiamo l'appuntamento del ${dateIT} alle ${toHHMM(row.entry_time)} con ${row.consulente?.name || "noi"}. Ti aspettiamo!`;
         return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;

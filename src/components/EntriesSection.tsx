@@ -46,11 +46,11 @@ const SEZIONI = [
 const lbl = (o?: AnyObj | null) => ((o?.nome ?? o?.name ?? "") as string);
 
 function toHHMM(t: string | null) { if (!t) return ""; const [hh, mm] = String(t).split(":"); return `${hh}:${mm}`; }
-function hhmmToDb(t: string) { if (!t) return null; const p=t.split(":"); if (p.length<2) return null; return `${p[0]}:${p[1]}:00`; }
-function nowHHMM() { const d=new Date(); const hh=String(d.getHours()).padStart(2,"0"); const mm=String(d.getMinutes()).padStart(2,"0"); return `${hh}:${mm}`; }
-function parseISODate(s: string) { const [y,m,d]=s.split("-").map(Number); return new Date(Date.UTC(y,(m||1)-1,d||1)); }
-function sanitizePhone(raw: string | null){ if(!raw) return ""; let n=raw.replace(/[^\d+]/g,""); if(!n.startsWith("+")){ if(n.startsWith("00")) n="+"+n.slice(2); else n="+39"+n; } return n; }
-function waText(e: Entry){ const nome=e.nome ?? ""; const d=e.entry_date?parseISODate(e.entry_date):new Date(); const fmt=new Intl.DateTimeFormat("it-IT",{day:"2-digit",month:"2-digit",year:"numeric"}); const giorno=fmt.format(d); const ora=toHHMM(e.entry_time); const consulente=lbl(e.consulente); return `Ciao ${nome},%0A%0ATi ricordiamo l'appuntamento del giorno ${giorno}, alle ore ${ora}, con ${consulente}. Ti aspettiamo!%0A%0ARestart Fitness Club`; }
+function hhmmToDb(t: string) { if (!t) return null; const p = t.split(":"); if (p.length < 2) return null; return `${p[0]}:${p[1]}:00`; }
+function nowHHMM() { const d = new Date(); const hh = String(d.getHours()).padStart(2, "0"); const mm = String(d.getMinutes()).padStart(2, "0"); return `${hh}:${mm}`; }
+function parseISODate(s: string) { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, (m || 1) - 1, d || 1)); }
+function sanitizePhone(raw: string | null) { if (!raw) return ""; let n = raw.replace(/[^\d+]/g, ""); if (!n.startsWith("+")) { if (n.startsWith("00")) n = "+" + n.slice(2); else n = "+39" + n; } return n; }
+function waText(e: Entry) { const nome = e.nome ?? ""; const d = e.entry_date ? parseISODate(e.entry_date) : new Date(); const fmt = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }); const giorno = fmt.format(d); const ora = toHHMM(e.entry_time); const consulente = lbl(e.consulente); return `Ciao ${nome},%0A%0ATi ricordiamo l'appuntamento del giorno ${giorno}, alle ore ${ora}, con ${consulente}. Ti aspettiamo!%0A%0ARestart Fitness Club`; }
 
 export default function EntriesSection({ title }: { title: string }) {
   const sp = useSearchParams();
@@ -344,7 +344,7 @@ export default function EntriesSection({ title }: { title: string }) {
   const handleWhatsApp = (row: Entry) => {
     const to = sanitizePhone(row.telefono);
     if (!to) return alert("Numero non valido.");
-    if (row.section === "APPUNTAMENTI TELEFONICI") {
+    if (row.section === "APPUNTAMENTI TELEFONICI" || row.section === "TOUR SPONTANEI") {
       // solo chat, senza testo
       window.open(`https://wa.me/${encodeURIComponent(to)}`, "_blank");
       return;
@@ -664,8 +664,8 @@ export default function EntriesSection({ title }: { title: string }) {
           (isEditing ? !!draft.venduto : r.venduto)
             ? "bg-green-100"
             : (isEditing ? !!draft.miss : r.miss)
-            ? "bg-red-100"
-            : undefined
+              ? "bg-red-100"
+              : undefined
         }
       >
         {showDate && (
