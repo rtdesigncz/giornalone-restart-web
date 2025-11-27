@@ -9,34 +9,28 @@ Questa guida ti spiega come salvare il tuo progetto online (su GitHub) e come la
 
 ---
 
-## 1. Primo Setup (Da fare ORA su questo computer)
+## 1. Ricollegare al Repository Esistente
 
-Hai già un repository Git locale inizializzato. Ora devi collegarlo a GitHub.
+Poiché hai già un repository su GitHub, dobbiamo collegare questo progetto a quello esistente.
 
-### Passo A: Crea un Repository su GitHub
-1.  Vai su [github.com/new](https://github.com/new).
-2.  Nome repository: es. `gestionale-consulenze` (o quello che preferisci).
-3.  Visibilità: **Private** (consigliato per progetti personali).
-4.  **NON** inizializzare con README, .gitignore o license (li abbiamo già).
-5.  Clicca su **Create repository**.
+### Passo A: Trova l'URL del tuo Repository
+Vai su GitHub, apri il tuo repository e clicca sul pulsante verde **Code**. Copia l'URL (es. `https://github.com/TUO_USERNAME/NOME_REPO.git`).
 
-### Passo B: Collega il tuo computer a GitHub
-Copia l'URL del repository che hai appena creato (sarà tipo `https://github.com/TUO_USERNAME/gestionale-consulenze.git`).
-
-Esegui questi comandi nel terminale del tuo progetto (VS Code -> Terminal -> New Terminal):
+### Passo B: Collega e Aggiorna
+Esegui questi comandi nel terminale di VS Code:
 
 ```bash
-# Sostituisci l'URL con il tuo
-git remote add origin https://github.com/TUO_USERNAME/gestionale-consulenze.git
+# 1. Collega il repository remoto (sostituisci l'URL con il tuo)
+git remote add origin https://github.com/TUO_USERNAME/NOME_REPO.git
 
-# Rinomina il ramo principale in 'main' (standard moderno)
-git branch -M main
+# 2. Scarica la storia dal server (senza unire ancora)
+git fetch origin
 
-# Carica i file online
-git push -u origin main
+# 3. Forza l'aggiornamento del server con la TUA versione attuale
+# ATTENZIONE: Questo sovrascriverà quello che c'è online con quello che hai qui.
+# Dato che hai detto che questa è la versione con le "nuove implementazioni", è quello che vogliamo.
+git push -f origin main
 ```
-
-*Se è la prima volta, potrebbe chiederti di fare il login a GitHub.*
 
 ---
 
