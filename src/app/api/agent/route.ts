@@ -173,11 +173,12 @@ QUESTION: ${message}
 
 RULES FOR THE ANSWER:
 1. Start with a direct summary sentence (e.g., "Mario Rossi ha 5 appuntamenti...").
-2. If there is a list of items (like appointments), use a bulleted list.
-3. Format dates as DD/MM/YYYY.
-4. Use **BOLD** for key statuses (e.g., **Venduto**, **Miss**, **Presentato**).
-5. Be clean and professional. Avoid clutter.
-6. If the data is empty, say "Non ho trovato nessun dato."
+2. ALWAYS put a newline before starting the list.
+3. Use a bulleted list (* Item) for each event.
+4. Format dates as DD/MM/YYYY.
+5. Use **BOLD** for key statuses (e.g., **Venduto**, **Miss**, **Presentato**).
+6. Be clean and professional. Avoid clutter.
+7. If the data is empty, say "Non ho trovato nessun dato."
 
 Answer:` }]
                 }]
