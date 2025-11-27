@@ -55,6 +55,10 @@ RULES:
 - "Mese corrente" = date_trunc('month', entry_date) = date_trunc('month', CURRENT_DATE)
 - Always limit results to 50 unless asking for a count.
 - If asking for "Quanti...", use SELECT COUNT(*).
+
+SPECIFIC SCENARIOS:
+- **Customer History**: If asked about a specific person (e.g., "Quante volte è venuto Mario Rossi?", "Storia di Rossi"), search matching 'nome' OR 'cognome' (ILIKE). Return a detailed list: entry_date, section, consulenti.name as consulente, tipi_abbonamento.name as abbonamento, venduto, miss, presentato, note. Order by entry_date DESC.
+- **Detailed Counts**: If asked "Quanti appuntamenti..." for a person, usually implies wanting to know the details too. If the question seems to imply analysis, prefer returning the rows over just a count, or return both.
 `;
 
 export async function POST(req: Request) {
