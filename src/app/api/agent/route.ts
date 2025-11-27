@@ -24,6 +24,7 @@ The database has the following tables:
    - nome (text)
    - cognome (text)
    - telefono (text)
+   - fonte (text) - Source of the lead (e.g., 'Facebook', 'Walk-in')
    - consulente_id (uuid) -> joins with consulenti.id
    - tipo_abbonamento_id (uuid) -> joins with tipi_abbonamento.id
    - venduto (boolean) - TRUE if sold
@@ -40,17 +41,18 @@ The database has the following tables:
 3. tipi_abbonamento (Subscription Types)
    - id (uuid)
    - name (text)
-   - price (numeric)
+   -- price (numeric) -- This column might not exist, rely on name.
 
 RULES:
 - Return ONLY the SQL query. No markdown, no explanations.
 - Use PostgreSQL syntax.
 - Do not use 'entries_v', use 'entries' table with joins if needed.
-- To filter by consultant name, join with 'consulenti'.
-- To filter by subscription type, join with 'tipi_abbonamento'.
+- To filter by consultant name, join with 'consulenti' and use ILIKE on 'consulenti.name'.
+- To filter by subscription type, join with 'tipi_abbonamento' and use ILIKE on 'tipi_abbonamento.name'.
 - "Oggi" = CURRENT_DATE
 - "Ieri" = CURRENT_DATE - 1
 - "Ultimi X giorni" = entry_date >= CURRENT_DATE - X
+- "Mese corrente" = date_trunc('month', entry_date) = date_trunc('month', CURRENT_DATE)
 - Always limit results to 50 unless asking for a count.
 - If asking for "Quanti...", use SELECT COUNT(*).
 `;
