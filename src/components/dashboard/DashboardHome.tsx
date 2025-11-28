@@ -9,12 +9,16 @@ import { getSectionLabel } from "@/lib/sections";
 import { useRouter } from "next/navigation";
 import EntryDrawer from "../agenda/EntryDrawer";
 import { cn } from "@/lib/utils";
+import { formatDate, getLocalDateISO } from "@/lib/dateUtils";
+import { getWhatsAppLink, markWhatsAppSent, cleanPhone } from "@/lib/whatsapp";
 import NotesWidget from "./NotesWidget";
 import ExportPdfButton from "./ExportPdfButton";
+import DailyTasks from "./DailyTasks";
+import MedicalReminders from "./MedicalReminders";
+import CallsWidget from "./CallsWidget";
+import CallReminderPopup from "./CallReminderPopup";
 
 // Helper
-const cleanPhone = (num?: string) => num?.replace(/[^0-9]/g, "") || "";
-
 export default function DashboardHome() {
     const router = useRouter();
     const [stats, setStats] = useState({
@@ -34,6 +38,12 @@ export default function DashboardHome() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [currentTime, setCurrentTime] = useState("");
     const [subscriptionTypes, setSubscriptionTypes] = useState<string[]>([]);
+    const [medicalAppointments, setMedicalAppointments] = useState<any[]>([]);
+    const [statsOpen, setStatsOpen] = useState(false); // Default closed to save space
+
+    // Call Reminder State
+    const [activeCallReminder, setActiveCallReminder] = useState<any | null>(null);
+    const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
 
     // Popups State
     const [salePopup, setSalePopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
@@ -47,10 +57,12 @@ export default function DashboardHome() {
     const [rescheduleEntryData, setRescheduleEntryData] = useState<any>(null);
 
     const fetchDashboardData = async () => {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateISO();
         const yesterdayDate = new Date();
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterday = yesterdayDate.toISOString().slice(0, 10);
+        const offset = yesterdayDate.getTimezoneOffset();
+        const localYesterday = new Date(yesterdayDate.getTime() - (offset * 60 * 1000));
+        const yesterday = localYesterday.toISOString().slice(0, 10);
 
         // Fetch entries for today and yesterday
         const { data: rawEntries, error } = await supabase
@@ -103,6 +115,33 @@ export default function DashboardHome() {
         setLoading(false);
     };
 
+    const fetchMedicalReminders = async () => {
+        const today = getLocalDateISO();
+        const maxDateObj = new Date();
+        maxDateObj.setDate(maxDateObj.getDate() + 2);
+        const maxDate = maxDateObj.toISOString().slice(0, 10);
+
+        // 1. Find sessions in range [today, today+2]
+        const { data: sessions } = await supabase
+            .from("medical_sessions")
+            .select("id")
+            .gte("date", today)
+            .lte("date", maxDate);
+
+        if (sessions && sessions.length > 0) {
+            const sessionIds = sessions.map(s => s.id);
+            // 2. Fetch appointments for these sessions
+            const { data: appointments } = await supabase
+                .from("medical_appointments")
+                .select("*")
+                .in("session_id", sessionIds);
+
+            if (appointments) {
+                setMedicalAppointments(appointments);
+            }
+        }
+    };
+
     const fetchSubscriptionTypes = async () => {
         const { data } = await supabase.from("tipi_abbonamento").select("name").eq("active", true).order("name");
         if (data) setSubscriptionTypes(data.map(d => d.name));
@@ -110,16 +149,53 @@ export default function DashboardHome() {
 
     useEffect(() => {
         fetchDashboardData();
+        fetchMedicalReminders();
         fetchSubscriptionTypes();
     }, []);
 
     useEffect(() => {
-        setCurrentTime(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
-        const interval = setInterval(() => {
-            setCurrentTime(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
-        }, 60000);
+        const now = new Date();
+        const timeString = now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        setCurrentTime(timeString);
+
+        // Check for call reminders every minute
+        const checkReminders = () => {
+            const nowTime = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+            setCurrentTime(nowTime);
+
+            // Logic to find upcoming calls (approx 10 mins before)
+            // We need to access 'todos' here. Since todos is derived from 'todayEntries', 
+            // we can re-derive it or use a ref if we were inside the interval closure without dependencies.
+            // However, adding todayEntries to dependency array of useEffect is fine.
+        };
+
+        const interval = setInterval(checkReminders, 60000);
         return () => clearInterval(interval);
     }, []);
+
+    // Separate effect for checking reminders when time or entries change
+    useEffect(() => {
+        if (!currentTime || todayEntries.length === 0) return;
+
+        const todos = todayEntries
+            .filter(e => e.section === "APPUNTAMENTI TELEFONICI" && !e.venduto && !e.miss && !e.contattato);
+
+        const upcomingCall = todos.find(task => {
+            if (!task.entry_time) return false;
+            if (dismissedReminders.includes(task.id)) return false;
+
+            const [h1, m1] = currentTime.split(":").map(Number);
+            const [h2, m2] = task.entry_time.split(":").map(Number);
+            const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+
+            // Show if between 1 and 10 minutes before
+            return diff <= 10 && diff > 0;
+        });
+
+        if (upcomingCall && (!activeCallReminder || activeCallReminder.id !== upcomingCall.id)) {
+            setActiveCallReminder(upcomingCall);
+        }
+    }, [currentTime, todayEntries, dismissedReminders, activeCallReminder]);
 
     const handleCompleteCall = async (id: string) => {
         setTodayEntries(prev => prev.map(t => t.id === id ? { ...t, contattato: true } : t));
@@ -159,6 +235,19 @@ export default function DashboardHome() {
         .sort((a, b) => (b.entry_time || "").localeCompare(a.entry_time || "")); // Recent first
 
     // Actions
+    const handleWhatsApp = async (entry: any) => {
+        const link = getWhatsAppLink(entry);
+        if (!link) return alert("Numero non valido.");
+        window.open(link, "_blank");
+
+        if (!entry.whatsapp_sent) {
+            const success = await markWhatsAppSent(entry.id);
+            if (success) {
+                setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, whatsapp_sent: true } : e));
+            }
+        }
+    };
+
     const onPresentato = async (entry: any) => {
         // If it's "Verifiche del Bisogno" and we are setting it to TRUE, ask for confirmation
         if (entry.section === "APPUNTAMENTI VERIFICHE DEL BISOGNO" && !entry.presentato) {
@@ -267,6 +356,25 @@ export default function DashboardHome() {
         setSalePopup({ open: false, entry: null });
     };
 
+    const handleReminderComplete = async () => {
+        if (!activeCallReminder) return;
+        await handleCompleteCall(activeCallReminder.id);
+        setActiveCallReminder(null);
+    };
+
+    const handleReminderClose = () => {
+        if (!activeCallReminder) return;
+        setDismissedReminders(prev => [...prev, activeCallReminder.id]);
+        setActiveCallReminder(null);
+    };
+
+    // Responsive Grid Logic
+    const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
+    const showMedicalReminders = medicalAppointments.length > 0;
+    const showCallsWidget = true; // Always shown
+
+    const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showCallsWidget].filter(Boolean).length;
+    const gridColsClass = activeWidgetsCount === 1 ? 'grid-cols-1' : activeWidgetsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3';
 
     return (
         <>
@@ -293,45 +401,76 @@ export default function DashboardHome() {
                     </div>
                 </div>
 
-                {/* Bento Grid Layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Stats Row */}
-                    <StatCard
-                        title="Tour Spontanei"
-                        value={loading ? "-" : stats.tour.toString()}
-                        icon={Users}
-                        trend={Math.abs(stats.trends.tour).toString()}
-                        trendUp={stats.trends.tour >= 0}
-                        color="brand"
-                    />
-                    <StatCard
-                        title="Appuntamenti"
-                        value={loading ? "-" : stats.appuntamenti.toString()}
-                        icon={CalendarCheck}
-                        trend={Math.abs(stats.trends.appuntamenti).toString()}
-                        trendUp={stats.trends.appuntamenti >= 0}
-                        color="blue"
-                    />
-                    <StatCard
-                        title="Telefonate"
-                        value={loading ? "-" : stats.telefonate.toString()}
-                        icon={Phone}
-                        trend={Math.abs(stats.trends.telefonate).toString()}
-                        trendUp={stats.trends.telefonate >= 0}
-                        color="orange"
-                    />
-                    <StatCard
-                        title="Vendite"
-                        value={loading ? "-" : stats.vendite.toString()}
-                        icon={TrendingUp}
-                        trend={Math.abs(stats.trends.vendite).toString()}
-                        trendUp={stats.trends.vendite >= 0}
-                        color="emerald"
-                    />
+                {/* Collapsible Stats Section */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <button
+                            onClick={() => setStatsOpen(!statsOpen)}
+                            className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                        >
+                            {statsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            {statsOpen ? "Nascondi Statistiche" : "Mostra Statistiche"}
+                        </button>
+                    </div>
 
-                    {/* Main Content: Agenda & Calls */}
-                    <div className="lg:col-span-3 flex flex-col gap-6">
+                    {statsOpen && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in-fade-in slide-in-from-top-2">
+                            <StatCard
+                                title="Tour Spontanei"
+                                value={loading ? "-" : stats.tour.toString()}
+                                icon={Users}
+                                trend={Math.abs(stats.trends.tour).toString()}
+                                trendUp={stats.trends.tour >= 0}
+                                color="brand"
+                            />
+                            <StatCard
+                                title="Appuntamenti"
+                                value={loading ? "-" : stats.appuntamenti.toString()}
+                                icon={CalendarCheck}
+                                trend={Math.abs(stats.trends.appuntamenti).toString()}
+                                trendUp={stats.trends.appuntamenti >= 0}
+                                color="blue"
+                            />
+                            <StatCard
+                                title="Telefonate"
+                                value={loading ? "-" : stats.telefonate.toString()}
+                                icon={Phone}
+                                trend={Math.abs(stats.trends.telefonate).toString()}
+                                trendUp={stats.trends.telefonate >= 0}
+                                color="orange"
+                            />
+                            <StatCard
+                                title="Vendite"
+                                value={loading ? "-" : stats.vendite.toString()}
+                                icon={TrendingUp}
+                                trend={Math.abs(stats.trends.vendite).toString()}
+                                trendUp={stats.trends.vendite >= 0}
+                                color="emerald"
+                            />
+                        </div>
+                    )}
+                </div>
 
+                {/* PRIORITY TASKS ROW */}
+                <div className={`grid ${gridColsClass} gap-6`}>
+                    {showDailyTasks && <DailyTasks entries={todayEntries} />}
+
+                    {showMedicalReminders && (
+                        <MedicalReminders appointments={medicalAppointments} />
+                    )}
+
+                    <CallsWidget
+                        todos={todos}
+                        loading={loading}
+                        currentTime={currentTime}
+                        onCompleteCall={handleCompleteCall}
+                    />
+                </div>
+
+                {/* Main Content: Agenda & Notes */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Column: Agenda (2/3 width) */}
+                    <div className="lg:col-span-2 flex flex-col gap-6">
                         {/* PENDING APPOINTMENTS */}
                         <div className="glass-card p-6 min-h-[300px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
@@ -416,15 +555,18 @@ export default function DashboardHome() {
 
                                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
                                                     {waLink && (
-                                                        <a
-                                                            href={waLink}
-                                                            target="_blank"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="p-2.5 rounded-xl bg-green-50 text-green-600 hover:bg-green-500 hover:text-white transition-all border border-green-100 hover:shadow-md hover:shadow-green-200"
-                                                            title="WhatsApp"
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleWhatsApp(entry); }}
+                                                            className={cn(
+                                                                "p-2.5 rounded-xl transition-all border",
+                                                                entry.whatsapp_sent
+                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                                                    : "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white hover:shadow-md hover:shadow-green-200"
+                                                            )}
+                                                            title={entry.whatsapp_sent ? "WhatsApp Inviato" : "Invia WhatsApp"}
                                                         >
-                                                            <MessageCircle size={18} />
-                                                        </a>
+                                                            {entry.whatsapp_sent ? <Check size={18} /> : <MessageCircle size={18} />}
+                                                        </button>
                                                     )}
 
                                                     <div className="h-8 w-px bg-slate-200 mx-1" />
@@ -511,106 +653,10 @@ export default function DashboardHome() {
                                 </div>
                             )}
                         </div>
-
                     </div>
 
-                    {/* Right Column: Calls & Notes */}
-                    <div className="space-y-6 lg:col-span-1 flex flex-col">
-                        {/* Calls Widget */}
-                        <div className="glass-card p-5 flex-1 flex flex-col max-h-[500px]">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg">
-                                        <Phone size={16} />
-                                    </div>
-                                    <h2 className="text-base font-bold text-slate-800">Da Chiamare</h2>
-                                </div>
-                                <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{todos.filter(t => !t.contattato).length}</span>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                                {loading ? (
-                                    <div className="text-center text-slate-400 text-xs py-4">Caricamento...</div>
-                                ) : todos.length === 0 ? (
-                                    <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                                        Tutto fatto! 🎉
-                                    </div>
-                                ) : (
-                                    todos.map((task) => {
-                                        const time = task.entry_time?.slice(0, 5) || "";
-                                        const isCompleted = task.contattato;
-                                        let isUrgent = false;
-                                        let isExpired = false;
-
-                                        if (!isCompleted && time && currentTime) {
-                                            if (currentTime > time) isExpired = true;
-                                            else {
-                                                const [h1, m1] = currentTime.split(":").map(Number);
-                                                const [h2, m2] = time.split(":").map(Number);
-                                                const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                                                if (diff <= 10 && diff >= 0) isUrgent = true;
-                                            }
-                                        }
-
-                                        return (
-                                            <div key={task.id} className={cn(
-                                                "flex items-center gap-3 p-3 rounded-xl border transition-all relative group",
-                                                isCompleted ? "bg-emerald-50/50 border-emerald-100 opacity-60" :
-                                                    isUrgent ? "bg-rose-50 border-rose-100 animate-pulse" :
-                                                        "bg-white border-slate-100 hover:border-sky-200 hover:shadow-sm"
-                                            )}>
-                                                <div className={cn(
-                                                    "h-2 w-2 rounded-full flex-shrink-0",
-                                                    isCompleted ? "bg-emerald-500" : isExpired ? "bg-rose-400" : isUrgent ? "bg-red-500" : "bg-orange-400"
-                                                )} />
-
-                                                <div className="min-w-0 flex-1">
-                                                    <p className={cn("text-sm font-bold truncate", isCompleted ? "text-emerald-800 line-through" : "text-slate-800")}>
-                                                        {task.nome} {task.cognome}
-                                                    </p>
-                                                    {task.telefono && (
-                                                        <p className="text-xs text-slate-500 font-mono mb-0.5">{task.telefono}</p>
-                                                    )}
-                                                    <div className="flex items-center gap-2 text-[10px]">
-                                                        <span className={cn(
-                                                            "flex items-center gap-1",
-                                                            isCompleted ? "text-emerald-600" : isUrgent ? "text-rose-600 font-bold" : "text-slate-500"
-                                                        )}>
-                                                            <Clock size={10} />
-                                                            {task.entry_time ? task.entry_time.slice(0, 5) : "Oggi"}
-                                                        </span>
-                                                        {task.consulente_name && (
-                                                            <span className="text-slate-400 flex items-center gap-0.5">
-                                                                • {task.consulente_name}
-                                                            </span>
-                                                        )}
-                                                        {isExpired && !isCompleted && (
-                                                            <span className="text-rose-500 flex items-center gap-0.5 font-bold ml-auto">
-                                                                <AlertCircle size={10} /> Scaduto
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {!isCompleted ? (
-                                                    <button
-                                                        onClick={() => handleCompleteCall(task.id)}
-                                                        className="p-1.5 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                        title="Fatto"
-                                                    >
-                                                        <CheckCircle size={20} />
-                                                    </button>
-                                                ) : (
-                                                    <CheckCircle size={16} className="text-emerald-500" />
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Notes Widget */}
+                    {/* Right Column: Notes (1/3 width) */}
+                    <div className="space-y-6 flex flex-col">
                         <div className="flex-1">
                             <NotesWidget />
                         </div>
@@ -725,6 +771,12 @@ export default function DashboardHome() {
                     </div>
                 </div>
             )}
+            {/* Call Reminder Popup */}
+            <CallReminderPopup
+                call={activeCallReminder}
+                onComplete={handleReminderComplete}
+                onClose={handleReminderClose}
+            />
         </>
     );
 }

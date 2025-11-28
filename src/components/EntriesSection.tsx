@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
 import SectionTableShell from "./SectionTableShell";
 import { MessageCircle, Phone, Pencil, Trash2, Check, X, Copy } from "lucide-react";
@@ -33,6 +34,7 @@ type Entry = {
   updated_at: string;
   consulente?: AnyObj | null;
   tipo_abbonamento?: AnyObj | null;
+  whatsapp_sent?: boolean;
 };
 
 const SEZIONI = [
@@ -43,28 +45,30 @@ const SEZIONI = [
   "APPUNTAMENTI TELEFONICI",
 ];
 
+import { getWhatsAppLink, markWhatsAppSent, cleanPhone } from "@/lib/whatsapp";
+
 const lbl = (o?: AnyObj | null) => ((o?.nome ?? o?.name ?? "") as string);
 
 function toHHMM(t: string | null) { if (!t) return ""; const [hh, mm] = String(t).split(":"); return `${hh}:${mm}`; }
 function hhmmToDb(t: string) { if (!t) return null; const p = t.split(":"); if (p.length < 2) return null; return `${p[0]}:${p[1]}:00`; }
 function nowHHMM() { const d = new Date(); const hh = String(d.getHours()).padStart(2, "0"); const mm = String(d.getMinutes()).padStart(2, "0"); return `${hh}:${mm}`; }
 function parseISODate(s: string) { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, (m || 1) - 1, d || 1)); }
-function sanitizePhone(raw: string | null) { if (!raw) return ""; let n = raw.replace(/[^\d+]/g, ""); if (!n.startsWith("+")) { if (n.startsWith("00")) n = "+" + n.slice(2); else n = "+39" + n; } return n; }
-function waText(e: Entry) { const nome = e.nome ?? ""; const d = e.entry_date ? parseISODate(e.entry_date) : new Date(); const fmt = new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }); const giorno = fmt.format(d); const ora = toHHMM(e.entry_time); const consulente = lbl(e.consulente); return `Ciao ${nome},%0A%0ATi ricordiamo l'appuntamento del giorno ${giorno}, alle ore ${ora}, con ${consulente}. Ti aspettiamo!%0A%0ARestart Fitness Club`; }
+// function sanitizePhone ... removed
+// function waText ... removed
 
 export default function EntriesSection({ title }: { title: string }) {
   const sp = useSearchParams();
 
-  const scope = sp.get("scope") ?? "day";
-  const dateParam = sp.get("date") ?? new Date().toISOString().slice(0, 10);
-  const fromParam = sp.get("from") ?? dateParam;
-  const toParam = sp.get("to") ?? dateParam;
+  const scope = sp?.get("scope") ?? "day";
+  const dateParam = sp?.get("date") ?? getLocalDateISO();
+  const fromParam = sp?.get("from") ?? dateParam;
+  const toParam = sp?.get("to") ?? dateParam;
 
-  const q = sp.get("q") ?? "";
-  const consulente = sp.get("consulente") ?? "";
-  const tipo = sp.get("tipo") ?? "";
-  const missOnly = sp.get("miss") === "1";
-  const vendutoOnly = sp.get("venduto") === "1";
+  const q = sp?.get("q") ?? "";
+  const consulente = sp?.get("consulente") ?? "";
+  const tipo = sp?.get("tipo") ?? "";
+  const missOnly = sp?.get("miss") === "1";
+  const vendutoOnly = sp?.get("venduto") === "1";
 
   const showDate = useMemo(() => scope !== "day", [scope]);
   const isTelefonici = title === "APPUNTAMENTI TELEFONICI";
@@ -141,13 +145,11 @@ export default function EntriesSection({ title }: { title: string }) {
 
       let qy = supabase
         .from("entries")
-        .select(
-          `
-            *,
-            consulente:consulenti (*),
-            tipo_abbonamento:tipi_abbonamento (*)
-          `
-        )
+        .select(`
+          *,
+          consulente: consulenti(*),
+          tipo_abbonamento: tipi_abbonamento(*)
+        `)
         .eq("section", title)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: true });
@@ -161,7 +163,7 @@ export default function EntriesSection({ title }: { title: string }) {
       if (q && q.trim().length > 0) {
         const like = `%${q.trim()}%`;
         qy = qy.or(
-          `nome.ilike.${like},cognome.ilike.${like},telefono.ilike.${like},fonte.ilike.${like},note.ilike.${like}`
+          `nome.ilike.${like}, cognome.ilike.${like}, telefono.ilike.${like}, fonte.ilike.${like}, note.ilike.${like}`
         );
       }
 
@@ -249,10 +251,10 @@ export default function EntriesSection({ title }: { title: string }) {
       .insert(insertObj)
       .select(
         `
-          *,
-          consulente:consulenti (*),
-          tipo_abbonamento:tipi_abbonamento (*)
-        `
+  *,
+  consulente: consulenti(*),
+    tipo_abbonamento: tipi_abbonamento(*)
+      `
       )
       .single();
     if (error) { alert("Errore inserimento: " + error.message); return; }
@@ -317,9 +319,9 @@ export default function EntriesSection({ title }: { title: string }) {
       .from("entries")
       .select(
         `
-          *,
-          consulente:consulenti (*),
-          tipo_abbonamento:tipi_abbonamento (*)
+      *,
+      consulente: consulenti(*),
+        tipo_abbonamento: tipi_abbonamento(*)
         `
       )
       .eq("id", editingId)
@@ -341,21 +343,24 @@ export default function EntriesSection({ title }: { title: string }) {
   };
 
   // ---- WA / CALL
-  const handleWhatsApp = (row: Entry) => {
-    const to = sanitizePhone(row.telefono);
-    if (!to) return alert("Numero non valido.");
-    if (row.section === "APPUNTAMENTI TELEFONICI" || row.section === "TOUR SPONTANEI") {
-      // solo chat, senza testo
-      window.open(`https://wa.me/${encodeURIComponent(to)}`, "_blank");
-      return;
+  // ---- WA / CALL
+  const handleWhatsApp = async (row: Entry) => {
+    const link = getWhatsAppLink(row as any);
+    if (!link) return alert("Numero non valido.");
+
+    window.open(link, "_blank");
+
+    if (!row.whatsapp_sent) {
+      const success = await markWhatsAppSent(row.id);
+      if (success) {
+        setRows(prev => prev.map(r => r.id === row.id ? { ...r, whatsapp_sent: true } : r));
+      }
     }
-    const msg = waText(row);
-    window.open(`https://wa.me/${encodeURIComponent(to)}?text=${msg}`, "_blank");
   };
   const handleCall = (row: Entry) => {
-    const to = sanitizePhone(row.telefono);
+    const to = cleanPhone(row.telefono);
     if (!to) return alert("Numero non valido.");
-    window.location.href = `tel:${to}`;
+    window.location.href = `tel:${to} `;
   };
 
   // ---- Toggle Miss/Venduto/Presentato/Contattato
@@ -876,9 +881,9 @@ export default function EntriesSection({ title }: { title: string }) {
     const { data } = await supabase
       .from("entries")
       .select(`
-        *,
-        consulente:consulenti (*),
-        tipo_abbonamento:tipi_abbonamento (*)
+  *,
+  consulente: consulenti(*),
+    tipo_abbonamento: tipi_abbonamento(*)
       `)
       .eq("section", title)
       .order("entry_date", { ascending: false })

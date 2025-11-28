@@ -13,14 +13,18 @@ type Entry = {
   telefono: string | null;
   consulente?: { name?: string | null; nome?: string | null } | null;
   tipo_abbonamento?: { name?: string | null; nome?: string | null } | null;
-  fonte?: string | null;
+  fonte: string | null;
   comeback: boolean;
   miss: boolean;
   venduto: boolean;
-  contattato?: boolean; // NEW
-  note?: string | null;
-  consulente_id?: string | null;
-  tipo_abbonamento_id?: string | null;
+  contattato?: boolean;
+  note: string | null;
+  consulente_id: string | null;
+  tipo_abbonamento_id: string | null;
+  whatsapp_sent?: boolean;
+  presentato: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export default function EntryCard({
@@ -119,11 +123,11 @@ export default function EntryCard({
 
       <div className="mt-4 flex items-center gap-2 border-t border-slate-100/50 pt-3">
         <button
-          className="icon-btn"
+          className={`icon-btn ${row.whatsapp_sent ? "text-emerald-600 bg-emerald-50 border-emerald-200" : ""}`}
           onClick={() => onWhatsapp(row)}
-          title="WhatsApp"
+          title={row.whatsapp_sent ? "WhatsApp Inviato" : "WhatsApp"}
         >
-          <MessageCircle className="h-4 w-4 text-green-600" />
+          {row.whatsapp_sent ? <CheckCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4 text-green-600" />}
         </button>
         <button
           className="icon-btn"

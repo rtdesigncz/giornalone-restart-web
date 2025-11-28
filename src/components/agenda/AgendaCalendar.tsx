@@ -8,23 +8,33 @@ import EntryDrawer from "./EntryDrawer";
 
 const DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
+import { useSearchParams } from "next/navigation";
+import { getLocalDateISO } from "@/lib/dateUtils";
+
+// ... imports
+
 export default function AgendaCalendar({ section }: { section: string }) {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const searchParams = useSearchParams();
+    const dateParam = searchParams?.get("date") ?? getLocalDateISO();
+
+    // Derive month/year from the selected date
+    const currentDate = new Date(dateParam);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Drawer State
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+    const [selectedDate, setSelectedDate] = useState<string>(getLocalDateISO());
     const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
     const fetchMonthEntries = async () => {
+        // ... same logic using year/month derived from dateParam
         setLoading(true);
-        // Start of month
         const start = new Date(year, month, 1);
+        // ...
         const startISO = new Date(start.getTime() - start.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
         // End of month
@@ -45,15 +55,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
 
     useEffect(() => {
         fetchMonthEntries();
-    }, [currentDate, section]);
-
-    const handlePrevMonth = () => {
-        setCurrentDate(new Date(year, month - 1, 1));
-    };
-
-    const handleNextMonth = () => {
-        setCurrentDate(new Date(year, month + 1, 1));
-    };
+    }, [dateParam, section]); // Depend on dateParam
 
     const handleDayClick = (day: number) => {
         const date = new Date(year, month, day);
@@ -82,7 +84,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
             const date = new Date(year, month, day);
             const dateISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
             const dayEntries = entries.filter(e => e.entry_date === dateISO);
-            const isToday = new Date().toISOString().slice(0, 10) === dateISO;
+            const isToday = getLocalDateISO() === dateISO;
 
             cells.push(
                 <div
@@ -131,23 +133,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
 
     return (
         <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white/40">
-                <h2 className="text-xl font-bold text-slate-800 capitalize">
-                    {currentDate.toLocaleString("it-IT", { month: "long", year: "numeric" })}
-                </h2>
-                <div className="flex items-center gap-2">
-                    <button onClick={handlePrevMonth} className="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 hover:shadow-sm transition-all text-slate-600">
-                        <ChevronLeft size={20} />
-                    </button>
-                    <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 hover:shadow-sm transition-all">
-                        Oggi
-                    </button>
-                    <button onClick={handleNextMonth} className="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 hover:shadow-sm transition-all text-slate-600">
-                        <ChevronRight size={20} />
-                    </button>
-                </div>
-            </div>
+            {/* Header Removed - Controlled by Parent */}
 
             {/* Calendar Grid */}
             <div className="flex-1 overflow-auto flex flex-col">

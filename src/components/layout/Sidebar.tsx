@@ -13,6 +13,7 @@ import {
     CalendarCheck,
     Sparkles,
     Ticket,
+    Stethoscope,
     ChevronRight,
     ChevronLeft,
     PanelLeftClose,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
     { label: "Consulenze", href: "/consulenze", icon: Users },
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
+    { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];

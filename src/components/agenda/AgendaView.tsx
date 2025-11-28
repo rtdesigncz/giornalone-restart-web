@@ -4,14 +4,17 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import AgendaTable from "@/components/agenda/AgendaTable";
 import AgendaCalendar from "@/components/agenda/AgendaCalendar";
-import { useSearchParams } from "next/navigation";
-import { LayoutList, Calendar as CalendarIcon } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { LayoutList, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { getLocalDateISO } from "@/lib/dateUtils";
 
 import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
 
 export default function AgendaView() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const sectionParam = searchParams?.get("section");
+    const dateParam = searchParams?.get("date") ?? getLocalDateISO();
 
     const [activeTab, setActiveTab] = useState(DB_SECTIONS[0]);
     const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -30,31 +33,80 @@ export default function AgendaView() {
                     <p className="text-slate-500 mt-1">Gestisci appuntamenti e attività.</p>
                 </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                    <button
-                        onClick={() => setViewMode("list")}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                            viewMode === "list"
-                                ? "bg-white text-slate-900 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <LayoutList size={16} />
-                        Lista
-                    </button>
-                    <button
-                        onClick={() => setViewMode("calendar")}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                            viewMode === "calendar"
-                                ? "bg-white text-slate-900 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <CalendarIcon size={16} />
-                        Calendario
-                    </button>
+                <div className="flex items-center gap-3">
+                    {/* Date Selector */}
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                        <button
+                            onClick={() => {
+                                const d = new Date(dateParam);
+                                d.setDate(d.getDate() - 1);
+                                const newDate = d.toISOString().slice(0, 10);
+                                router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                            }}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                        <div className="flex flex-col items-center px-4 min-w-[140px]">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                {new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
+                            </span>
+                            <input
+                                type="date"
+                                value={dateParam}
+                                onChange={(e) => router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${e.target.value}`)}
+                                className="bg-transparent border-none text-sm font-bold text-slate-800 focus:ring-0 p-0 text-center cursor-pointer w-full"
+                            />
+                            {dateParam !== getLocalDateISO() && (
+                                <button
+                                    onClick={() => router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${getLocalDateISO()}`)}
+                                    className="text-[10px] font-bold text-brand uppercase tracking-wide hover:underline mt-0.5"
+                                >
+                                    Torna ad oggi
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => {
+                                const d = new Date(dateParam);
+                                d.setDate(d.getDate() + 1);
+                                const newDate = d.toISOString().slice(0, 10);
+                                router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                            }}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 mx-1" />
+
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button
+                            onClick={() => setViewMode("list")}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                viewMode === "list"
+                                    ? "bg-white text-slate-900 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <LayoutList size={16} />
+                            Lista
+                        </button>
+                        <button
+                            onClick={() => setViewMode("calendar")}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                viewMode === "calendar"
+                                    ? "bg-white text-slate-900 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <CalendarIcon size={16} />
+                            Calendario
+                        </button>
+                    </div>
                 </div>
             </div>
 

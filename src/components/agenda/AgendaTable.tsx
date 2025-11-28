@@ -3,17 +3,21 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import EntryDrawer from "./EntryDrawer";
-import { Plus, Search, Filter, MessageCircle, Copy, Check, Euro, CalendarX, ThumbsDown, Phone, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Filter, MessageCircle, Copy, Check, Euro, CalendarX, ThumbsDown, Phone, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+
+import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
+import { getLocalDateISO } from "@/lib/dateUtils";
 
 // Helper
-const toHHMM = (t: string | null) => t?.slice(0, 5) || "";
+// const toHHMM = (t: string | null) => t?.slice(0, 5) || ""; // Imported
 const cleanPhone = (num?: string) => num?.replace(/[^0-9]/g, "") || "";
 
 export default function AgendaTable({ section }: { section: string }) {
+    const router = useRouter();
     const sp = useSearchParams();
-    const dateParam = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
+    const dateParam = sp?.get("date") ?? getLocalDateISO();
 
     const [rows, setRows] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -124,13 +128,19 @@ export default function AgendaTable({ section }: { section: string }) {
         await supabase.from("entries").update({ contattato: newValue }).eq("id", row.id);
     };
 
-    const getWhatsAppLink = (row: any) => {
-        const tel = cleanPhone(row.telefono);
-        if (!tel) return "";
-        if (row.section === "TOUR SPONTANEI") return `https://wa.me/${tel}`;
-        const dateIT = new Date(row.entry_date).toLocaleDateString("it-IT", { day: "numeric", month: "long" });
-        const msg = `Ciao ${row.nome}, ti ricordiamo l'appuntamento del ${dateIT} alle ${toHHMM(row.entry_time)} con ${row.consulente?.name || "noi"}. Ti aspettiamo!`;
-        return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+    const handleWhatsAppClick = async (row: any) => {
+        const link = getWhatsAppLink(row);
+        if (!link) return;
+
+        window.open(link, "_blank");
+
+        // Mark as sent if not already
+        if (!row.whatsapp_sent) {
+            const success = await markWhatsAppSent(row.id);
+            if (success) {
+                setRows(prev => prev.map(r => r.id === row.id ? { ...r, whatsapp_sent: true } : r));
+            }
+        }
     };
 
     return (
@@ -298,14 +308,18 @@ export default function AgendaTable({ section }: { section: string }) {
                                         <td className="py-4 px-6 text-right" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {row.telefono && (
-                                                    <a
-                                                        href={getWhatsAppLink(row)}
-                                                        target="_blank"
-                                                        className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors border border-green-100"
-                                                        title="Invia WhatsApp"
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleWhatsAppClick(row); }}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-colors border",
+                                                            row.whatsapp_sent
+                                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
+                                                                : "bg-green-50 text-green-600 hover:bg-green-100 border-green-100"
+                                                        )}
+                                                        title={row.whatsapp_sent ? "WhatsApp Inviato" : "Invia WhatsApp"}
                                                     >
-                                                        <MessageCircle size={14} />
-                                                    </a>
+                                                        {row.whatsapp_sent ? <Check size={14} /> : <MessageCircle size={14} />}
+                                                    </button>
                                                 )}
                                                 <button
                                                     onClick={() => handleDuplicate(row)}
