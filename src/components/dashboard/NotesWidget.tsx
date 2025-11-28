@@ -267,16 +267,16 @@ export default function NotesWidget() {
                             </div>
                         </div>
 
-                        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                        <div className="flex flex-wrap gap-2 mb-3">
                             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
                                 <button
                                     onClick={() => setPriority('normal')}
                                     className={cn("px-2 py-1 rounded-md text-xs font-bold transition-colors", priority === 'normal' ? "bg-white shadow-sm text-slate-700" : "text-slate-400 hover:text-slate-600")}
-                                >Normal</button>
+                                >Normale</button>
                                 <button
                                     onClick={() => setPriority('urgent')}
                                     className={cn("px-2 py-1 rounded-md text-xs font-bold transition-colors", priority === 'urgent' ? "bg-rose-100 text-rose-600 shadow-sm" : "text-slate-400 hover:text-rose-500")}
-                                >Urgent</button>
+                                >Urgente</button>
                                 <button
                                     onClick={() => setPriority('info')}
                                     className={cn("px-2 py-1 rounded-md text-xs font-bold transition-colors", priority === 'info' ? "bg-sky-100 text-sky-600 shadow-sm" : "text-slate-400 hover:text-sky-500")}
@@ -291,7 +291,7 @@ export default function NotesWidget() {
                             </button>
 
                             <select
-                                className="input h-[34px] text-xs py-1 w-auto"
+                                className="input h-[34px] text-xs py-1 w-auto flex-grow"
                                 value={expiresIn}
                                 onChange={e => setExpiresIn(e.target.value)}
                             >
@@ -372,7 +372,7 @@ export default function NotesWidget() {
                                 <div className="flex items-center gap-2">
                                     <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1", getPriorityColor(note.priority))}>
                                         {getPriorityIcon(note.priority)}
-                                        {note.priority.toUpperCase()}
+                                        {note.priority === 'normal' ? 'NORMALE' : note.priority === 'urgent' ? 'URGENTE' : 'INFO'}
                                     </span>
                                     <span className="text-[10px] text-slate-400 font-medium">
                                         {new Date(note.created_at).toLocaleDateString("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
