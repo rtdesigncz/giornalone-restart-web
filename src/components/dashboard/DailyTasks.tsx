@@ -9,7 +9,7 @@ interface DailyTasksProps {
 export default function DailyTasks({ entries }: DailyTasksProps) {
     // Filter for appointments that typically need reminders
     // Excluding 'TOUR SPONTANEI' as they are walk-ins and don't need reminders.
-    const reminderEntries = entries.filter(e => e.section !== "TOUR SPONTANEI");
+    const reminderEntries = entries.filter(e => e.section !== "TOUR SPONTANEI" && e.section !== "APPUNTAMENTI TELEFONICI");
 
     const total = reminderEntries.length;
     const sent = reminderEntries.filter(e => e.whatsapp_sent).length;
