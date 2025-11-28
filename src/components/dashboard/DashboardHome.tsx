@@ -50,7 +50,7 @@ export default function DashboardHome() {
     const [reschedulePopup, setReschedulePopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
     const [verifyPopup, setVerifyPopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
     const [entryToMiss, setEntryToMiss] = useState<any | null>(null); // Track entry to mark as miss after reschedule
-    const [completedOpen, setCompletedOpen] = useState(true); // Default open or closed? Let's say open for visibility but collapsible.
+    const [completedOpen, setCompletedOpen] = useState(false); // Default collapsed
 
     // New Entry Drawer State for Rescheduling
     const [rescheduleDrawerOpen, setRescheduleDrawerOpen] = useState(false);
