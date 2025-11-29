@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 
 import OutcomeButtons from "../outcomes/OutcomeButtons";
+import EntryWizard from "./EntryWizard";
 
 // Types (simplified for now, ideally shared)
 type AnyObj = Record<string, any>;
@@ -43,10 +44,19 @@ export default function EntryDrawer({
     const [targetSection, setTargetSection] = useState(section);
 
     const isNew = !entry || isDuplicate || entry.id === "new";
-    // Use targetSection if we are duplicating OR if we allowed section change (which means we might be in a different section than the prop)
-    // Actually, if allowSectionChange is true, we are creating a new entry in targetSection.
     const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : section;
     const isTelefonici = effectiveSection === "APPUNTAMENTI TELEFONICI";
+
+    const [isMobile, setIsMobile] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Load dropdowns from API to bypass RLS
     useEffect(() => {
@@ -153,13 +163,20 @@ export default function EntryDrawer({
         }
     };
 
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
     if (!mounted) return null;
+
+    if (isMobile && isOpen) {
+        return (
+            <EntryWizard
+                isOpen={isOpen}
+                onClose={onClose}
+                onSave={onSave}
+                section={effectiveSection}
+                date={date}
+                initialData={entry ? { ...entry } : undefined}
+            />
+        );
+    }
 
     // Use a portal to break out of any parent transforms (like animate-in-up)
     return createPortal(
