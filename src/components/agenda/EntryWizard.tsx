@@ -25,9 +25,13 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
     useEffect(() => {
         if (isOpen) {
             setStep(1);
+            // If initialData has an ID (editing), keep the section.
+            // If it's new (no ID or id='new'), force section selection by clearing it.
+            const isEditing = initialData && initialData.id && initialData.id !== 'new';
+
             setFormData(initialData || {
-                section: "", // Now selected in step 1
-                entry_date: new Date().toISOString().split('T')[0], // Default to today
+                section: "",
+                entry_date: new Date().toISOString().split('T')[0],
                 entry_time: "",
                 nome: "",
                 cognome: "",
@@ -44,6 +48,10 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                 comeback: false,
                 contattato: false,
             });
+
+            if (!isEditing && (!initialData || initialData.id === 'new')) {
+                setFormData((prev: any) => ({ ...prev, section: "" }));
+            }
         }
     }, [isOpen, initialData]);
 
