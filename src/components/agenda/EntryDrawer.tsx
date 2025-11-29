@@ -213,7 +213,7 @@ export default function EntryDrawer({
                 {/* Body (Compact) */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Time & Date & Personal Info */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label className="label">Data <span className="text-red-500">*</span></label>
                             <input
@@ -235,7 +235,7 @@ export default function EntryDrawer({
                     </div>
 
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="label">Nome</label>
                                 <input
@@ -267,7 +267,7 @@ export default function EntryDrawer({
                     </div>
 
                     {/* Details Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label className="label">Consulente</label>
                             <select
@@ -294,7 +294,7 @@ export default function EntryDrawer({
                     </div>
 
                     {!isTelefonici && (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label className="label">Tipo Abbonamento</label>
                                 <select

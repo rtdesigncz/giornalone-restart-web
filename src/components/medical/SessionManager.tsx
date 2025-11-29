@@ -125,38 +125,38 @@ export default function SessionManager() {
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                    <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-end gap-2 flex-shrink-0 bg-slate-50 p-2 rounded-lg border border-slate-200 w-full md:w-auto">
+                    <div className="flex flex-col gap-1 flex-1 md:flex-none min-w-[120px]">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Data</label>
                         <input
                             type="date"
                             value={newDate}
                             onChange={(e) => setNewDate(e.target.value)}
-                            className="input text-sm py-1 px-2 w-auto h-8"
+                            className="input text-sm py-1 px-2 w-full md:w-auto h-8"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 flex-1 md:flex-none min-w-[80px]">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Inizio</label>
                         <input
                             type="time"
                             value={startTime}
                             onChange={(e) => setStartTime(e.target.value)}
-                            className="input text-sm py-1 px-2 w-24 h-8"
+                            className="input text-sm py-1 px-2 w-full md:w-24 h-8"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 flex-1 md:flex-none min-w-[80px]">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Fine</label>
                         <input
                             type="time"
                             value={endTime}
                             onChange={(e) => setEndTime(e.target.value)}
-                            className="input text-sm py-1 px-2 w-24 h-8"
+                            className="input text-sm py-1 px-2 w-full md:w-24 h-8"
                         />
                     </div>
                     <button
                         onClick={handleAddSession}
                         disabled={!newDate}
-                        className="btn btn-primary text-sm py-1 px-3 h-8 gap-2 self-end"
+                        className="btn btn-primary text-sm py-1 px-3 h-8 gap-2 w-full md:w-auto justify-center"
                     >
                         <Plus size={16} />
                         Aggiungi

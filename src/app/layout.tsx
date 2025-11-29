@@ -19,6 +19,8 @@ const outfit = Outfit({
 // nuovo export per viewport (colore barra browser / splash)
 export const viewport: Viewport = {
   themeColor: "#21b5ba",
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {
