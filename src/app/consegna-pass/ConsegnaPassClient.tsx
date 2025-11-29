@@ -32,6 +32,7 @@ type Item = {
     tipo_abbonamento: string | null;
 
     note: string | null;
+    whatsapp_sent_date?: string | null;
 
     _isDraft?: boolean;
     _editing?: boolean;
@@ -398,8 +399,26 @@ export default function ConsegnaPassClient() {
                             {rows.length > 0 ? rows.map(r => {
                                 const inputCls = "w-full bg-transparent border-b border-indigo-300 focus:border-indigo-600 focus:outline-none px-1 py-0.5 text-slate-900 placeholder-slate-300 transition-colors";
 
+                                const isActivated = !!r.data_attivazione;
+                                const today = new Date();
+                                const consegnaDate = r.data_consegna ? new Date(r.data_consegna) : null;
+                                let rowColorClass = "hover:bg-slate-50"; // Default
+
+                                if (isActivated) {
+                                    rowColorClass = "bg-emerald-50/60 hover:bg-emerald-100/50";
+                                } else if (consegnaDate) {
+                                    const diffTime = Math.abs(today.getTime() - consegnaDate.getTime());
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                    if (diffDays >= 7) {
+                                        rowColorClass = "bg-red-50/60 hover:bg-red-100/50";
+                                    } else if (diffDays >= 3) {
+                                        rowColorClass = "bg-yellow-50/60 hover:bg-yellow-100/50";
+                                    }
+                                }
+
                                 return (
-                                    <tr key={r.id} className="group transition-colors hover:bg-slate-50 cursor-pointer hover:brightness-95" onDoubleClick={() => entraInModifica(r.id)}>
+                                    <tr key={r.id} className={`group transition-colors cursor-pointer hover:brightness-95 ${rowColorClass}`} onDoubleClick={() => entraInModifica(r.id)}>
                                         <td className="py-1 px-1 pl-2">
                                             {editable(r) ? (
                                                 <div className="flex gap-1">
@@ -412,7 +431,54 @@ export default function ConsegnaPassClient() {
                                         <td className="py-1 px-1">
                                             {editable(r) ? (
                                                 <input className={inputCls} value={r.cliente_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_telefono: e.target.value } : x))} placeholder="Tel. Cliente" />
-                                            ) : <ReadOnlyCell className="font-mono text-slate-600 text-[10px]">{r.cliente_telefono}</ReadOnlyCell>}
+                                            ) : (
+                                                <div className="flex items-center gap-1">
+                                                    <ReadOnlyCell className="font-mono text-slate-600 text-[10px]">{r.cliente_telefono}</ReadOnlyCell>
+                                                    {r.cliente_telefono && !editable(r) && !r._isDraft && (
+                                                        <button
+                                                            className={cn(
+                                                                "p-1 rounded hover:bg-white/50 transition-colors",
+                                                                r.whatsapp_sent_date ? "text-emerald-600" : "text-slate-400 hover:text-emerald-600"
+                                                            )}
+                                                            title={r.whatsapp_sent_date ? "Follow-up inviato" : "Invia Follow-up WhatsApp"}
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (!r.cliente_telefono) return;
+
+                                                                const msg = `Ciao ${r.cliente_nome || ""}, 
+Ti scriviamo da Restart Fitness Club!
+
+Qualche giorno fa ti abbiamo affidato un pass da donare a qualcuno a cui vuoi bene… un piccolo gesto che può diventare il primo passo verso più movimento, più energia, più benessere.
+
+Crediamo davvero che muoversi cambi la vita: rende la mente più leggera, il corpo più vivo e le giornate un po’ più nostre. Per questo ci chiedevamo se, nel frattempo, hai pensato a qualcuno a cui potrebbe far bene questo invito.
+Se la risposta è sì, puoi lasciarci il suo contatto, ci farebbe piacere farci una chiacchierata, capire come sta e mettere a disposizione il nostro aiuto, un passo alla volta, a ritrovare il piacere di muoversi e prendersi cura di sé.
+
+Che ne pensi? Facci sapere, grazie di cuore!`;
+
+                                                                const link = `https://wa.me/${r.cliente_telefono.replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`;
+                                                                window.open(link, '_blank');
+
+                                                                // Update sent date
+                                                                if (!r.whatsapp_sent_date) {
+                                                                    const now = new Date().toISOString();
+                                                                    try {
+                                                                        await fetch(`/api/pass/items?id=${r.id}`, {
+                                                                            method: "PATCH",
+                                                                            headers: { "Content-Type": "application/json" },
+                                                                            body: JSON.stringify({ whatsapp_sent_date: now })
+                                                                        });
+                                                                        setItems(it => it.map(x => x.id === r.id ? { ...x, whatsapp_sent_date: now } : x));
+                                                                    } catch (err) {
+                                                                        console.error("Error updating whatsapp date", err);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            {r.whatsapp_sent_date ? <CheckCircle2 className="w-3 h-3" /> : <MessageCircle className="w-3 h-3" />}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </td>
 
                                         <td className="py-1 px-1">

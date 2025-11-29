@@ -21,6 +21,7 @@ import { useOutcomeManager } from "@/hooks/useOutcomeManager";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcomes/OutcomePopups";
 import DashboardMobile from "./DashboardMobile";
+import PassDeliveryTask from "./PassDeliveryTask";
 
 // Helper
 export default function DashboardHome() {
@@ -49,6 +50,7 @@ export default function DashboardHome() {
     const [activeCallReminder, setActiveCallReminder] = useState<any | null>(null);
     const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
     const [completedOpen, setCompletedOpen] = useState(false);
+    const [passDeliveryCount, setPassDeliveryCount] = useState(0);
 
     const fetchDashboardData = async () => {
         const today = getLocalDateISO();
@@ -136,9 +138,28 @@ export default function DashboardHome() {
         }
     };
 
+    const fetchPassDeliveries = async () => {
+        // Use getLocalDateISO to get "today" in YYYY-MM-DD local time
+        const todayStr = getLocalDateISO();
+        // Convert to Date object to subtract days safely
+        const d = new Date(todayStr);
+        d.setDate(d.getDate() - 2); // Aligned with UI "Yellow" logic (Math.ceil difference)
+        const limitDate = d.toISOString().slice(0, 10);
+
+        const { count, error } = await supabase
+            .from("pass_items")
+            .select("*", { count: "exact", head: true })
+            .lte("data_consegna", limitDate)
+            .is("data_attivazione", null)
+            .is("whatsapp_sent_date", null);
+
+        setPassDeliveryCount(count || 0);
+    };
+
     useEffect(() => {
         fetchDashboardData();
         fetchMedicalReminders();
+        fetchPassDeliveries();
     }, []);
 
     useEffect(() => {
@@ -270,10 +291,11 @@ export default function DashboardHome() {
     // Responsive Grid Logic
     const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
     const showMedicalReminders = medicalAppointments.length > 0;
+    const showPassDelivery = passDeliveryCount > 0;
     const showCallsWidget = true; // Always shown
 
-    const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showCallsWidget].filter(Boolean).length;
-    const gridColsClass = activeWidgetsCount === 1 ? 'grid-cols-1' : activeWidgetsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3';
+    const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showPassDelivery, showCallsWidget].filter(Boolean).length;
+    const gridColsClass = activeWidgetsCount === 1 ? 'grid-cols-1' : activeWidgetsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : activeWidgetsCount === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
 
     // ... existing imports ...
 
@@ -381,6 +403,10 @@ export default function DashboardHome() {
                 {/* PRIORITY TASKS ROW */}
                 <div className={`grid ${gridColsClass} gap-6`}>
                     {showDailyTasks && <DailyTasks entries={todayEntries} />}
+
+                    {showPassDelivery && (
+                        <PassDeliveryTask count={passDeliveryCount} />
+                    )}
 
                     {showMedicalReminders && (
                         <MedicalReminders appointments={medicalAppointments} />
