@@ -142,11 +142,11 @@ export default function DashboardMobile({
             </div>
 
             {/* Agenda Preview */}
-            <div className="space-y-3">
+            <div className="glass-card p-5 space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <CalendarCheck size={18} className="text-slate-400" />
-                        Prossimi Appuntamenti
+                        In Corso/Da Fare
                     </h2>
                     <Link href="/agenda" className="text-xs font-bold text-brand hover:underline">
                         Vedi tutti
