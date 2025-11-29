@@ -201,13 +201,8 @@ export default function DashboardMobile({
             </div>
 
             {/* Team Notes (Always Visible) */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <div className="p-4 bg-slate-50/50 border-b border-slate-100">
-                    <span className="font-bold text-slate-700">Note del Team</span>
-                </div>
-                <div className="p-4">
-                    <NotesWidget />
-                </div>
+            <div className="overflow-hidden">
+                <NotesWidget />
             </div>
 
             {/* Drawers */}
