@@ -101,7 +101,7 @@ export default function SessionManager() {
         <div className="flex flex-col">
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-2 md:pb-0">
+                <div className="flex items-center gap-2 overflow-x-auto w-full max-w-full pb-2 md:pb-0">
                     {loading && sessions.length === 0 ? (
                         <div className="flex items-center text-slate-400 text-sm">
                             <Loader2 className="animate-spin mr-2" size={16} /> Caricamento date...
