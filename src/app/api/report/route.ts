@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     if (consNames.length) qbView = qbView.in("consulenti.name", consNames);
     if (tipoNames.length) qbView = qbView.in("tipi_abbonamento.name", tipoNames);
 
-    qbView = qbView.order("section", { ascending: true }).order("entry_time", { ascending: true });
+    qbView = qbView.order("section", { ascending: true }).order("entry_time", { ascending: true }).limit(10000);
 
     const { data: rowsView, error: errView } = await qbView;
     if (errView) throw errView;
