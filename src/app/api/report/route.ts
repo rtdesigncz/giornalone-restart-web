@@ -75,44 +75,77 @@ export async function GET(req: Request) {
     const tipiOptions = (allTipi || []).map((t: any) => t.name);
 
     // 2) Query principale su entries (bypass view)
-    // Costruisco select dinamica per usare !inner se filtro per nome
-    let selCons = "consulenti(name)";
-    let selTipi = "tipi_abbonamento(name)";
+    // Funzione per costruire la query base (senza range)
+    const buildQuery = () => {
+      // Costruisco select dinamica per usare !inner se filtro per nome
+      let selCons = "consulenti(name)";
+      let selTipi = "tipi_abbonamento(name)";
 
-    if (consNames.length > 0) selCons = "consulenti!inner(name)";
-    if (tipoNames.length > 0) selTipi = "tipi_abbonamento!inner(name)";
+      if (consNames.length > 0) selCons = "consulenti!inner(name)";
+      if (tipoNames.length > 0) selTipi = "tipi_abbonamento!inner(name)";
 
-    let qbView = supabase.from("entries").select(`*, ${selCons}, ${selTipi}`);
+      let qb = supabase.from("entries").select(`*, ${selCons}, ${selTipi}`);
 
-    if (hasRange) qbView = qbView.gte("entry_date", from!).lte("entry_date", to!);
-    else if (date) qbView = qbView.eq("entry_date", date);
-    else qbView = qbView.eq("entry_date", todayISO);
+      if (hasRange) qb = qb.gte("entry_date", from!).lte("entry_date", to!);
+      else if (date) qb = qb.eq("entry_date", date);
+      else qb = qb.eq("entry_date", todayISO);
 
-    // Helper per filtri booleani (false include null)
-    const applyBoolFilter = (qb: any, col: string, val: boolean | undefined) => {
-      if (val === true) return qb.eq(col, true);
-      if (val === false) return qb.or(`${col}.eq.false,${col}.is.null`);
+      // Helper per filtri booleani (false include null)
+      const applyBoolFilter = (q: any, col: string, val: boolean | undefined) => {
+        if (val === true) return q.eq(col, true);
+        if (val === false) return q.or(`${col}.eq.false,${col}.is.null`);
+        return q;
+      };
+
+      if (sections.length) qb = qb.in("section", sections);
+
+      qb = applyBoolFilter(qb, "venduto", venduto);
+      qb = applyBoolFilter(qb, "miss", miss);
+      qb = applyBoolFilter(qb, "contattato", contattato);
+      qb = applyBoolFilter(qb, "negativo", negativo);
+      qb = applyBoolFilter(qb, "presentato", presentato);
+      qb = applyBoolFilter(qb, "assente", assente);
+
+      if (consNames.length) qb = qb.in("consulenti.name", consNames);
+      if (tipoNames.length) qb = qb.in("tipi_abbonamento.name", tipoNames);
+
+      qb = qb.order("section", { ascending: true }).order("entry_time", { ascending: true });
+
       return qb;
     };
 
-    if (sections.length) qbView = qbView.in("section", sections);
+    // Loop per scaricare tutti i dati (bypass limite 1000 righe)
+    let allRows: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    qbView = applyBoolFilter(qbView, "venduto", venduto);
-    qbView = applyBoolFilter(qbView, "miss", miss);
-    qbView = applyBoolFilter(qbView, "contattato", contattato);
-    qbView = applyBoolFilter(qbView, "negativo", negativo);
-    qbView = applyBoolFilter(qbView, "presentato", presentato);
-    qbView = applyBoolFilter(qbView, "assente", assente);
+    while (hasMore) {
+      const fromIdx = page * pageSize;
+      const toIdx = fromIdx + pageSize - 1;
 
-    if (consNames.length) qbView = qbView.in("consulenti.name", consNames);
-    if (tipoNames.length) qbView = qbView.in("tipi_abbonamento.name", tipoNames);
+      // Ricostruisco la query ogni volta per evitare problemi di stato mutabile
+      const qb = buildQuery().range(fromIdx, toIdx);
 
-    qbView = qbView.order("section", { ascending: true }).order("entry_time", { ascending: true }).range(0, 9999);
+      const { data, error } = await qb;
+      if (error) throw error;
 
-    const { data: rowsView, error: errView } = await qbView;
-    if (errView) throw errView;
+      if (data && data.length > 0) {
+        allRows = [...allRows, ...data];
+        if (data.length < pageSize) {
+          hasMore = false; // Meno di una pagina piena, finito
+        } else {
+          page++; // Prossima pagina
+        }
+      } else {
+        hasMore = false;
+      }
 
-    let rows = (rowsView ?? []) as any[];
+      // Safety break per evitare loop infiniti in caso di bug (es. 20k righe max)
+      if (allRows.length > 20000) break;
+    }
+
+    let rows = allRows;
 
     // Normalizzo al formato atteso dal client
     // Con la query diretta, consulente è già un oggetto { name: ... } o null
