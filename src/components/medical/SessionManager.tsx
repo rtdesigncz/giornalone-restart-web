@@ -125,33 +125,33 @@ export default function SessionManager() {
                     )}
                 </div>
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3 flex-shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3 flex-shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200 w-full md:w-auto max-w-full">
                     <div className="flex flex-col gap-1 w-full md:w-auto">
                         <label className="text-[10px] uppercase font-bold text-slate-400">Data</label>
                         <input
                             type="date"
                             value={newDate}
                             onChange={(e) => setNewDate(e.target.value)}
-                            className="input text-sm py-1 px-2 w-full md:w-auto h-9"
+                            className="input text-sm py-1 px-2 w-full md:w-auto h-9 box-border"
                         />
                     </div>
-                    <div className="flex flex-row gap-3 w-full md:w-auto">
-                        <div className="flex flex-col gap-1 flex-1 md:flex-none">
+                    <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
+                        <div className="flex flex-col gap-1">
                             <label className="text-[10px] uppercase font-bold text-slate-400">Inizio</label>
                             <input
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="input text-sm py-1 px-2 w-full md:w-24 h-9"
+                                className="input text-sm py-1 px-2 w-full md:w-24 h-9 box-border"
                             />
                         </div>
-                        <div className="flex flex-col gap-1 flex-1 md:flex-none">
+                        <div className="flex flex-col gap-1">
                             <label className="text-[10px] uppercase font-bold text-slate-400">Fine</label>
                             <input
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="input text-sm py-1 px-2 w-full md:w-24 h-9"
+                                className="input text-sm py-1 px-2 w-full md:w-24 h-9 box-border"
                             />
                         </div>
                     </div>

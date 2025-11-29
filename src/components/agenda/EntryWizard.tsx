@@ -6,17 +6,16 @@ import { X, ChevronRight, ChevronLeft, Save, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { supabase } from "@/lib/supabaseClient";
+import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 
 interface EntryWizardProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: () => void;
-    section: string;
-    date: string;
     initialData?: any;
 }
 
-export default function EntryWizard({ isOpen, onClose, onSave, section, date, initialData }: EntryWizardProps) {
+export default function EntryWizard({ isOpen, onClose, onSave, initialData }: EntryWizardProps) {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -27,11 +26,9 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
         if (isOpen) {
             setStep(1);
             setFormData(initialData || {
-                section,
-                entry_date: date,
-                entry_time: section === "TOUR SPONTANEI"
-                    ? new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
-                    : "",
+                section: "", // Now selected in step 1
+                entry_date: new Date().toISOString().split('T')[0], // Default to today
+                entry_time: "",
                 nome: "",
                 cognome: "",
                 telefono: "",
@@ -48,7 +45,17 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                 contattato: false,
             });
         }
-    }, [isOpen, section, date, initialData]);
+    }, [isOpen, initialData]);
+
+    useEffect(() => {
+        // Update entry_time default if section changes to "TOUR SPONTANEI"
+        if (formData.section === "TOUR SPONTANEI" && !formData.entry_time) {
+            setFormData((prev: any) => ({
+                ...prev,
+                entry_time: new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+            }));
+        }
+    }, [formData.section, formData.entry_time]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -70,6 +77,12 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
 
     const handleChange = (field: string, value: any) => {
         setFormData((prev: any) => ({ ...prev, [field]: value }));
+    };
+
+    const handleSectionSelect = (s: string) => {
+        handleChange("section", s);
+        // Auto-advance to next step for better UX
+        setTimeout(() => setStep(2), 150);
     };
 
     const handleSave = async (withOutcome = true) => {
@@ -108,13 +121,13 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
 
     if (!isOpen) return null;
 
-    const isTelefonici = section === "APPUNTAMENTI TELEFONICI";
-    const totalSteps = 4;
+    const isTelefonici = formData.section === "APPUNTAMENTI TELEFONICI";
+    const totalSteps = 5;
 
     return createPortal(
         <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col animate-in fade-in duration-200">
             {/* Header */}
-            <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between shadow-sm">
+            <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between shadow-sm flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <button onClick={onClose} className="p-2 -ml-2 hover:bg-slate-100 rounded-full">
                         <X size={20} className="text-slate-500" />
@@ -138,16 +151,41 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6">
                 {step === 1 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
+                        <h3 className="text-2xl font-bold text-slate-800">Dove inserire?</h3>
+                        <div className="space-y-4">
+                            <label className="label">Sezione</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                {DB_SECTIONS.map((s) => (
+                                    <button
+                                        key={s}
+                                        onClick={() => handleSectionSelect(s)}
+                                        className={cn(
+                                            "p-4 rounded-xl border text-left transition-all active:scale-[0.98]",
+                                            formData.section === s
+                                                ? "bg-brand/10 border-brand text-brand shadow-sm ring-1 ring-brand"
+                                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        <span className="font-bold text-sm block">{getSectionLabel(s)}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {step === 2 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
                         <h3 className="text-2xl font-bold text-slate-800">Quando?</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="label">Data</label>
                                 <input
                                     type="date"
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     value={formData.entry_date || ""}
                                     onChange={(e) => handleChange("entry_date", e.target.value)}
                                 />
@@ -156,7 +194,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                                 <label className="label">Ora</label>
                                 <input
                                     type="time"
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     value={formData.entry_time?.slice(0, 5) || ""}
                                     onChange={(e) => handleChange("entry_time", e.target.value)}
                                 />
@@ -165,14 +203,14 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                     </div>
                 )}
 
-                {step === 2 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                {step === 3 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
                         <h3 className="text-2xl font-bold text-slate-800">Chi?</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="label">Nome</label>
                                 <input
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Nome"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleChange("nome", e.target.value)}
@@ -181,7 +219,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                             <div>
                                 <label className="label">Cognome</label>
                                 <input
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Cognome"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleChange("cognome", e.target.value)}
@@ -190,7 +228,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                             <div>
                                 <label className="label">Telefono</label>
                                 <input
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Telefono"
                                     type="tel"
                                     value={formData.telefono || ""}
@@ -201,14 +239,14 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                     </div>
                 )}
 
-                {step === 3 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                {step === 4 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
                         <h3 className="text-2xl font-bold text-slate-800">Dettagli</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="label">Consulente</label>
                                 <select
-                                    className="input w-full h-12 text-lg"
+                                    className="input w-full h-12 text-lg box-border"
                                     value={formData.consulente_id || ""}
                                     onChange={(e) => handleChange("consulente_id", e.target.value)}
                                 >
@@ -223,7 +261,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                                     <div>
                                         <label className="label">Fonte</label>
                                         <input
-                                            className="input w-full h-12 text-lg"
+                                            className="input w-full h-12 text-lg box-border"
                                             value={formData.fonte || ""}
                                             onChange={(e) => handleChange("fonte", e.target.value)}
                                         />
@@ -231,7 +269,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                                     <div>
                                         <label className="label">Tipo Abbonamento</label>
                                         <select
-                                            className="input w-full h-12 text-lg"
+                                            className="input w-full h-12 text-lg box-border"
                                             value={formData.tipo_abbonamento_id || ""}
                                             onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
                                         >
@@ -247,14 +285,14 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                     </div>
                 )}
 
-                {step === 4 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                {step === 5 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
                         <h3 className="text-2xl font-bold text-slate-800">Esito & Note</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="label">Note</label>
                                 <textarea
-                                    className="input w-full h-32 text-lg resize-none p-3"
+                                    className="input w-full h-32 text-lg resize-none p-3 box-border"
                                     placeholder="Note opzionali..."
                                     value={formData.note || ""}
                                     onChange={(e) => handleChange("note", e.target.value)}
@@ -262,7 +300,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                             </div>
 
                             <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                <label className="label mb-3">Seleziona Esito</label>
+                                <label className="label mb-3">Seleziona Esito (Opzionale)</label>
                                 <OutcomeButtons
                                     entry={formData}
                                     onOutcomeClick={(type) => {
@@ -294,7 +332,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
+            <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3 flex-shrink-0">
                 {step > 1 ? (
                     <button
                         onClick={() => setStep(s => s - 1)}
@@ -311,6 +349,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                     <button
                         onClick={() => setStep(s => s + 1)}
                         className="btn btn-brand h-12 px-6 shadow-lg shadow-brand/20"
+                        disabled={step === 1 && !formData.section} // Disable "Avanti" if section not selected
                     >
                         Avanti
                         <ChevronRight className="ml-2" size={20} />
@@ -318,19 +357,12 @@ export default function EntryWizard({ isOpen, onClose, onSave, section, date, in
                 ) : (
                     <div className="flex gap-2 w-full justify-end">
                         <button
-                            onClick={() => handleSave(false)}
-                            disabled={loading}
-                            className="btn btn-ghost h-12 px-4 text-slate-500 font-medium"
-                        >
-                            Salva senza esito
-                        </button>
-                        <button
                             onClick={() => handleSave(true)}
                             disabled={loading}
                             className="btn btn-brand h-12 px-6 shadow-lg shadow-brand/20 flex-1 md:flex-none justify-center"
                         >
                             {loading ? <span className="animate-spin">...</span> : <Check className="mr-2" size={20} />}
-                            Salva tutto
+                            Salva
                         </button>
                     </div>
                 )}
