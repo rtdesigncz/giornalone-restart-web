@@ -144,12 +144,15 @@ export default function DashboardMobile({
             {/* Agenda Preview */}
             <div className="glass-card p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <CalendarCheck size={18} className="text-slate-400" />
-                        In Corso/Da Fare
-                    </h2>
-                    <Link href="/agenda" className="text-xs font-bold text-brand hover:underline">
-                        Vedi tutti
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-sky-100 text-sky-600 rounded-lg">
+                            <CalendarCheck size={18} />
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-800">In Corso / Da Fare</h2>
+                        <span className="px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-bold">{pendingAppointments.length}</span>
+                    </div>
+                    <Link href="/agenda" className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+                        Vedi tutti <ArrowUpRight size={14} />
                     </Link>
                 </div>
 
