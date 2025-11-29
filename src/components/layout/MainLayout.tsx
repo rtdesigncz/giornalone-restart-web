@@ -26,12 +26,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <MobileHeader />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden pt-16 pb-16 md:pt-0 md:pb-0">
-                {/* Desktop TopBar - Hidden on Mobile */}
-                <div className="hidden md:block">
+                {/* Desktop TopBar - Hidden on Mobile - REMOVED as requested */}
+                {/* <div className="hidden md:block">
                     <Suspense fallback={<div className="h-16 bg-white/50 border-b border-slate-200" />}>
                         <TopBar onMenuClick={() => setSidebarOpen(true)} />
                     </Suspense>
-                </div>
+                </div> */}
 
                 <main className={`flex-1 overflow-y-auto scroll-smooth ${isFullWidth ? 'p-0' : 'p-4 md:p-6 lg:p-8'}`}>
                     {isFullWidth ? (
