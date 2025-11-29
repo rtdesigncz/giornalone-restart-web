@@ -25,17 +25,17 @@ export default function AgendaMobileBar({ activeSection, onSelect, onNewClick }:
     return createPortal(
         <>
             {/* Bottom Bar (Fixed to Viewport) */}
-            <div className="fixed bottom-16 left-0 right-0 z-[90] bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden flex items-center justify-between px-4 py-2 h-[72px]">
+            <div className="fixed bottom-16 left-0 right-0 z-[90] bg-[#21b5ba] border-t border-[#1a9296] shadow-[0_-4px_6px_-1px_rgba(33,181,186,0.2)] md:hidden flex items-center justify-between px-4 py-2 h-[72px]">
                 {/* Section Selector Trigger */}
                 <button
                     onClick={() => setIsOpen(true)}
                     className="flex flex-col items-start justify-center flex-1 min-w-0 active:opacity-70 transition-opacity"
                 >
-                    <div className="flex items-center gap-1.5 text-slate-400 mb-0.5">
+                    <div className="flex items-center gap-1.5 text-white/80 mb-0.5">
                         <span className="text-[10px] uppercase font-bold tracking-wider">Sezione</span>
                         <ChevronUp size={12} />
                     </div>
-                    <p className="text-sm font-bold text-slate-800 truncate w-full text-left">
+                    <p className="text-sm font-bold text-white truncate w-full text-left">
                         {getSectionLabel(activeSection)}
                     </p>
                 </button>
@@ -43,7 +43,7 @@ export default function AgendaMobileBar({ activeSection, onSelect, onNewClick }:
                 {/* New Entry Button */}
                 <button
                     onClick={onNewClick}
-                    className="btn bg-brand text-white shadow-lg shadow-brand/20 h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform ml-4"
+                    className="btn bg-white text-[#21b5ba] shadow-lg shadow-black/10 h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform ml-4 hover:bg-slate-50"
                 >
                     <Plus size={24} />
                 </button>

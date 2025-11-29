@@ -74,7 +74,16 @@ export default function OutcomeButtons({
             {buttons.map(btn => (
                 <div key={btn.type} className="flex flex-col items-center gap-1">
                     <button
-                        onClick={(e) => { e.stopPropagation(); onOutcomeClick(btn.type, entry); }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (btn.isActive) {
+                                if (confirm("Sei sicuro di voler rimuovere questo esito?")) {
+                                    onOutcomeClick(btn.type, entry);
+                                }
+                            } else {
+                                onOutcomeClick(btn.type, entry);
+                            }
+                        }}
                         className={cn(
                             btnBase,
                             layout === 'grid' ? "w-full aspect-square" : sizeClasses,

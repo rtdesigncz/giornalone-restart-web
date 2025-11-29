@@ -16,7 +16,7 @@ const NAV_ITEMS = [
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
     { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
     { label: "AI", href: "#", icon: Sparkles, isAI: true },
-    { label: "Settings", href: "/settings", icon: Settings },
+    { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
 export default function MobileNav() {

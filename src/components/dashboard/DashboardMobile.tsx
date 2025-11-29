@@ -200,20 +200,14 @@ export default function DashboardMobile({
                 </div>
             </div>
 
-            {/* Collapsible Notes */}
+            {/* Team Notes (Always Visible) */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <button
-                    onClick={() => setNotesOpen(!notesOpen)}
-                    className="w-full p-4 flex items-center justify-between bg-slate-50/50"
-                >
+                <div className="p-4 bg-slate-50/50 border-b border-slate-100">
                     <span className="font-bold text-slate-700">Note del Team</span>
-                    {notesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
-                {notesOpen && (
-                    <div className="p-4 border-t border-slate-100">
-                        <NotesWidget />
-                    </div>
-                )}
+                </div>
+                <div className="p-4">
+                    <NotesWidget />
+                </div>
             </div>
 
             {/* Drawers */}

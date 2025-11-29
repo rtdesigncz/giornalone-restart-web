@@ -189,20 +189,20 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
                         <h3 className="text-2xl font-bold text-slate-800">Quando?</h3>
                         <div className="space-y-4">
-                            <div>
-                                <label className="label">Data</label>
+                            <div className="w-full">
+                                <label className="label block mb-2">Data</label>
                                 <input
                                     type="date"
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-base box-border block"
                                     value={formData.entry_date || ""}
                                     onChange={(e) => handleChange("entry_date", e.target.value)}
                                 />
                             </div>
-                            <div>
-                                <label className="label">Ora</label>
+                            <div className="w-full">
+                                <label className="label block mb-2">Ora</label>
                                 <input
                                     type="time"
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-base box-border block"
                                     value={formData.entry_time?.slice(0, 5) || ""}
                                     onChange={(e) => handleChange("entry_time", e.target.value)}
                                 />
