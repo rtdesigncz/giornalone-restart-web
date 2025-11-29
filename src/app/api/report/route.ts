@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     if (consNames.length) qbView = qbView.in("consulenti.name", consNames);
     if (tipoNames.length) qbView = qbView.in("tipi_abbonamento.name", tipoNames);
 
-    qbView = qbView.order("section", { ascending: true }).order("entry_time", { ascending: true }).limit(10000);
+    qbView = qbView.order("section", { ascending: true }).order("entry_time", { ascending: true }).range(0, 9999);
 
     const { data: rowsView, error: errView } = await qbView;
     if (errView) throw errView;
@@ -135,7 +135,8 @@ export async function GET(req: Request) {
           const { data: pr, error: perr } = await supabase
             .from("entries")
             .select("id, presentato")
-            .in("id", ids as any);
+            .in("id", ids as any)
+            .limit(10000); // Ensure we get all statuses
           if (perr || !pr) return 0;
           return pr.filter((x: any) => x.presentato).length;
         })(),
