@@ -78,10 +78,10 @@ export default function AgentWidget() {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 w-[700px] h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-0 right-0 md:bottom-6 md:right-6 z-50 w-full md:w-[700px] h-[80vh] md:h-[500px] bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-slate-200 flex overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
 
             {/* Left Panel - Avatar Stage */}
-            <div className="w-[280px] bg-gradient-to-br from-brand to-brand-ink relative flex flex-col items-center justify-end overflow-hidden shrink-0">
+            <div className="hidden md:flex w-[280px] bg-gradient-to-br from-brand to-brand-ink relative flex-col items-center justify-end overflow-hidden shrink-0">
                 {/* Decorative background elements */}
                 <div className="absolute top-0 left-0 w-full h-full opacity-10">
                     <div className="absolute top-10 left-10 w-20 h-20 bg-white rounded-full blur-xl"></div>

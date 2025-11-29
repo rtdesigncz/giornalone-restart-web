@@ -28,7 +28,6 @@ const NAV_ITEMS = [
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
-    { label: "Mauriz", href: "#", icon: Sparkles, isAI: true },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
@@ -159,7 +158,7 @@ export default function Sidebar({
                         title="Parla con Mauriz"
                     >
                         <div className={cn("relative rounded-full overflow-hidden border-2 border-white/20 shrink-0", collapsed ? "w-10 h-10" : "w-10 h-10")}>
-                            <img src="/mauriz/maurineutro.png" alt="Mauriz" className="w-full h-full object-cover" />
+                            <img src="/mauriz/maurineutro.png" alt="Mauriz" className="w-full h-full object-cover object-top" />
                         </div>
 
                         {!collapsed && (
