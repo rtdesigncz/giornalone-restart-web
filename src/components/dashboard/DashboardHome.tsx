@@ -323,6 +323,7 @@ export default function DashboardHome() {
                     setRescheduleDrawerOpen={setRescheduleDrawerOpen}
                     rescheduleEntryData={rescheduleEntryData}
                     onRescheduleSaved={onRescheduleSaved}
+                    passDeliveryCount={passDeliveryCount}
                 />
             </div>
 

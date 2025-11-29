@@ -15,6 +15,7 @@ import NotesWidget from "./NotesWidget";
 import { cleanPhone } from "@/lib/whatsapp";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import ExportPdfButton from "./ExportPdfButton";
+import PassDeliveryTask from "./PassDeliveryTask";
 
 interface DashboardMobileProps {
     stats: any;
@@ -34,6 +35,7 @@ interface DashboardMobileProps {
     setRescheduleDrawerOpen: (open: boolean) => void;
     rescheduleEntryData: any;
     onRescheduleSaved: () => void;
+    passDeliveryCount: number;
 }
 
 export default function DashboardMobile({
@@ -53,13 +55,15 @@ export default function DashboardMobile({
     rescheduleDrawerOpen,
     setRescheduleDrawerOpen,
     rescheduleEntryData,
-    onRescheduleSaved
+    onRescheduleSaved,
+    passDeliveryCount
 }: DashboardMobileProps) {
     const router = useRouter();
     const [notesOpen, setNotesOpen] = useState(false);
 
     const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
     const showMedicalReminders = medicalAppointments.length > 0;
+    const showPassDelivery = passDeliveryCount > 0;
 
     return (
         <div className="space-y-6 pb-24 animate-in-fade-in">
@@ -127,6 +131,7 @@ export default function DashboardMobile({
             {/* Vertical Stack Widgets */}
             <div className="space-y-4">
                 {showDailyTasks && <DailyTasks entries={todayEntries} />}
+                {showPassDelivery && <PassDeliveryTask count={passDeliveryCount} />}
                 {showMedicalReminders && <MedicalReminders appointments={medicalAppointments} />}
                 <CallsWidget
                     todos={todos}
