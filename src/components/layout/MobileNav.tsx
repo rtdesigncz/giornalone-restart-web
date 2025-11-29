@@ -15,7 +15,7 @@ const NAV_ITEMS = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
     { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
-    { label: "AI", href: "#", icon: Sparkles, isAI: true },
+    { label: "Mauriz", href: "#", icon: Sparkles, isAI: true },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 

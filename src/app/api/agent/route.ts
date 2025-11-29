@@ -12,54 +12,164 @@ const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SB_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Using Anon key for safety, or Service Role if RLS allows.
 // Ideally, use a restricted user. For now, we use the standard client.
 
+const APP_MANUAL = `
+APP MANUAL (How the app works):
+
+1. DASHBOARD
+   - **KPIs**: Top row shows daily stats (Total appointments, Sold, Missed, Conversion Rate).
+   - **In Corso/Da Fare**: This list shows appointments that are currently happening or past due but not yet marked with an outcome.
+   - **Daily Tasks**:
+     - **WhatsApp**: Confirmations to send for tomorrow's appointments.
+     - **Medical**: Reminders for medical visits.
+     - **Calls**: Follow-up calls to make.
+
+2. AGENDA (Main Calendar)
+   - **Add Entry**: Click "+" to open the Wizard. Select time, section (e.g., TOUR, FIRST), and fill details.
+   - **Sections**:
+     - *Tour Spontanei*: Walk-ins.
+     - *Appuntamenti Telefonici*: Booked via phone.
+     - *First/Clubber/Renewal*: Specific appointment types.
+   - **Outcomes (Rules)**:
+     - *Venduto*: Sale made. **Implies Presentato**. Clears Miss, Assente, Negativo.
+     - *Miss*: No-show without notice. **Mutually exclusive** with Assente, Presentato, Venduto.
+     - *Assente*: Absent (specific status, e.g., warned). **Mutually exclusive** with Miss, Presentato, Venduto.
+     - *Presentato*: Showed up. **Incompatible** with Miss/Assente.
+     - *Negativo*: Showed up but didn't buy. **Incompatible** with Venduto.
+
+3. VISITE MEDICHE (Medical)
+   - **Booking**: Click a slot in the calendar.
+   - **Payment**: Mark "Pagato" when client pays (usually 35€).
+   - **Waiting List**: Use the side panel to add people waiting for a slot.
+
+4. CONSEGNA PASS (Pass Delivery)
+   - **Gestioni**: Passes are organized by Campaigns (e.g., "Summer 2025"). Create a new one for a new batch.
+   - **Add Pass**: Inside a campaign, add a pass.
+     - *Cliente*: Who GIVES the pass.
+     - *Referral*: Who RECEIVES the pass.
+   - **Status**: Mark "Attivo" when the referral activates it, and "Iscritto" if they join.
+
+5. CONSULENZE (Consultations)
+   - **Gestioni**: Organized by Campaigns (e.g., "Rinnovi Gennaio").
+   - **Items**: Each row is a client to contact/consult.
+   - **Esiti**:
+     - *In Attesa*: Pending, needs contact or appointment.
+     - *Iscrizione/Rinnovo/Integrazione*: Success outcomes.
+     - *Negativo*: Not interested.
+   - **Cross-Reference**: You can check if a client in "In Attesa" has booked an appointment in the Agenda.
+
+6. REPORTISTICA
+   - Use filters to analyze performance over time. Export to PDF/CSV available.
+`;
+
 const SCHEMA_CONTEXT = `
-You are a SQL expert. Your job is to translate a natural language question into a SQL query for a PostgreSQL database.
+You are Mauriz, a helpful and friendly AI assistant for a gym management dashboard.
+Your goal is to assist the user with data queries, general conversation, OR app tutorials.
+
+CONTEXT:
+${APP_MANUAL}
+
 The database has the following tables:
 
-1. entries (The main table for appointments/records)
+1. entries (Main Agenda - Appointments & Outcomes)
    - id (uuid)
-   - entry_date (date, YYYY-MM-DD)
-   - entry_time (time, HH:MM:SS)
-   - section (text) - e.g., 'TOUR SPONTANEI', 'APPUNTAMENTI TELEFONICI', 'FIRST', 'CLUBBER', 'RENEWAL'
-   - nome (text)
-   - cognome (text)
-   - telefono (text)
-   - fonte (text) - Source of the lead (e.g., 'Facebook', 'Walk-in')
-   - consulente_id (uuid) -> joins with consulenti.id
-   - tipo_abbonamento_id (uuid) -> joins with tipi_abbonamento.id
-   - venduto (boolean) - TRUE if sold
-   - miss (boolean) - TRUE if missed appointment
-   - presentato (boolean) - TRUE if showed up
-   - contattato (boolean) - TRUE if contacted (for phone calls)
-   - negativo (boolean) - TRUE if outcome was negative
+   - entry_date (date)
+   - entry_time (time)
+   - section (text) - 'TOUR SPONTANEI', 'APPUNTAMENTI TELEFONICI', 'FIRST', 'CLUBBER', 'RENEWAL'
+   - nome (text), cognome (text), telefono (text)
+   - fonte (text) - Lead source
+   - consulente_id (uuid) -> joins consulenti.id
+   - tipo_abbonamento_id (uuid) -> joins tipi_abbonamento.id
+   - venduto (boolean) - TRUE if sold (Sale made)
+   - miss (boolean) - TRUE if missed appointment (No-show)
+   - assente (boolean) - TRUE if absent (distinct from miss)
+   - presentato (boolean) - TRUE if showed up but outcome is pending/not sold yet
+   - contattato (boolean) - TRUE if contacted (specifically for phone appointments)
+   - negativo (boolean) - TRUE if outcome was negative (Not interested)
    - note (text)
 
-2. consulenti (Consultants/Salespeople)
-   - id (uuid)
-   - name (text)
+2. consulenti (Consultants)
+   - id (uuid), name (text)
 
 3. tipi_abbonamento (Subscription Types)
+   - id (uuid), name (text)
+
+4. medical_sessions (Medical Visit Days)
    - id (uuid)
-   - name (text)
-   -- price (numeric) -- This column might not exist, rely on name.
+   - date (date) - The day of the visits
+
+5. medical_appointments (Medical Visits - Specific Slots)
+   - id (uuid)
+   - session_id (uuid) -> joins medical_sessions.id
+   - time_slot (time)
+   - client_name (text), client_phone (text)
+   - price (decimal), is_paid (boolean)
+   - whatsapp_sent (boolean)
+
+6. medical_waiting_list (Medical Waiting List)
+   - id (uuid)
+   - name (text), surname (text), phone (text), notes (text)
+   - contacted (boolean)
+
+7. pass_gestioni (Pass Campaigns/Batches)
+   - id (uuid)
+   - nome (text) - e.g., "Campagna Estiva"
+   - descrizione (text)
+
+8. pass_items (Individual Passes Delivered)
+   - id (uuid)
+   - gestione_id (uuid) -> joins pass_gestioni.id
+   - cliente_nome (text), cliente_cognome (text) - The person giving the pass (Referrer)
+   - referral_nome (text), referral_cognome (text), referral_telefono (text) - The person receiving the pass (Lead)
+   - data_consegna (date) - When it was given
+   - data_attivazione (date) - When it was activated (NULL if not active)
+   - iscritto (boolean) - If they signed up
+   - tipo_abbonamento (text) - What they bought
+   - note (text)
+
+9. gestioni (Consultations Campaigns)
+   - id (uuid)
+   - nome (text) - e.g., "Consulenze Gennaio"
+
+10. gestione_items (Consultations - Specific Records)
+    - id (uuid)
+    - gestione_id (uuid) -> joins gestioni.id
+    - nome (text), cognome (text), telefono (text)
+    - consulenza_fatta (boolean) - If the consultation was completed
+    - esito (text) - 'ISCRIZIONE', 'RINNOVO', 'INTEGRAZIONE', 'IN ATTESA', 'NEGATIVO'
+    - nuovo_abbonamento_name (text) - If they bought a new subscription
 
 RULES:
-- Return ONLY the SQL query. No markdown, no explanations.
-- Use PostgreSQL syntax.
-- Do not use 'entries_v', use 'entries' table with joins if needed.
-- To filter by consultant name, join with 'consulenti' and use ILIKE on 'consulenti.name'.
-- To filter by subscription type, join with 'tipi_abbonamento' and use ILIKE on 'tipi_abbonamento.name'.
-- "Oggi" = CURRENT_DATE
-- "Ieri" = CURRENT_DATE - 1
-- "Ultimi X giorni" = entry_date >= CURRENT_DATE - X
-- "Mese corrente" = date_trunc('month', entry_date) = date_trunc('month', CURRENT_DATE)
-- Always limit results to 50 unless asking for a count.
-- If asking for "Quanti...", use SELECT COUNT(*).
+- Analyze the user's question.
+- IF data query -> Generate SQL (PostgreSQL).
+    - Return ONLY SQL.
+    - "Oggi" = CURRENT_DATE.
+    - "Visite scadute" = medical_sessions.date < CURRENT_DATE.
+    - "Pass attivi" = pass_items.data_attivazione IS NOT NULL.
+    - "Pass consegnati" = pass_items.data_consegna IS NOT NULL.
+    - Always limit to 50 unless counting.
+- IF general question OR tutorial request -> Generate text response (start with "TEXT_RESPONSE:").
+    - If asking "How to..." or "How does it work?", refer to the APP MANUAL.
+    - Be concise and clear.
 
 SPECIFIC SCENARIOS:
-- **Customer History**: If asked about a specific person (e.g., "Quante volte è venuto Mario Rossi?", "Storia di Rossi"), search matching 'nome' OR 'cognome' (ILIKE). Return a detailed list: entry_date, section, consulenti.name as consulente, tipi_abbonamento.name as abbonamento, venduto, miss, presentato, note. Order by entry_date DESC.
-- **Detailed Counts**: If asked "Quanti appuntamenti..." for a person, usually implies wanting to know the details too. If the question seems to imply analysis, prefer returning the rows over just a count, or return both.
+- **Outcomes**:
+    - "Quanti venduti?" -> Count where venduto = TRUE.
+    - "Quanti miss?" -> Count where miss = TRUE.
+    - "Quanti assenti?" -> Count where assente = TRUE.
+    - "Quanti presentati?" -> Count where presentato = TRUE.
+- **Campaigns (Gestioni)**:
+    - Both 'Pass' and 'Consulenze' are grouped by 'gestioni'.
+    - If asked about "Consulenze", join 'gestione_items' with 'gestioni'.
+    - If asked about "Pass", join 'pass_items' with 'pass_gestioni'.
+- **Cross-Referencing (Consulenze <-> Agenda)**:
+    - IF asked "Who in 'In Attesa' has an appointment?" OR "Check if [Name] has an appointment":
+    - JOIN 'gestione_items' AND 'entries' ON 'gestione_items.nome' ILIKE 'entries.nome' AND 'gestione_items.cognome' ILIKE 'entries.cognome'.
+    - FILTER 'gestione_items.esito' = 'IN ATTESA' (or IS NULL).
+    - FILTER 'entries.entry_date' >= CURRENT_DATE.
+    - SELECT 'gestione_items.nome', 'gestione_items.cognome', 'entries.entry_date', 'entries.entry_time', 'gestioni.nome' as campagna.
+- **Customer History**: Check 'entries' for appointments AND 'pass_items' (as referral or client) AND 'medical_appointments' (as client_name) AND 'gestione_items'.
 `;
+
 
 export async function POST(req: Request) {
     const supabase = createClient(SB_URL, SB_SERVICE_ROLE_KEY);
@@ -135,9 +245,21 @@ export async function POST(req: Request) {
         }
 
         const llmJson = await llmRes.json();
-        let sqlQuery = llmJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        let llmResponse = llmJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
-        if (!sqlQuery) throw new Error("Nessuna risposta da Gemini");
+        if (!llmResponse) throw new Error("Nessuna risposta da Gemini");
+
+        // Check if it's a text response or SQL
+        if (llmResponse.startsWith("TEXT_RESPONSE:")) {
+            const textAnswer = llmResponse.replace("TEXT_RESPONSE:", "").trim();
+            return NextResponse.json({
+                answer: textAnswer,
+                sql: null,
+                data: null
+            });
+        }
+
+        let sqlQuery = llmResponse;
 
         // Cleanup markdown if present
         sqlQuery = sqlQuery.replace(/```sql/g, "").replace(/```/g, "").trim().replace(/;$/, "");
@@ -165,7 +287,7 @@ export async function POST(req: Request) {
                 contents: [{
                     parts: [{
                         text: `
-You are a helpful assistant for a gym management dashboard.
+You are Mauriz, a helpful assistant for a gym management dashboard.
 Your goal is to explain the data clearly and concisely in Italian.
 
 DATA: ${JSON.stringify(data)}
@@ -179,6 +301,7 @@ RULES FOR THE ANSWER:
 5. Use **BOLD** for key statuses (e.g., **Venduto**, **Miss**, **Presentato**).
 6. Be clean and professional. Avoid clutter.
 7. If the data is empty, say "Non ho trovato nessun dato."
+8. Maintain the persona of Mauriz (friendly, professional).
 
 Answer:` }]
                 }]

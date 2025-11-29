@@ -26,8 +26,9 @@ const NAV_ITEMS = [
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
     { label: "Consulenze", href: "/consulenze", icon: Users },
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
-    { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
+    { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
+    { label: "Mauriz", href: "#", icon: Sparkles, isAI: true },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
@@ -152,13 +153,21 @@ export default function Sidebar({
                     <button
                         onClick={() => window.dispatchEvent(new Event("open-ai-agent"))}
                         className={cn(
-                            "flex items-center rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#21b5ba] to-[#1a9296] hover:from-[#1a9296] hover:to-[#147a7d] shadow-lg shadow-[#21b5ba]/20 hover:shadow-[#21b5ba]/30 transition-all group active:scale-95",
-                            collapsed ? "justify-center w-10 h-10 p-0 mx-auto" : "w-full gap-3 px-4 py-3"
+                            "flex items-center rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[#21b5ba] to-[#1a9296] hover:from-[#1a9296] hover:to-[#147a7d] shadow-lg shadow-[#21b5ba]/20 hover:shadow-[#21b5ba]/30 transition-all group active:scale-95 relative overflow-hidden",
+                            collapsed ? "justify-center w-12 h-12 p-0 mx-auto" : "w-full gap-3 px-3 py-3"
                         )}
-                        title="AI Assistant"
+                        title="Parla con Mauriz"
                     >
-                        <Sparkles size={18} className="text-white group-hover:rotate-12 transition-transform" />
-                        {!collapsed && <span>AI Assistant</span>}
+                        <div className={cn("relative rounded-full overflow-hidden border-2 border-white/20 shrink-0", collapsed ? "w-10 h-10" : "w-10 h-10")}>
+                            <img src="/mauriz/maurineutro.png" alt="Mauriz" className="w-full h-full object-cover" />
+                        </div>
+
+                        {!collapsed && (
+                            <div className="flex flex-col items-start leading-none">
+                                <span className="text-[13px] font-bold">Parla con Mauriz</span>
+                                <span className="text-[10px] text-white/80 font-medium uppercase tracking-wider mt-0.5">Assistente AI</span>
+                            </div>
+                        )}
                     </button>
 
                     <div className={cn(
