@@ -125,33 +125,33 @@ export default function SessionManager() {
                     )}
                 </div>
 
-                <div className="flex flex-col gap-3 flex-shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200 w-full overflow-hidden">
-                    <div className="w-full">
+                <div className="flex flex-col gap-3 flex-shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200 w-full overflow-hidden min-w-0">
+                    <div className="w-full min-w-0">
                         <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Data</label>
                         <input
                             type="date"
                             value={newDate}
                             onChange={(e) => setNewDate(e.target.value)}
-                            className="input text-base py-2 px-3 w-full h-10 box-border block"
+                            className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                        <div className="w-full">
+                    <div className="grid grid-cols-2 gap-3 w-full min-w-0">
+                        <div className="w-full min-w-0">
                             <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Inizio</label>
                             <input
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="input text-base py-2 px-3 w-full h-10 box-border block"
+                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
                             />
                         </div>
-                        <div className="w-full">
+                        <div className="w-full min-w-0">
                             <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Fine</label>
                             <input
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="input text-base py-2 px-3 w-full h-10 box-border block"
+                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
                             />
                         </div>
                     </div>

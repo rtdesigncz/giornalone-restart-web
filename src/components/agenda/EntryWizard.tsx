@@ -186,23 +186,23 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20">
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pb-20 w-full max-w-full overflow-hidden">
                         <h3 className="text-2xl font-bold text-slate-800">Quando?</h3>
-                        <div className="space-y-4">
-                            <div className="w-full">
+                        <div className="space-y-4 w-full max-w-full">
+                            <div className="w-full min-w-0">
                                 <label className="label block mb-2">Data</label>
                                 <input
                                     type="date"
-                                    className="input w-full h-12 text-base box-border block"
+                                    className="input w-full max-w-full h-12 text-base box-border block appearance-none min-w-0"
                                     value={formData.entry_date || ""}
                                     onChange={(e) => handleChange("entry_date", e.target.value)}
                                 />
                             </div>
-                            <div className="w-full">
+                            <div className="w-full min-w-0">
                                 <label className="label block mb-2">Ora</label>
                                 <input
                                     type="time"
-                                    className="input w-full h-12 text-base box-border block"
+                                    className="input w-full max-w-full h-12 text-base box-border block appearance-none min-w-0"
                                     value={formData.entry_time?.slice(0, 5) || ""}
                                     onChange={(e) => handleChange("entry_time", e.target.value)}
                                 />
