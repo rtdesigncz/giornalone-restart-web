@@ -16,6 +16,7 @@ import { cleanPhone } from "@/lib/whatsapp";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import ExportPdfButton from "./ExportPdfButton";
 import PassDeliveryTask from "./PassDeliveryTask";
+import MotivationalQuote from "./MotivationalQuote";
 
 interface DashboardMobileProps {
     stats: any;
@@ -71,7 +72,7 @@ export default function DashboardMobile({
             <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight truncate">Ciao, Team! 👋</h1>
-                    <p className="text-slate-500 text-sm font-medium truncate">Ecco il punto della situazione.</p>
+                    <MotivationalQuote />
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <ExportPdfButton />

@@ -22,6 +22,7 @@ import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcomes/OutcomePopups";
 import DashboardMobile from "./DashboardMobile";
 import PassDeliveryTask from "./PassDeliveryTask";
+import MotivationalQuote from "./MotivationalQuote";
 
 // Helper
 export default function DashboardHome() {
@@ -333,7 +334,7 @@ export default function DashboardHome() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Buongiorno, Team Restart! 👋</h1>
-                        <p className="text-slate-500 mt-1 font-medium">Panoramica delle attività di oggi.</p>
+                        <MotivationalQuote />
                     </div>
                     <div className="flex flex-wrap gap-3">
                         <ExportPdfButton />
