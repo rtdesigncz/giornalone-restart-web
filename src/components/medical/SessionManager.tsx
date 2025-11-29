@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Plus, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AppointmentTable from "./AppointmentTable";
 
@@ -100,39 +100,16 @@ export default function SessionManager() {
     return (
         <div className="flex flex-col">
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2 overflow-x-auto w-full max-w-full pb-2 md:pb-0">
-                    {loading && sessions.length === 0 ? (
-                        <div className="flex items-center text-slate-400 text-sm">
-                            <Loader2 className="animate-spin mr-2" size={16} /> Caricamento date...
-                        </div>
-                    ) : (
-                        sessions.map((session) => (
-                            <button
-                                key={session.id}
-                                onClick={() => setSelectedSessionId(session.id)}
-                                className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all whitespace-nowrap",
-                                    selectedSessionId === session.id
-                                        ? "bg-brand/10 border-brand text-brand shadow-sm"
-                                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                )}
-                            >
-                                <CalendarIcon size={14} />
-                                {new Date(session.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
-                            </button>
-                        ))
-                    )}
-                </div>
-
-                <div className="flex flex-col gap-3 flex-shrink-0 bg-slate-50 p-3 rounded-lg border border-slate-200 w-full overflow-hidden min-w-0">
+            {/* 1. Add Session Form (Top) */}
+            <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 w-full overflow-hidden min-w-0">
+                <div className="flex flex-col gap-4">
                     <div className="w-full min-w-0">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Data</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Nuova Data</label>
                         <input
                             type="date"
                             value={newDate}
                             onChange={(e) => setNewDate(e.target.value)}
-                            className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
+                            className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0 bg-white"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-3 w-full min-w-0">
@@ -142,7 +119,7 @@ export default function SessionManager() {
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
+                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0 bg-white"
                             />
                         </div>
                         <div className="w-full min-w-0">
@@ -151,67 +128,111 @@ export default function SessionManager() {
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0"
+                                className="input text-base py-2 px-3 w-full max-w-full h-10 box-border block appearance-none min-w-0 bg-white"
                             />
                         </div>
                     </div>
                     <button
                         onClick={handleAddSession}
                         disabled={!newDate}
-                        className="btn btn-primary text-sm py-2 px-3 h-10 w-full justify-center mt-1"
+                        className="btn btn-brand text-sm py-2 px-3 h-10 w-full justify-center shadow-md shadow-brand/10"
                     >
-                        <Plus size={16} />
-                        Aggiungi
+                        <Plus size={18} className="mr-2" />
+                        Aggiungi Data
                     </button>
                 </div>
             </div>
 
-            {/* Session Actions (Edit/Delete) */}
-            {selectedSessionId && (
-                <div className="mb-4 flex items-center justify-between bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-                    {editingSession && editingSession.id === selectedSessionId ? (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-slate-700">Modifica Orari:</span>
-                            <input
-                                type="time"
-                                value={editingSession.start_time}
-                                onChange={e => setEditingSession({ ...editingSession, start_time: e.target.value })}
-                                className="input h-8 w-24 text-sm"
-                            />
-                            <span className="text-slate-400">-</span>
-                            <input
-                                type="time"
-                                value={editingSession.end_time}
-                                onChange={e => setEditingSession({ ...editingSession, end_time: e.target.value })}
-                                className="input h-8 w-24 text-sm"
-                            />
-                            <button onClick={handleUpdateSession} className="btn btn-primary h-8 text-xs">Salva</button>
-                            <button onClick={() => setEditingSession(null)} className="btn btn-ghost h-8 text-xs">Annulla</button>
+            {/* 2. Session List (Middle) */}
+            <div className="mb-6 w-full overflow-hidden">
+                <div className="flex items-center gap-2 overflow-x-auto w-full pb-2 no-scrollbar snap-x">
+                    {loading && sessions.length === 0 ? (
+                        <div className="flex items-center text-slate-400 text-sm w-full justify-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                            <Loader2 className="animate-spin mr-2" size={16} /> Caricamento date...
+                        </div>
+                    ) : sessions.length === 0 ? (
+                        <div className="text-center w-full py-4 text-slate-400 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                            Nessuna data disponibile. Aggiungine una sopra.
                         </div>
                     ) : (
-                        <div className="flex items-center gap-4 text-sm text-slate-600">
-                            {sessions.find(s => s.id === selectedSessionId) && (
-                                <>
-                                    <span className="font-medium">
-                                        Orario: {sessions.find(s => s.id === selectedSessionId).start_time?.slice(0, 5)} - {sessions.find(s => s.id === selectedSessionId).end_time?.slice(0, 5)}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setEditingSession(sessions.find(s => s.id === selectedSessionId))}
-                                            className="text-blue-600 hover:underline text-xs"
-                                        >
-                                            Modifica Orari
-                                        </button>
-                                        <span className="text-slate-300">|</span>
-                                        <button
-                                            onClick={() => handleDeleteSession(selectedSessionId)}
-                                            className="text-rose-600 hover:underline text-xs"
-                                        >
-                                            Elimina Data
-                                        </button>
-                                    </div>
-                                </>
-                            )}
+                        sessions.map((session) => (
+                            <button
+                                key={session.id}
+                                onClick={() => setSelectedSessionId(session.id)}
+                                className={cn(
+                                    "flex-shrink-0 snap-start flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border transition-all whitespace-nowrap shadow-sm",
+                                    selectedSessionId === session.id
+                                        ? "bg-brand text-white border-brand shadow-brand/20"
+                                        : "bg-white border-slate-200 text-slate-600 hover:border-brand/50 hover:text-brand"
+                                )}
+                            >
+                                <CalendarIcon size={16} />
+                                {new Date(session.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+                            </button>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* 3. Session Actions (Bottom) */}
+            {selectedSessionId && (
+                <div className="mb-6 bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                    {editingSession && editingSession.id === selectedSessionId ? (
+                        <div className="flex flex-col gap-3">
+                            <span className="text-sm font-bold text-slate-700">Modifica Orari</span>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="time"
+                                    value={editingSession.start_time}
+                                    onChange={e => setEditingSession({ ...editingSession, start_time: e.target.value })}
+                                    className="input h-10 flex-1 text-sm"
+                                />
+                                <span className="text-slate-400">-</span>
+                                <input
+                                    type="time"
+                                    value={editingSession.end_time}
+                                    onChange={e => setEditingSession({ ...editingSession, end_time: e.target.value })}
+                                    className="input h-10 flex-1 text-sm"
+                                />
+                            </div>
+                            <div className="flex gap-2 mt-1">
+                                <button onClick={handleUpdateSession} className="btn btn-brand flex-1 h-9 text-xs">Salva</button>
+                                <button onClick={() => setEditingSession(null)} className="btn btn-ghost flex-1 h-9 text-xs">Annulla</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-slate-600">
+                                <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
+                                    <CalendarIcon size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 leading-tight">Orario Visite</p>
+                                    <p className="font-bold text-slate-800">
+                                        {sessions.find(s => s.id === selectedSessionId)?.start_time?.slice(0, 5)} - {sessions.find(s => s.id === selectedSessionId)?.end_time?.slice(0, 5)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setEditingSession(sessions.find(s => s.id === selectedSessionId))}
+                                    className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
+                                    title="Modifica Orari"
+                                >
+                                    <Pencil size={18} />
+                                    <span className="text-[10px] font-bold">Modifica</span>
+                                </button>
+                                <div className="w-px h-8 bg-slate-100 mx-1"></div>
+                                <button
+                                    onClick={() => handleDeleteSession(selectedSessionId)}
+                                    className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Elimina Data"
+                                >
+                                    <Trash2 size={18} />
+                                    <span className="text-[10px] font-bold">Elimina</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
