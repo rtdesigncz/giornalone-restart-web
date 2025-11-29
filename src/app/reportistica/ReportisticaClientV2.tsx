@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
+import { getLocalDateISO } from "@/lib/dateUtils";
 
 // --- TYPES ---
 type ReportRow = {
@@ -30,6 +31,7 @@ type ReportRow = {
     miss?: boolean | null;
     contattato?: boolean | null;
     negativo?: boolean | null;
+    assente?: boolean | null;
 
     consulente?: { name?: string } | null;
     tipo_abbonamento?: { name?: string } | null;
@@ -46,6 +48,7 @@ type ReportMeta = {
         presentati: number;
         venduti: number;
         miss: number;
+        assenti: number;
     };
 };
 
@@ -126,9 +129,9 @@ export default function ReportisticaClientV2() {
 
     // Filters
     const [modePeriodo, setModePeriodo] = useState<"giorno" | "periodo">("giorno");
-    const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
-    const [from, setFrom] = useState<string>(new Date().toISOString().slice(0, 10));
-    const [to, setTo] = useState<string>(new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState<string>(getLocalDateISO());
+    const [from, setFrom] = useState<string>(getLocalDateISO());
+    const [to, setTo] = useState<string>(getLocalDateISO());
 
     const [selectedSezioni, setSelectedSezioni] = useState<string[]>([]);
     const [selectedConsulenti, setSelectedConsulenti] = useState<string[]>([]);
@@ -140,6 +143,7 @@ export default function ReportisticaClientV2() {
     const [fMiss, setFMiss] = useState<boolean | null>(null);
     const [fContattato, setFContattato] = useState<boolean | null>(null);
     const [fNegativo, setFNegativo] = useState<boolean | null>(null);
+    const [fAssente, setFAssente] = useState<boolean | null>(null);
 
     // Search
     const [searchTerm, setSearchTerm] = useState("");
@@ -162,6 +166,7 @@ export default function ReportisticaClientV2() {
         if (fMiss !== null) p.append("miss", String(fMiss));
         if (fContattato !== null) p.append("contattato", String(fContattato));
         if (fNegativo !== null) p.append("negativo", String(fNegativo));
+        if (fAssente !== null) p.append("assente", String(fAssente));
 
         return p;
     };
@@ -189,7 +194,7 @@ export default function ReportisticaClientV2() {
     }, [
         modePeriodo, date, from, to,
         selectedSezioni, selectedConsulenti, selectedTipi,
-        fPresentato, fVenduto, fMiss, fContattato, fNegativo
+        fPresentato, fVenduto, fMiss, fContattato, fNegativo, fAssente
     ]);
 
     // --- FILTERED ROWS ---
@@ -216,6 +221,7 @@ export default function ReportisticaClientV2() {
             miss: source.filter(r => r.miss).length,
             contattato: source.filter(r => r.contattato).length,
             negativo: source.filter(r => r.negativo).length,
+            assenti: source.filter(r => r.assente).length,
         };
     }, [resp]);
 
@@ -234,6 +240,7 @@ export default function ReportisticaClientV2() {
         setFMiss(null);
         setFContattato(null);
         setFNegativo(null);
+        setFAssente(null);
     };
 
     const pdfHref = useMemo(() => {
@@ -241,6 +248,12 @@ export default function ReportisticaClientV2() {
         p.set("format", "pdf");
         return `/api/report?${p.toString()}`;
     }, [buildParams]);
+
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return "-";
+        const [y, m, d] = dateStr.split("-");
+        return `${d}/${m}/${y}`;
+    };
 
     // --- RENDER ---
     return (
@@ -336,17 +349,20 @@ export default function ReportisticaClientV2() {
                     <span className="font-semibold text-emerald-600">{kpis.presentato}</span> Presentati
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
-                    <span className="font-semibold text-amber-600">{kpis.venduto}</span> Venduti
+                    <span className="font-semibold text-emerald-700">{kpis.venduto}</span> Venduti
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
-                    <span className="font-semibold text-rose-600">{kpis.miss}</span> Miss
+                    <span className="font-semibold text-orange-600">{kpis.miss}</span> Miss
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                    <span className="font-semibold text-yellow-600">{kpis.assenti}</span> Assenti
                 </div>
                 <div className="w-px h-4 bg-slate-300"></div>
                 <div className="flex items-center gap-2 text-slate-600">
                     <span className="font-semibold text-blue-600">{kpis.contattato}</span> Contattati
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
-                    <span className="font-semibold text-slate-600">{kpis.negativo}</span> Negativi
+                    <span className="font-semibold text-red-600">{kpis.negativo}</span> Negativi
                 </div>
             </div>
 
@@ -362,12 +378,13 @@ export default function ReportisticaClientV2() {
                         {/* Status Columns */}
                         <div className="space-y-4 border-r border-slate-200 pr-4">
                             <TriStateFilter label="Presentato" value={fPresentato} onChange={setFPresentato} colorClass="text-emerald-600" />
-                            <TriStateFilter label="Venduto" value={fVenduto} onChange={setFVenduto} colorClass="text-amber-600" />
-                            <TriStateFilter label="Miss" value={fMiss} onChange={setFMiss} colorClass="text-rose-600" />
+                            <TriStateFilter label="Venduto" value={fVenduto} onChange={setFVenduto} colorClass="text-emerald-700" />
+                            <TriStateFilter label="Miss con App." value={fMiss} onChange={setFMiss} colorClass="text-orange-600" />
+                            <TriStateFilter label="Assente" value={fAssente} onChange={setFAssente} colorClass="text-yellow-600" />
                         </div>
                         <div className="space-y-4 border-r border-slate-200 pr-4">
                             <TriStateFilter label="Contattato" value={fContattato} onChange={setFContattato} colorClass="text-blue-600" />
-                            <TriStateFilter label="Negativo" value={fNegativo} onChange={setFNegativo} colorClass="text-slate-600" />
+                            <TriStateFilter label="Negativo" value={fNegativo} onChange={setFNegativo} colorClass="text-red-600" />
                         </div>
 
                         {/* Multi Selects */}
@@ -443,7 +460,8 @@ export default function ReportisticaClientV2() {
                                 <th className="px-4 py-3 whitespace-nowrap w-40 border-b border-slate-200">Tipo Abb.</th>
                                 <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Pres.</th>
                                 <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Vend.</th>
-                                <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Miss</th>
+                                <th className="px-4 py-3 whitespace-nowrap text-center w-24 border-b border-slate-200">Miss c. App.</th>
+                                <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Ass.</th>
                                 <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Cont.</th>
                                 <th className="px-4 py-3 whitespace-nowrap text-center w-20 border-b border-slate-200">Neg.</th>
                             </tr>
@@ -453,7 +471,7 @@ export default function ReportisticaClientV2() {
                                 filteredRows.map((row) => (
                                     <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-4 py-2 whitespace-nowrap">
-                                            <div className="font-medium text-slate-700">{row.entry_date}</div>
+                                            <div className="font-medium text-slate-700">{formatDate(row.entry_date)}</div>
                                             <div className="text-xs text-slate-400">{row.entry_time?.slice(0, 5)}</div>
                                         </td>
                                         <td className="px-4 py-2">
@@ -477,22 +495,25 @@ export default function ReportisticaClientV2() {
                                             <StatusBadge label="Pres" active={!!row.presentato} colorClass="bg-emerald-100 text-emerald-700 border-emerald-200" />
                                         </td>
                                         <td className="px-4 py-2 text-center">
-                                            <StatusBadge label="Vend" active={!!row.venduto} colorClass="bg-amber-100 text-amber-700 border-amber-200" />
+                                            <StatusBadge label="Vend" active={!!row.venduto} colorClass="bg-emerald-600 text-white border-emerald-700 shadow-sm" />
                                         </td>
                                         <td className="px-4 py-2 text-center">
-                                            <StatusBadge label="Miss" active={!!row.miss} colorClass="bg-rose-100 text-rose-700 border-rose-200" />
+                                            <StatusBadge label="Miss c.A." active={!!row.miss} colorClass="bg-orange-100 text-orange-700 border-orange-200" />
+                                        </td>
+                                        <td className="px-4 py-2 text-center">
+                                            <StatusBadge label="Ass" active={!!row.assente} colorClass="bg-yellow-100 text-yellow-700 border-yellow-200" />
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             <StatusBadge label="Cont" active={!!row.contattato} colorClass="bg-blue-100 text-blue-700 border-blue-200" />
                                         </td>
                                         <td className="px-4 py-2 text-center">
-                                            <StatusBadge label="Neg" active={!!row.negativo} colorClass="bg-slate-100 text-slate-700 border-slate-200" />
+                                            <StatusBadge label="Neg" active={!!row.negativo} colorClass="bg-red-100 text-red-700 border-red-200" />
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={11} className="px-6 py-16 text-center text-slate-400">
+                                    <td colSpan={12} className="px-6 py-16 text-center text-slate-400">
                                         <div className="flex flex-col items-center gap-2">
                                             <AlertCircle size={32} className="opacity-20" />
                                             <p>Nessun risultato trovato con i filtri correnti</p>

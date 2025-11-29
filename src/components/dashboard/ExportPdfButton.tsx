@@ -21,10 +21,10 @@ export default function ExportPdfButton() {
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                className="btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm h-10 w-10 p-0 md:w-auto md:px-4 md:py-2 flex items-center justify-center"
             >
-                <FileDown size={18} className="mr-2 text-slate-500" />
-                Esporta Report
+                <FileDown size={18} className="text-slate-500 md:mr-2" />
+                <span className="hidden md:inline">Esporta Report</span>
             </button>
 
             {isOpen && (

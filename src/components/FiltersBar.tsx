@@ -14,20 +14,21 @@ export default function FiltersBar() {
   const [consulenti, setConsulenti] = useState<Option[]>([]);
   const [tipi, setTipi] = useState<Option[]>([]);
 
-  const scope = sp.get("scope") ?? "day";
+  const scope = sp?.get("scope") ?? "day";
   const today = new Date().toISOString().slice(0, 10);
 
   const [form, setForm] = useState({
     scope,
-    date: sp.get("date") ?? today,
-    month: (sp.get("date") ?? today).slice(0, 7),
-    year: (sp.get("date") ?? today).slice(0, 4),
-    from: sp.get("from") ?? today,
-    to: sp.get("to") ?? today,
-    q: sp.get("q") ?? "",
-    consulente: sp.get("consulente") ?? "",
-    tipo: sp.get("tipo") ?? "",
-    miss: sp.get("miss") === "1",
+    date: sp?.get("date") ?? today,
+    month: (sp?.get("date") ?? today).slice(0, 7),
+    year: (sp?.get("date") ?? today).slice(0, 4),
+    from: sp?.get("from") ?? today,
+    to: sp?.get("to") ?? today,
+    q: sp?.get("q") ?? "",
+    consulente: sp?.get("consulente") ?? "",
+    tipo: sp?.get("tipo") ?? "",
+    miss: sp?.get("miss") === "1",
+    assente: sp?.get("assente") === "1",
   });
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function FiltersBar() {
     if (form.consulente) params.set("consulente", form.consulente);
     if (form.tipo) params.set("tipo", form.tipo);
     if (form.miss) params.set("miss", "1");
+    if (form.assente) params.set("assente", "1");
     router.push("/?" + params.toString());
   };
 
@@ -145,6 +147,13 @@ export default function FiltersBar() {
           <label className="label">Solo Miss</label>
           <div className="border rounded px-2 py-2">
             <input type="checkbox" checked={form.miss} onChange={(e) => setForm({ ...form, miss: e.target.checked })} /> <span className="ml-1">Miss</span>
+          </div>
+        </div>
+
+        <div className="filters-col-2">
+          <label className="label">Solo Assente</label>
+          <div className="border rounded px-2 py-2">
+            <input type="checkbox" checked={form.assente} onChange={(e) => setForm({ ...form, assente: e.target.checked })} /> <span className="ml-1">Assente</span>
           </div>
         </div>
 

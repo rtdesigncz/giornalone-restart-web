@@ -1,7 +1,7 @@
 // src/components/EntryCard.tsx
 "use client";
 
-import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle, Copy } from "lucide-react";
+import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle, Copy, Users } from "lucide-react";
 
 type Entry = {
   id: string;
@@ -23,9 +23,15 @@ type Entry = {
   tipo_abbonamento_id: string | null;
   whatsapp_sent?: boolean;
   presentato: boolean;
+  negativo?: boolean;
+  assente?: boolean; // Added assente
   created_at: string;
   updated_at: string;
 };
+
+import OutcomeButtons from "./outcomes/OutcomeButtons";
+
+// ... imports ...
 
 export default function EntryCard({
   row,
@@ -33,10 +39,8 @@ export default function EntryCard({
   onDelete,
   onWhatsapp,
   onCall,
-  onToggleMiss,
-  onToggleVenduto,
-  onTogglePresentato,   // opzionale per altre sezioni
-  onToggleContattato,   // NEW per telefonici
+  onOutcomeClick, // Unified handler
+  onToggleContattato, // Keep for Telefonici specific logic if needed, or unify?
   onDuplicate,
 }: {
   row: Entry;
@@ -44,9 +48,7 @@ export default function EntryCard({
   onDelete: (row: Entry) => void;
   onWhatsapp: (row: Entry) => void;
   onCall: (row: Entry) => void;
-  onToggleMiss: (row: Entry) => void;
-  onToggleVenduto: (row: Entry) => void;
-  onTogglePresentato?: (row: Entry) => void;
+  onOutcomeClick?: (type: string, row: Entry) => void;
   onToggleContattato?: (row: Entry) => void;
   onDuplicate: (row: Entry) => void;
 }) {
@@ -58,105 +60,119 @@ export default function EntryCard({
 
   const badge =
     isTelefonici
-      ? "bg-slate-50 text-slate-700 border border-slate-200"
+      ? "bg-white border-slate-200"
       : row.venduto
-        ? "bg-green-50 text-green-700 border border-green-200"
+        ? "bg-emerald-200 border-emerald-400 shadow-sm" // Verde più scuro
         : row.miss
-          ? "bg-rose-50 text-rose-700 border border-rose-200"
-          : "bg-slate-50 text-slate-700 border border-slate-200";
+          ? "bg-orange-100 border-orange-300 shadow-sm"
+          : row.assente
+            ? "bg-yellow-100 border-yellow-300 shadow-sm"
+            : row.negativo
+              ? "bg-red-100 border-red-300 shadow-sm"
+              : row.presentato
+                ? "bg-green-100 border-green-300 shadow-sm" // Verde chiaro
+                : "bg-white border-slate-200";
 
   return (
     <div className={`card card-hover p-4 transition-all duration-300 ${badge}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[14px] font-semibold truncate text-slate-800">
+      {/* Header: Name & Details */}
+      <div className="mb-4">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="text-[16px] font-bold text-slate-900 leading-tight">
             {row.nome ?? ""} {row.cognome ?? ""}
           </div>
-          <div className="text-[13px] text-slate-500 truncate mt-0.5">
-            {!isTelefonici && ora ? <span className="font-medium text-slate-700">{ora}</span> : ""}
-            {!isTelefonici && ora ? <span className="mx-1.5 text-slate-300">|</span> : ""}
-            {cons}
-            {!isTelefonici && tipo ? <span className="mx-1.5 text-slate-300">|</span> : ""}
-            {!isTelefonici && tipo ? <span className="text-brand-ink font-medium">{tipo}</span> : ""}
-          </div>
+          {!isTelefonici && ora && (
+            <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">
+              {ora}
+            </span>
+          )}
         </div>
 
-        {/* Toggle area (varia per sezione) */}
-        <div className="flex items-center gap-2">
-          {isTelefonici ? (
-            <button
-              className={`h-10 w-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${row.contattato ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200" : "bg-white border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500"
-                }`}
-              title="Contattato"
-              onClick={() => onToggleContattato?.(row)}
-            >
-              <CheckCircle className="h-5 w-5" />
-            </button>
-          ) : (
+        <div className="text-[13px] text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {cons && <span className="flex items-center gap-1"><Users size={12} /> {cons}</span>}
+          {!isTelefonici && tipo && (
             <>
-              <button
-                className={`h-10 w-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${row.venduto ? "bg-brand text-white border-brand shadow-md shadow-cyan-200" : "bg-white border-slate-200 text-slate-400 hover:border-brand hover:text-brand"
-                  }`}
-                title="Venduto"
-                onClick={() => onToggleVenduto(row)}
-              >
-                <CheckCircle className="h-5 w-5" />
-              </button>
-              <button
-                className={`h-10 w-10 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${row.miss ? "bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-200" : "bg-white border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500"
-                  }`}
-                title="Miss"
-                onClick={() => onToggleMiss(row)}
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
+              <span className="text-slate-300">|</span>
+              <span className="text-brand-ink font-bold">{tipo}</span>
             </>
           )}
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-slate-600">
-        {row.telefono && <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-slate-100">📞 <span className="font-medium">{row.telefono}</span></div>}
-        {!isTelefonici && row.fonte && <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-slate-100">🏷️ {row.fonte}</div>}
-        {row.note && <div className="truncate flex items-center gap-1.5 bg-yellow-50/50 px-2 py-1 rounded-lg border border-yellow-100/50 text-yellow-700">📝 {row.note}</div>}
+      {/* Outcome Buttons Row */}
+      <div className="mb-4">
+        {isTelefonici ? (
+          <button
+            className={`w-full py-3 rounded-xl flex items-center justify-center border transition-all active:scale-95 gap-2 font-bold ${row.contattato ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200" : "bg-white border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-500"
+              }`}
+            onClick={() => onToggleContattato?.(row)}
+          >
+            <CheckCircle className="h-5 w-5" />
+            {row.contattato ? "Contattato" : "Segna come Contattato"}
+          </button>
+        ) : (
+          <div className="overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+            <OutcomeButtons
+              entry={row}
+              onOutcomeClick={(type) => onOutcomeClick?.(type, row)}
+              size="md"
+              showLabels={true}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-100/50 pt-3">
+      {/* Info Row */}
+      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 mb-4">
+        {row.telefono && (
+          <a href={`tel:${row.telefono}`} className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 active:bg-slate-100">
+            <Phone size={14} /> <span className="font-medium">{row.telefono}</span>
+          </a>
+        )}
+        {!isTelefonici && row.fonte && <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">🏷️ {row.fonte}</div>}
+        {row.note && <div className="w-full mt-1 flex items-start gap-1.5 bg-yellow-50/50 p-2 rounded-lg border border-yellow-100/50 text-yellow-700 text-xs">
+          <span className="mt-0.5">📝</span>
+          <span className="line-clamp-2">{row.note}</span>
+        </div>}
+      </div>
+
+      {/* Bottom Actions Row */}
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
         <button
-          className={`icon-btn ${row.whatsapp_sent ? "text-emerald-600 bg-emerald-50 border-emerald-200" : ""}`}
+          className={`h-11 flex-1 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${row.whatsapp_sent ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-white border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600"}`}
           onClick={() => onWhatsapp(row)}
-          title={row.whatsapp_sent ? "WhatsApp Inviato" : "WhatsApp"}
         >
-          {row.whatsapp_sent ? <CheckCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4 text-green-600" />}
+          {row.whatsapp_sent ? <CheckCircle size={20} /> : <MessageCircle size={20} />}
         </button>
+
         <button
-          className="icon-btn"
+          className="h-11 flex-1 rounded-xl flex items-center justify-center border border-slate-200 bg-white text-slate-500 hover:border-sky-400 hover:text-sky-600 transition-all active:scale-95"
           onClick={() => onCall(row)}
-          title="Chiama"
         >
-          <Phone className="h-4 w-4 text-sky-600" />
+          <Phone size={20} />
         </button>
-        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+        <div className="w-px h-8 bg-slate-200 mx-1"></div>
+
         <button
-          className="icon-btn"
+          className="h-11 w-11 rounded-xl flex items-center justify-center border border-slate-200 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-all active:scale-95"
           onClick={() => onEdit(row)}
-          title="Modifica"
         >
-          <Pencil className="h-4 w-4" />
+          <Pencil size={20} />
         </button>
+
         <button
-          className="icon-btn"
+          className="h-11 w-11 rounded-xl flex items-center justify-center border border-slate-200 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-all active:scale-95"
           onClick={() => onDuplicate(row)}
-          title="Duplica in…"
         >
-          <Copy className="h-4 w-4" />
+          <Copy size={20} />
         </button>
+
         <button
-          className="icon-btn hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600"
+          className="h-11 w-11 rounded-xl flex items-center justify-center border border-slate-200 bg-white text-slate-400 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-all active:scale-95"
           onClick={() => onDelete(row)}
-          title="Elimina"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 size={20} />
         </button>
       </div>
     </div>

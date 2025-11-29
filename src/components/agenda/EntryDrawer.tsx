@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 
+import OutcomeButtons from "../outcomes/OutcomeButtons";
+
 // Types (simplified for now, ideally shared)
 type AnyObj = Record<string, any>;
 type Entry = AnyObj & { id: string };
@@ -90,6 +92,8 @@ export default function EntryDrawer({
                     miss: false,
                     venduto: false,
                     presentato: false,
+                    negativo: false,
+                    assente: false,
                     comeback: false,
                     contattato: false,
                 });
@@ -206,15 +210,15 @@ export default function EntryDrawer({
                     </button>
                 </div>
 
-                {/* Body (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* Time & Date */}
-                    <div className="grid grid-cols-2 gap-4">
+                {/* Body (Compact) */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Time & Date & Personal Info */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="label">Data <span className="text-red-500">*</span></label>
                             <input
                                 type="date"
-                                className={cn("input w-full", !formData.entry_date && "border-red-500 focus:border-red-500 bg-red-50")}
+                                className={cn("input w-full py-1.5", !formData.entry_date && "border-red-500 focus:border-red-500 bg-red-50")}
                                 value={formData.entry_date || ""}
                                 onChange={(e) => handleChange("entry_date", e.target.value)}
                             />
@@ -223,21 +227,19 @@ export default function EntryDrawer({
                             <label className="label">Ora <span className="text-red-500">*</span></label>
                             <input
                                 type="time"
-                                className={cn("input w-full", !formData.entry_time && "border-red-500 focus:border-red-500 bg-red-50")}
+                                className={cn("input w-full py-1.5", !formData.entry_time && "border-red-500 focus:border-red-500 bg-red-50")}
                                 value={formData.entry_time?.slice(0, 5) || ""}
                                 onChange={(e) => handleChange("entry_time", e.target.value)}
                             />
                         </div>
                     </div>
 
-                    {/* Personal Info */}
-                    <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-900 mb-2">Anagrafica</h3>
-                        <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="label">Nome</label>
                                 <input
-                                    className="input w-full"
+                                    className="input w-full py-1.5"
                                     placeholder="Mario"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleChange("nome", e.target.value)}
@@ -246,7 +248,7 @@ export default function EntryDrawer({
                             <div>
                                 <label className="label">Cognome</label>
                                 <input
-                                    className="input w-full"
+                                    className="input w-full py-1.5"
                                     placeholder="Rossi"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleChange("cognome", e.target.value)}
@@ -255,31 +257,27 @@ export default function EntryDrawer({
                         </div>
                         <div>
                             <label className="label">Telefono</label>
-                            <div className="flex gap-2">
-                                <input
-                                    className="input flex-1"
-                                    placeholder="+39..."
-                                    value={formData.telefono || ""}
-                                    onChange={(e) => handleChange("telefono", e.target.value)}
-                                />
-                            </div>
+                            <input
+                                className="input w-full py-1.5"
+                                placeholder="+39..."
+                                value={formData.telefono || ""}
+                                onChange={(e) => handleChange("telefono", e.target.value)}
+                            />
                         </div>
                     </div>
 
-                    {/* Details */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="label">Consulente</label>
                             <select
-                                className="input w-full"
+                                className="input w-full py-1.5"
                                 value={formData.consulente_id || ""}
                                 onChange={(e) => handleChange("consulente_id", e.target.value)}
                             >
                                 <option value="">-- Seleziona --</option>
                                 {consulenti.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name}
-                                    </option>
+                                    <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -287,7 +285,7 @@ export default function EntryDrawer({
                             <div>
                                 <label className="label">Fonte</label>
                                 <input
-                                    className="input w-full"
+                                    className="input w-full py-1.5"
                                     value={formData.fonte || ""}
                                     onChange={(e) => handleChange("fonte", e.target.value)}
                                 />
@@ -296,23 +294,21 @@ export default function EntryDrawer({
                     </div>
 
                     {!isTelefonici && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="label">Tipo Abbonamento</label>
                                 <select
-                                    className="input w-full"
+                                    className="input w-full py-1.5"
                                     value={formData.tipo_abbonamento_id || ""}
                                     onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
                                 >
                                     <option value="">-- Seleziona --</option>
                                     {tipi.map((t) => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.name}
-                                        </option>
+                                        <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex items-end pb-2">
+                            <div className="flex items-end pb-1">
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
                                     <input
                                         type="checkbox"
@@ -330,87 +326,50 @@ export default function EntryDrawer({
                     <div>
                         <label className="label">Note</label>
                         <textarea
-                            className="input w-full min-h-[100px] resize-none"
+                            className="input w-full min-h-[60px] resize-none py-1.5"
                             placeholder="Scrivi qui..."
                             value={formData.note || ""}
                             onChange={(e) => handleChange("note", e.target.value)}
                         />
                     </div>
 
-                    {/* Status Toggles - Explicit Checkboxes */}
-                    <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-900">Esito</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            {isTelefonici ? (
-                                <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5 text-emerald-500 rounded border-slate-300 focus:ring-emerald-500"
-                                        checked={!!formData.contattato}
-                                        onChange={(e) => handleChange("contattato", e.target.checked)}
-                                    />
-                                    <span className="font-medium text-slate-700">Contattato</span>
-                                </label>
-                            ) : (
-                                <>
-                                    <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-primary"
-                                            checked={formData.venduto || false}
-                                            onChange={(e) => {
-                                                const val = e.target.checked;
-                                                // Venduto excludes Miss and Negativo. Presentato is independent.
-                                                setFormData(prev => ({ ...prev, venduto: val, miss: val ? false : prev.miss, negativo: val ? false : prev.negativo }));
-                                            }}
-                                        />
-                                        <span className="font-medium text-slate-700">Venduto</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-error"
-                                            checked={formData.miss || false}
-                                            onChange={(e) => {
-                                                const val = e.target.checked;
-                                                // Miss excludes Venduto.
-                                                setFormData(prev => ({ ...prev, miss: val, venduto: val ? false : prev.venduto }));
-                                            }}
-                                        />
-                                        <span className="font-medium text-slate-700">Miss con app.</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-info"
-                                            checked={formData.presentato || false}
-                                            onChange={(e) => {
-                                                const val = e.target.checked;
-                                                // Presentato is independent.
-                                                setFormData(prev => ({ ...prev, presentato: val }));
-                                            }}
-                                        />
-                                        <span className="font-medium text-slate-700">Presentato</span>
-                                    </label>
-
-                                    <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox"
-                                            checked={formData.negativo || false}
-                                            onChange={(e) => {
-                                                const val = e.target.checked;
-                                                // Negativo excludes Venduto.
-                                                setFormData(prev => ({ ...prev, negativo: val, venduto: val ? false : prev.venduto }));
-                                            }}
-                                        />
-                                        <span className="font-medium text-slate-700">Negativo</span>
-                                    </label>
-                                </>
-                            )}
-                        </div>
+                    {/* Status Toggles */}
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Esito</h3>
+                        {isTelefonici ? (
+                            <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors bg-white">
+                                <input
+                                    type="checkbox"
+                                    className="w-5 h-5 text-emerald-500 rounded border-slate-300 focus:ring-emerald-500"
+                                    checked={!!formData.contattato}
+                                    onChange={(e) => handleChange("contattato", e.target.checked)}
+                                />
+                                <span className="font-medium text-slate-700">Contattato</span>
+                            </label>
+                        ) : (
+                            <OutcomeButtons
+                                entry={formData}
+                                onOutcomeClick={(type) => {
+                                    setFormData(prev => {
+                                        const updates: AnyObj = { ...prev };
+                                        const currentVal = prev[type];
+                                        if (currentVal) {
+                                            updates[type] = false;
+                                        } else {
+                                            updates[type] = true;
+                                            if (type === 'venduto') { updates.negativo = false; updates.miss = false; updates.assente = false; updates.presentato = true; }
+                                            if (type === 'negativo') { updates.venduto = false; }
+                                            if (type === 'miss') { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.assente = false; }
+                                            if (type === 'assente') { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.miss = false; }
+                                            if (type === 'presentato') { updates.miss = false; updates.assente = false; }
+                                        }
+                                        return updates;
+                                    });
+                                }}
+                                layout="grid"
+                                size="sm"
+                            />
+                        )}
                     </div>
                 </div>
 

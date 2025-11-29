@@ -114,7 +114,7 @@ export default function SessionManager() {
                                 className={cn(
                                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all whitespace-nowrap",
                                     selectedSessionId === session.id
-                                        ? "bg-sky-50 border-sky-200 text-sky-700 shadow-sm"
+                                        ? "bg-brand/10 border-brand text-brand shadow-sm"
                                         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                 )}
                             >

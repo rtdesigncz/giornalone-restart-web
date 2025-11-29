@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, MessageCircle, Check, Euro, CalendarX, ThumbsDown, ArrowUpRight, Clock, AlertCircle, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, MessageCircle, Check, Euro, CalendarX, ThumbsDown, ArrowUpRight, Clock, AlertCircle, ChevronDown, ChevronUp, X, Ghost } from "lucide-react";
 import StatCard from "./StatCard";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -17,6 +17,10 @@ import DailyTasks from "./DailyTasks";
 import MedicalReminders from "./MedicalReminders";
 import CallsWidget from "./CallsWidget";
 import CallReminderPopup from "./CallReminderPopup";
+import { useOutcomeManager } from "@/hooks/useOutcomeManager";
+import OutcomeButtons from "../outcomes/OutcomeButtons";
+import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcomes/OutcomePopups";
+import DashboardMobile from "./DashboardMobile";
 
 // Helper
 export default function DashboardHome() {
@@ -39,22 +43,12 @@ export default function DashboardHome() {
     const [currentTime, setCurrentTime] = useState("");
     const [subscriptionTypes, setSubscriptionTypes] = useState<string[]>([]);
     const [medicalAppointments, setMedicalAppointments] = useState<any[]>([]);
-    const [statsOpen, setStatsOpen] = useState(false); // Default closed to save space
+    const [statsOpen, setStatsOpen] = useState(true); // Default open as requested
 
     // Call Reminder State
     const [activeCallReminder, setActiveCallReminder] = useState<any | null>(null);
     const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
-
-    // Popups State
-    const [salePopup, setSalePopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
-    const [reschedulePopup, setReschedulePopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
-    const [verifyPopup, setVerifyPopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
-    const [entryToMiss, setEntryToMiss] = useState<any | null>(null); // Track entry to mark as miss after reschedule
-    const [completedOpen, setCompletedOpen] = useState(false); // Default collapsed
-
-    // New Entry Drawer State for Rescheduling
-    const [rescheduleDrawerOpen, setRescheduleDrawerOpen] = useState(false);
-    const [rescheduleEntryData, setRescheduleEntryData] = useState<any>(null);
+    const [completedOpen, setCompletedOpen] = useState(false);
 
     const fetchDashboardData = async () => {
         const today = getLocalDateISO();
@@ -142,15 +136,9 @@ export default function DashboardHome() {
         }
     };
 
-    const fetchSubscriptionTypes = async () => {
-        const { data } = await supabase.from("tipi_abbonamento").select("name").eq("active", true).order("name");
-        if (data) setSubscriptionTypes(data.map(d => d.name));
-    };
-
     useEffect(() => {
         fetchDashboardData();
         fetchMedicalReminders();
-        fetchSubscriptionTypes();
     }, []);
 
     useEffect(() => {
@@ -162,11 +150,6 @@ export default function DashboardHome() {
         const checkReminders = () => {
             const nowTime = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
             setCurrentTime(nowTime);
-
-            // Logic to find upcoming calls (approx 10 mins before)
-            // We need to access 'todos' here. Since todos is derived from 'todayEntries', 
-            // we can re-derive it or use a ref if we were inside the interval closure without dependencies.
-            // However, adding todayEntries to dependency array of useEffect is fine.
         };
 
         const interval = setInterval(checkReminders, 60000);
@@ -202,6 +185,22 @@ export default function DashboardHome() {
         await supabase.from("entries").update({ contattato: true }).eq("id", id);
     };
 
+    // Outcome Manager
+    const {
+        salePopup, setSalePopup,
+        reschedulePopup, setReschedulePopup,
+        verifyPopup, setVerifyPopup,
+        absentPopup, setAbsentPopup,
+        rescheduleDrawerOpen, setRescheduleDrawerOpen,
+        rescheduleEntryData,
+        handleOutcomeClick,
+        confirmVerify,
+        confirmSale,
+        confirmMiss,
+        confirmAbsent,
+        onRescheduleSaved
+    } = useOutcomeManager(fetchDashboardData);
+
     // Derived Lists
     const todos = todayEntries
         .filter(e => e.section === "APPUNTAMENTI TELEFONICI" && !e.venduto && !e.miss)
@@ -217,7 +216,7 @@ export default function DashboardHome() {
             if (e.section === "APPUNTAMENTI VERIFICHE DEL BISOGNO" && e.presentato) return false;
 
             // Pending if NO final outcome
-            return !e.venduto && !e.miss && !e.negativo;
+            return !e.venduto && !e.miss && !e.negativo && !e.assente;
         })
         .sort((a, b) => (a.entry_time || "").localeCompare(b.entry_time || ""));
 
@@ -230,11 +229,10 @@ export default function DashboardHome() {
             if (e.section === "APPUNTAMENTI VERIFICHE DEL BISOGNO" && e.presentato) return true;
 
             // Completed if ANY final outcome
-            return e.venduto || e.miss || e.negativo;
+            return e.venduto || e.miss || e.negativo || e.assente;
         })
         .sort((a, b) => (b.entry_time || "").localeCompare(a.entry_time || "")); // Recent first
 
-    // Actions
     const handleWhatsApp = async (entry: any) => {
         const link = getWhatsAppLink(entry);
         if (!link) return alert("Numero non valido.");
@@ -248,113 +246,14 @@ export default function DashboardHome() {
         }
     };
 
-    const onPresentato = async (entry: any) => {
-        // If it's "Verifiche del Bisogno" and we are setting it to TRUE, ask for confirmation
-        if (entry.section === "APPUNTAMENTI VERIFICHE DEL BISOGNO" && !entry.presentato) {
-            setVerifyPopup({ open: true, entry });
-            return;
-        }
-
-        // Standard toggle for others or un-checking
-        const newVal = !entry.presentato;
-
-        // If unchecking Presentato, also reset outcomes to ensure consistency and return to pending
-        let updates: any = { presentato: newVal };
-        if (!newVal) {
-            updates = {
-                presentato: false,
-                venduto: false,
-                negativo: false,
-                miss: false,
-                tipo_abbonamento_id: null
-            };
-        }
-
-        setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updates } : e));
-        await supabase.from("entries").update(updates).eq("id", entry.id);
-    };
-
-    const confirmVerify = async () => {
-        const entry = verifyPopup.entry;
-        if (!entry) return;
-
-        const newVal = true;
-        setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, presentato: newVal } : e));
-        await supabase.from("entries").update({ presentato: newVal }).eq("id", entry.id);
-        setVerifyPopup({ open: false, entry: null });
-    };
-
-    const onNegativo = async (entry: any) => {
-        // Mark as negativo, remove venduto/miss
-        const updates = { negativo: true, venduto: false, miss: false };
-        setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updates } : e));
-        await supabase.from("entries").update(updates).eq("id", entry.id);
-    };
-
-    const onMissClick = (entry: any) => {
-        setReschedulePopup({ open: true, entry });
-    };
-
-    const confirmMiss = async (reschedule: boolean) => {
-        const entry = reschedulePopup.entry;
-        if (!entry) return;
-
-        setReschedulePopup({ open: false, entry: null });
-
-        if (reschedule) {
-            // DO NOT update status yet. Store entry to update LATER on save.
-            setEntryToMiss(entry);
-
-            // Open drawer for new appointment with pre-filled data
-            setRescheduleEntryData({
-                id: "new",
-                nome: entry.nome,
-                cognome: entry.cognome,
-                telefono: entry.telefono,
-                email: entry.email,
-                section: entry.section,
-                consulente_id: entry.consulente_id
+    // Load subscription types for SalePopup
+    useEffect(() => {
+        fetch("/api/settings/tipo/list")
+            .then(res => res.json())
+            .then(data => {
+                if (data.items) setSubscriptionTypes(data.items.map((t: any) => t.name));
             });
-            setRescheduleDrawerOpen(true);
-        } else {
-            // Just mark as Miss immediately
-            const updates = { miss: true, venduto: false, negativo: false };
-            setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updates } : e));
-            await supabase.from("entries").update(updates).eq("id", entry.id);
-        }
-    };
-
-    const onRescheduleSaved = async () => {
-        // Called when the NEW appointment is saved
-        if (entryToMiss) {
-            const updates = { miss: true, venduto: false, negativo: false };
-            // Optimistic update for the OLD entry
-            setTodayEntries(prev => prev.map(e => e.id === entryToMiss.id ? { ...e, ...updates } : e));
-            await supabase.from("entries").update(updates).eq("id", entryToMiss.id);
-            setEntryToMiss(null);
-        }
-        fetchDashboardData();
-    };
-
-    const onVendutoClick = (entry: any) => {
-        setSalePopup({ open: true, entry });
-    };
-
-    const confirmSale = async (tipoAbbonamento: string) => {
-        const entry = salePopup.entry;
-        if (!entry) return;
-
-        // Quick fix: fetch ID for the selected name
-        const { data: typeData } = await supabase.from("tipi_abbonamento").select("id").eq("name", tipoAbbonamento).single();
-        const typeId = typeData?.id;
-
-        const updates = { venduto: true, presentato: true, miss: false, negativo: false, tipo_abbonamento_id: typeId };
-
-        setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...updates, tipo_abbonamento_name: tipoAbbonamento } : e));
-        await supabase.from("entries").update(updates).eq("id", entry.id);
-
-        setSalePopup({ open: false, entry: null });
-    };
+    }, []);
 
     const handleReminderComplete = async () => {
         if (!activeCallReminder) return;
@@ -376,9 +275,37 @@ export default function DashboardHome() {
     const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showCallsWidget].filter(Boolean).length;
     const gridColsClass = activeWidgetsCount === 1 ? 'grid-cols-1' : activeWidgetsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3';
 
+    // ... existing imports ...
+
+    // ... inside DashboardHome component ...
+
     return (
         <>
-            <div className="space-y-8 animate-in-up pb-20">
+            {/* Mobile View */}
+            <div className="md:hidden">
+                <DashboardMobile
+                    stats={stats}
+                    loading={loading}
+                    todayEntries={todayEntries}
+                    medicalAppointments={medicalAppointments}
+                    todos={todos}
+                    currentTime={currentTime}
+                    pendingAppointments={pendingAppointments}
+                    handleCompleteCall={handleCompleteCall}
+                    handleOutcomeClick={handleOutcomeClick}
+                    handleWhatsApp={handleWhatsApp}
+                    setDrawerOpen={setDrawerOpen}
+                    drawerOpen={drawerOpen}
+                    fetchDashboardData={fetchDashboardData}
+                    rescheduleDrawerOpen={rescheduleDrawerOpen}
+                    setRescheduleDrawerOpen={setRescheduleDrawerOpen}
+                    rescheduleEntryData={rescheduleEntryData}
+                    onRescheduleSaved={onRescheduleSaved}
+                />
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block space-y-8 animate-in-up pb-20">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
@@ -571,19 +498,12 @@ export default function DashboardHome() {
 
                                                     <div className="h-8 w-px bg-slate-200 mx-1" />
 
-                                                    <button onClick={(e) => { e.stopPropagation(); onPresentato(entry); }} className={cn("p-2.5 rounded-xl transition-all border", entry.presentato ? "bg-blue-500 text-white border-blue-600 shadow-md shadow-blue-200" : "bg-white text-slate-400 border-slate-200 hover:border-blue-300 hover:text-blue-500")} title="Presentato">
-                                                        <Check size={18} />
-                                                    </button>
-
-                                                    <button onClick={(e) => { e.stopPropagation(); onVendutoClick(entry); }} className="p-2.5 rounded-xl transition-all border bg-white text-slate-400 border-slate-200 hover:border-emerald-300 hover:text-emerald-500" title="Venduto">
-                                                        <Euro size={18} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onNegativo(entry); }} className="p-2.5 rounded-xl transition-all border bg-white text-slate-400 border-slate-200 hover:border-amber-300 hover:text-amber-500" title="Negativo">
-                                                        <ThumbsDown size={18} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onMissClick(entry); }} className="p-2.5 rounded-xl transition-all border bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-500" title="Non Presentato">
-                                                        <CalendarX size={18} />
-                                                    </button>
+                                                    <OutcomeButtons
+                                                        entry={entry}
+                                                        onOutcomeClick={handleOutcomeClick}
+                                                        size="sm"
+                                                        showLabels={true}
+                                                    />
                                                 </div>
                                             </div>
                                         );
@@ -617,9 +537,9 @@ export default function DashboardHome() {
                                             <div key={entry.id} className="group flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-100 opacity-75 hover:opacity-100 transition-opacity">
                                                 <div className={cn(
                                                     "w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm",
-                                                    entry.venduto ? "bg-emerald-500" : entry.negativo ? "bg-amber-500" : entry.miss ? "bg-rose-500" : "bg-blue-500" // Blue for 'Verifiche' completed via Presentato
+                                                    entry.venduto ? "bg-emerald-500" : entry.negativo ? "bg-amber-500" : entry.miss ? "bg-rose-500" : entry.assente ? "bg-yellow-400" : "bg-blue-500"
                                                 )}>
-                                                    {entry.venduto ? <Euro size={16} /> : entry.negativo ? <ThumbsDown size={16} /> : entry.miss ? <CalendarX size={16} /> : <Check size={16} />}
+                                                    {entry.venduto ? <Euro size={16} /> : entry.negativo ? <ThumbsDown size={16} /> : entry.miss ? <CalendarX size={16} /> : entry.assente ? <Ghost size={16} /> : <Check size={16} />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between">
@@ -634,18 +554,12 @@ export default function DashboardHome() {
 
                                                 {/* Edit Actions for Completed Items */}
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={(e) => { e.stopPropagation(); onPresentato(entry); }} className={cn("p-1.5 rounded-lg border", entry.presentato ? "bg-blue-100 text-blue-600 border-blue-200" : "bg-white text-slate-400 border-slate-200 hover:text-blue-500")} title="Presentato">
-                                                        <Check size={14} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onVendutoClick(entry); }} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-emerald-500 hover:border-emerald-200" title="Venduto">
-                                                        <Euro size={14} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onNegativo(entry); }} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-500 hover:border-amber-200" title="Negativo">
-                                                        <ThumbsDown size={14} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onMissClick(entry); }} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-rose-500 hover:border-rose-200" title="Miss">
-                                                        <CalendarX size={14} />
-                                                    </button>
+                                                    <OutcomeButtons
+                                                        entry={entry}
+                                                        onOutcomeClick={handleOutcomeClick}
+                                                        size="sm"
+                                                        showLabels={false}
+                                                    />
                                                 </div>
                                             </div>
                                         ))
@@ -687,90 +601,33 @@ export default function DashboardHome() {
                 />
             </div>
 
-            {/* Sale Popup */}
-            {salePopup.open && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in-up">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-900">Registra Vendita 💰</h3>
-                            <button onClick={() => setSalePopup({ open: false, entry: null })} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} /></button>
-                        </div>
-                        <p className="text-slate-600 mb-4 text-sm">Che abbonamento ha acquistato <strong>{salePopup.entry?.nome}</strong>?</p>
+            {/* Popups */}
+            <SalePopup
+                isOpen={salePopup.open}
+                onClose={() => setSalePopup({ open: false, entry: null })}
+                entry={salePopup.entry}
+                subscriptionTypes={subscriptionTypes}
+                onConfirm={confirmSale}
+            />
+            <ReschedulePopup
+                isOpen={reschedulePopup.open}
+                onClose={() => setReschedulePopup({ open: false, entry: null })}
+                entry={reschedulePopup.entry}
+                onConfirm={confirmMiss}
+            />
+            <VerifyPopup
+                isOpen={verifyPopup.open}
+                onClose={() => setVerifyPopup({ open: false, entry: null })}
+                entry={verifyPopup.entry}
+                onConfirm={confirmVerify}
+            />
+            <AbsentPopup
+                isOpen={absentPopup.open}
+                onClose={() => setAbsentPopup({ open: false, entry: null })}
+                entry={absentPopup.entry}
+                onConfirm={confirmAbsent}
+            />
 
-                        <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                            {subscriptionTypes.map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => confirmSale(type)}
-                                    className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-left font-medium text-slate-700 transition-all text-sm"
-                                >
-                                    {type}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Reschedule Popup */}
-            {reschedulePopup.open && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in-up">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-900">Cliente non presentato 👻</h3>
-                            <button onClick={() => setReschedulePopup({ open: false, entry: null })} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} /></button>
-                        </div>
-                        <p className="text-slate-600 mb-6 text-sm">Vuoi riprogrammare subito un nuovo appuntamento per <strong>{reschedulePopup.entry?.nome}</strong>?</p>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => confirmMiss(false)}
-                                className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
-                            >
-                                No, solo Miss
-                            </button>
-                            <button
-                                onClick={() => confirmMiss(true)}
-                                className="flex-1 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-dark shadow-lg shadow-brand/20 transition-all text-sm"
-                            >
-                                Sì, Riprogramma
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Verify Popup */}
-            {verifyPopup.open && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in-up">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-900">Conferma Presentato ✅</h3>
-                            <button onClick={() => setVerifyPopup({ open: false, entry: null })} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} /></button>
-                        </div>
-                        <p className="text-slate-600 mb-6 text-sm">
-                            Confermi che <strong>{verifyPopup.entry?.nome}</strong> si è presentato?
-                            <br />
-                            <span className="text-xs text-slate-400 mt-1 block">L'appuntamento verrà segnato come completato.</span>
-                        </p>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setVerifyPopup({ open: false, entry: null })}
-                                className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
-                            >
-                                Annulla
-                            </button>
-                            <button
-                                onClick={confirmVerify}
-                                className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all text-sm"
-                            >
-                                Conferma
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             {/* Call Reminder Popup */}
             <CallReminderPopup
                 call={activeCallReminder}

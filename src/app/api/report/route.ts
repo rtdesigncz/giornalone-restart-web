@@ -4,21 +4,12 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SB_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const PAGE_W = 842;
-const PAGE_H = 595;
-const M = 36;
-
-const BRAND = rgb(0.102, 0.706, 0.722);
-const SLATE = rgb(0.39, 0.45, 0.55);
-const TEXT = rgb(0.1, 0.1, 0.1);
-const ZEBRA = rgb(0.97, 0.98, 0.985);
-
-import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
 
 const SECTIONS = DB_SECTIONS;
 
@@ -71,6 +62,7 @@ export async function GET(req: Request) {
     const miss = parseBoolMulti(url.searchParams, "miss");
     const contattato = parseBoolMulti(url.searchParams, "contattato");
     const negativo = parseBoolMulti(url.searchParams, "negativo");
+    const assente = parseBoolMulti(url.searchParams, "assente");
 
     // 1) Opzioni per i menu (query diretta su tabelle per sicurezza)
     const { data: allCons, error: errCons } = await supabase.from("consulenti").select("name").order("name");
@@ -79,8 +71,8 @@ export async function GET(req: Request) {
     if (errCons) throw errCons;
     if (errTipi) throw errTipi;
 
-    const consulentiOptions = (allCons || []).map(c => c.name);
-    const tipiOptions = (allTipi || []).map(t => t.name);
+    const consulentiOptions = (allCons || []).map((c: any) => c.name);
+    const tipiOptions = (allTipi || []).map((t: any) => t.name);
 
     // 2) Query principale su entries (bypass view)
     // Costruisco select dinamica per usare !inner se filtro per nome
@@ -110,6 +102,7 @@ export async function GET(req: Request) {
     qbView = applyBoolFilter(qbView, "contattato", contattato);
     qbView = applyBoolFilter(qbView, "negativo", negativo);
     qbView = applyBoolFilter(qbView, "presentato", presentato);
+    qbView = applyBoolFilter(qbView, "assente", assente);
 
     if (consNames.length) qbView = qbView.in("consulenti.name", consNames);
     if (tipoNames.length) qbView = qbView.in("tipi_abbonamento.name", tipoNames);
@@ -144,10 +137,11 @@ export async function GET(req: Request) {
             .select("id, presentato")
             .in("id", ids as any);
           if (perr || !pr) return 0;
-          return pr.filter((x) => x.presentato).length;
+          return pr.filter((x: any) => x.presentato).length;
         })(),
         venduti: normalized.filter((r) => r.venduto).length,
         miss: normalized.filter((r) => r.miss).length,
+        assenti: normalized.filter((r) => r.assente).length,
       };
 
       const setSez = new Set<string>([
@@ -163,186 +157,135 @@ export async function GET(req: Request) {
       return NextResponse.json({ rows: normalized, meta: { options, kpi } }, { status: 200 });
     }
 
-    // 5) PDF (riusa "normalized")
-    const pdf = await PDFDocument.create();
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    // 5) PDF (riusa "normalized") - Refactored to use jsPDF for consistency with Dashboard
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
 
+    // Logo
     const logoUrl = "https://iili.io/FsM5Q3v.png";
-    let logoImg: any = null;
     try {
       const resp = await fetch(logoUrl);
       const buf = await resp.arrayBuffer();
-      logoImg = await pdf.embedPng(buf);
-    } catch {
-      // niente logo: va bene uguale
+      const base64 = Buffer.from(buf).toString('base64');
+
+      // Calculate aspect ratio
+      const maxW = 50;
+      const maxH = 15;
+      // Approximate ratio for the logo if we can't load Image in Node easily without canvas
+      // Or just use fixed dimensions that look good
+      doc.addImage(base64, 'PNG', pageWidth - 50 - 14, 10, 50, 15);
+    } catch (e) {
+      console.error("Could not load logo for PDF", e);
     }
 
-    const addPage = () => pdf.addPage([PAGE_W, PAGE_H]);
-    const drawText = (
-      page: any,
-      text: string,
-      x: number,
-      y: number,
-      opts?: { size?: number; color?: any; bold?: boolean }
-    ) => {
-      const size = opts?.size ?? 10;
-      const color = opts?.color ?? TEXT;
-      const f = opts?.bold ? fontBold : font;
-      page.drawText(text, { x, y, size, color, font: f });
-    };
-    const hr = (page: any, y: number) =>
-      page.drawLine({
-        start: { x: M, y },
-        end: { x: PAGE_W - M, y },
-        thickness: 0.7,
-        color: rgb(0.9, 0.9, 0.9),
-      });
-
-    const columns = [
-      { label: "Ora", width: 55 },
-      { label: "Nome", width: 115 },
-      { label: "Cognome", width: 115 },
-      { label: "Telefono", width: 100 },
-      { label: "Consulente", width: 120 },
-      { label: "Tipo Abb.", width: 120 },
-      { label: "Miss", width: 50 },
-      { label: "Venduto", width: 60 },
-    ];
-    const TABLE_W = columns.reduce((a, c) => a + c.width, 0);
-    const ROW_H = 16;
-    const ROW_GAP = 2;
-
-    let page = addPage();
-    let y = PAGE_H - M;
-
-    const drawPageHeader = () => {
-      if (logoImg) {
-        const logoW = 120;
-        const ratio = logoImg.height / logoImg.width;
-        const logoH = logoW * ratio;
-        page.drawImage(logoImg, { x: M, y: y - logoH + 8, width: logoW, height: logoH });
-        drawText(page, "Giornalone Restart", M + logoW + 14, y - 6, {
-          size: 18,
-          bold: true,
-          color: BRAND,
-        });
-      } else {
-        drawText(page, "Giornalone Restart", M, y - 6, {
-          size: 18,
-          bold: true,
-          color: BRAND,
-        });
-      }
-
-      const when = date
-        ? `Report del ${formatDateItalian(date)}`
-        : hasRange
-          ? `Report dal ${formatDateItalian(from)} al ${formatDateItalian(to)}`
-          : `Report del ${formatDateItalian(todayISO)}`;
-
-      drawText(page, when, PAGE_W - 220, y - 6, { size: 11, color: SLATE });
-      y -= 40;
-      hr(page, y);
-      y -= 20;
-    };
-    const drawSectionHeader = (section: string, cont = false) => {
-      drawText(page, cont ? `${getSectionLabel(section)} (continua)` : getSectionLabel(section), M, y, {
-        size: 13,
-        bold: true,
-        color: BRAND,
-      });
-      y -= 18;
-      let cx = M;
-      for (const c of columns) {
-        drawText(page, c.label, cx + 2, y, { size: 9.5, bold: true, color: SLATE });
-        cx += c.width;
-      }
-      y -= 10;
-    };
-    const needSpace = (h: number) => y - h < M;
-    const newPaged = (section: string, cont = true) => {
-      page = addPage();
-      y = PAGE_H - M;
-      drawPageHeader();
-      drawSectionHeader(section, cont);
-    };
-
-    drawPageHeader();
-
-    for (const sectionName of SECTIONS) {
-      const subset = normalized.filter((r: any) => r.section === sectionName);
-
-      if (subset.length === 0) {
-        if (needSpace(18)) newPaged(sectionName, true);
-        drawText(page, getSectionLabel(sectionName), M, y, { size: 13, bold: true, color: BRAND });
-        y -= 18;
-        drawText(page, "Nessun dato per questa sezione.", M, y, { size: 10, color: SLATE });
-        y -= 20;
-        continue;
-      }
-
-      if (needSpace(18 + 10 + 8)) newPaged(sectionName, true);
-      drawSectionHeader(sectionName, false);
-
-      let rowIndex = 0;
-      for (const r of subset) {
-        if (needSpace(ROW_H + ROW_GAP)) newPaged(sectionName, true);
-
-        const zebraOn = rowIndex % 2 === 1;
-        if (zebraOn) {
-          page.drawRectangle({
-            x: M - 2,
-            y: y - ROW_H,
-            width: TABLE_W + 4,
-            height: ROW_H,
-            color: ZEBRA,
-          });
-        }
-
-        let cx2 = M;
-        const dataRow = [
-          toHHMM(r.entry_time),
-          r.nome ?? "",
-          r.cognome ?? "",
-          r.telefono ?? "",
-          r.consulente?.name ?? "",
-          r.tipo_abbonamento?.name ?? "",
-          r.miss ? "Si" : "",
-          r.venduto ? "Si" : "",
-        ];
-
-        for (let i = 0; i < columns.length; i++) {
-          page.drawText(String(dataRow[i] ?? ""), {
-            x: cx2 + 2,
-            y: y - 4,
-            size: 9.5,
-            color: TEXT,
-            font: font,
-          });
-          cx2 += columns[i].width;
-        }
-
-        y -= ROW_H + ROW_GAP;
-        rowIndex++;
-      }
-
-      y -= 12;
-    }
-
-    const bytes = await pdf.save();
-
-    const filenameTag = date
-      ? date
+    // Title
+    const dateFormatted = date
+      ? new Date(date).toLocaleDateString("it-IT", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
       : hasRange
-        ? `${from}_to_${to}`
-        : todayISO;
+        ? `Dal ${new Date(from!).toLocaleDateString("it-IT")} al ${new Date(to!).toLocaleDateString("it-IT")}`
+        : new Date().toLocaleDateString("it-IT", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    return new NextResponse(Buffer.from(bytes), {
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text(hasRange ? "Report Periodo" : "Report Giornaliero", 14, 20);
+
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1), 14, 28);
+
+    let currentY = 40;
+
+    // Group by Section
+    const sectionsOrder = SECTIONS; // Use the imported constant
+
+    sectionsOrder.forEach(sectionKey => {
+      const sectionEntries = normalized.filter((e: any) => e.section === sectionKey);
+
+      if (sectionEntries.length > 0) {
+        // Section Header
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.text(getSectionLabel(sectionKey), 14, currentY);
+        currentY += 4;
+
+        // Table Body
+        const tableBody = sectionEntries.map((e: any) => {
+          const dateStr = e.entry_date ? new Date(e.entry_date).toLocaleDateString("it-IT") : "-";
+          const time = e.entry_time ? e.entry_time.slice(0, 5) : "-";
+          const client = `${e.nome || ""} ${e.cognome || ""}`;
+          const consultant = e.consulente?.name || "-";
+          const type = e.tipo_abbonamento?.name || "-";
+
+          // Status Logic (Same as Dashboard)
+          let status = "";
+          if (sectionKey === "APPUNTAMENTI TELEFONICI") {
+            status = e.contattato ? "COMPLETATO" : "DA CHIAMARE";
+          } else {
+            if (e.venduto) status = "VENDUTO";
+            else if (e.miss) status = "MISS CON APP.";
+            else if (e.negativo) status = "NEGATIVO";
+            else if (e.presentato) status = "PRESENTATO";
+            else if (e.assente) status = "ASSENTE";
+          }
+
+          if (sectionKey === "APPUNTAMENTI TELEFONICI") {
+            return [dateStr, time, client, consultant, e.telefono || "-", status];
+          } else {
+            return [dateStr, time, client, consultant, type, status];
+          }
+        });
+
+        // Table Headers
+        let headers = ["Data", "Ora", "Cliente", "Consulente", "Tipo Abb.", "Esito"];
+        if (sectionKey === "APPUNTAMENTI TELEFONICI") {
+          headers = ["Data", "Ora", "Cliente", "Consulente", "Telefono", "Stato"];
+        }
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [headers],
+          body: tableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [33, 181, 186], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 9, cellPadding: 3 },
+          alternateRowStyles: { fillColor: [255, 255, 255] },
+          margin: { top: 10 },
+          didParseCell: (data: any) => {
+            if (data.section === 'body') {
+              const row = data.row;
+              const status = row.raw[row.raw.length - 1]; // Last column is always Status/Esito
+
+              if (status === "VENDUTO") {
+                data.cell.styles.fillColor = [209, 250, 229]; // emerald-100
+              } else if (status === "MISS CON APP.") {
+                data.cell.styles.fillColor = [255, 237, 213]; // orange-100
+              } else if (status === "ASSENTE") {
+                data.cell.styles.fillColor = [254, 249, 195]; // yellow-100
+              } else if (status === "NEGATIVO") {
+                data.cell.styles.fillColor = [254, 226, 226]; // red-100
+              } else if (status === "PRESENTATO") {
+                data.cell.styles.fillColor = [209, 250, 229]; // emerald-100 (Light Green)
+              } else if (status === "COMPLETATO") {
+                data.cell.styles.fillColor = [220, 252, 231]; // green-100
+              }
+            }
+          }
+        });
+
+        // Update Y
+        // @ts-ignore
+        currentY = doc.lastAutoTable.finalY + 15;
+      }
+    });
+
+    const pdfBuffer = doc.output('arraybuffer');
+
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="giornalone_report_${filenameTag}.pdf"`,
+        "Content-Disposition": `attachment; filename="Report_${date || 'export'}.pdf"`,
       },
     });
   } catch (e: any) {

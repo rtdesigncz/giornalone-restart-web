@@ -67,7 +67,7 @@ export default function Sidebar({
             {/* Sidebar Container */}
             <aside
                 className={cn(
-                    "fixed inset-y-0 left-0 z-50 glass-panel transition-all duration-300 ease-in-out md:static flex flex-col",
+                    "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out md:static flex flex-col",
                     isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
                     collapsed ? "w-20" : "w-72"
                 )}

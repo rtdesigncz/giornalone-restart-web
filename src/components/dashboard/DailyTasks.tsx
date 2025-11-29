@@ -9,11 +9,17 @@ interface DailyTasksProps {
 export default function DailyTasks({ entries }: DailyTasksProps) {
     // Filter for appointments that typically need reminders
     // Excluding 'TOUR SPONTANEI' as they are walk-ins and don't need reminders.
-    const reminderEntries = entries.filter(e =>
-        e.section !== "TOUR SPONTANEI" &&
-        e.section !== "APPUNTAMENTI TELEFONICI" &&
-        e.created_at < e.entry_date // Only show if created BEFORE the appointment date
-    );
+    const reminderEntries = entries.filter(e => {
+        if (e.section === "TOUR SPONTANEI") return false;
+        if (e.section === "APPUNTAMENTI TELEFONICI") return false;
+
+        // Logic: Show reminder ONLY if created BEFORE 06:30 of the appointment date.
+        // If created after 06:30, it means it was booked during opening hours of the same day -> No reminder needed.
+        const cutoff = new Date(`${e.entry_date}T06:30:00`);
+        const created = new Date(e.created_at);
+
+        return created < cutoff;
+    });
 
     const total = reminderEntries.length;
     const sent = reminderEntries.filter(e => e.whatsapp_sent).length;

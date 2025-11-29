@@ -114,6 +114,7 @@ export const generateDailyReport = async (date: string) => {
                         else if (e.miss) status = "MISS CON APP.";
                         else if (e.negativo) status = "NEGATIVO";
                         else if (e.presentato) status = "PRESENTATO";
+                        else if (e.assente) status = "ASSENTE";
                     }
 
                     // Columns based on section
@@ -137,8 +138,28 @@ export const generateDailyReport = async (date: string) => {
                     theme: 'grid',
                     headStyles: { fillColor: [33, 181, 186], textColor: 255, fontStyle: 'bold' },
                     styles: { fontSize: 9, cellPadding: 3 },
-                    alternateRowStyles: { fillColor: [245, 245, 245] },
+                    alternateRowStyles: { fillColor: [255, 255, 255] }, // Disable default alternate
                     margin: { top: 10 },
+                    didParseCell: (data) => {
+                        if (data.section === 'body') {
+                            const row = data.row;
+                            const status = row.raw[row.raw.length - 1]; // Last column is always Status/Esito
+
+                            if (status === "VENDUTO") {
+                                data.cell.styles.fillColor = [209, 250, 229]; // emerald-100
+                            } else if (status === "MISS CON APP.") {
+                                data.cell.styles.fillColor = [255, 237, 213]; // orange-100
+                            } else if (status === "ASSENTE") {
+                                data.cell.styles.fillColor = [254, 249, 195]; // yellow-100
+                            } else if (status === "NEGATIVO") {
+                                data.cell.styles.fillColor = [254, 226, 226]; // red-100
+                            } else if (status === "PRESENTATO") {
+                                data.cell.styles.fillColor = [209, 250, 229]; // emerald-100 (Light Green as requested)
+                            } else if (status === "COMPLETATO") {
+                                data.cell.styles.fillColor = [220, 252, 231]; // green-100
+                            }
+                        }
+                    }
                 });
 
                 // Update Y for next section

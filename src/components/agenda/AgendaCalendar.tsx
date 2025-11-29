@@ -43,7 +43,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
 
         const { data, error } = await supabase
             .from("entries")
-            .select("id, entry_date, entry_time, nome, cognome, section, venduto, miss, negativo, presentato, contattato")
+            .select("id, entry_date, entry_time, nome, cognome, section, venduto, miss, negativo, presentato, contattato, assente")
             .eq("section", section)
             .gte("entry_date", startISO)
             .lte("entry_date", endISO);
@@ -111,11 +111,12 @@ export default function AgendaCalendar({ section }: { section: string }) {
                         {dayEntries.map(entry => {
                             // Determine color based on status
                             let colorClass = "bg-slate-100 text-slate-600 border-slate-200";
-                            if (entry.venduto) colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-                            else if (entry.miss) colorClass = "bg-rose-100 text-rose-700 border-rose-200";
-                            else if (entry.negativo) colorClass = "bg-red-100 text-red-700 border-red-200";
-                            else if (entry.presentato) colorClass = "bg-blue-100 text-blue-700 border-blue-200";
-                            else if (entry.contattato) colorClass = "bg-green-100 text-green-700 border-green-200";
+                            if (entry.venduto) colorClass = "bg-emerald-600 text-white border-emerald-700 font-bold shadow-sm"; // Verde scuro
+                            else if (entry.miss) colorClass = "bg-orange-100 text-orange-700 border-orange-200"; // Arancione
+                            else if (entry.assente) colorClass = "bg-yellow-100 text-yellow-700 border-yellow-200"; // Giallo
+                            else if (entry.negativo) colorClass = "bg-red-100 text-red-700 border-red-200"; // Rosso
+                            else if (entry.presentato) colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200"; // Verde chiaro
+                            else if (entry.contattato) colorClass = "bg-blue-100 text-blue-700 border-blue-200";
 
                             return (
                                 <div key={entry.id} className={cn("text-[10px] px-1.5 py-0.5 rounded border truncate font-medium", colorClass)}>

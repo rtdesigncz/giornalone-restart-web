@@ -1,6 +1,4 @@
-// src/components/EntriesSection.tsx
-"use client";
-
+import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "./outcomes/OutcomePopups";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getLocalDateISO } from "@/lib/dateUtils";
@@ -8,8 +6,16 @@ import { supabase } from "@/lib/supabaseClient";
 import SectionTableShell from "./SectionTableShell";
 import { MessageCircle, Phone, Pencil, Trash2, Check, X, Copy } from "lucide-react";
 import EntryCard from "./EntryCard";
+import { useOutcomeManager } from "@/hooks/useOutcomeManager";
+import OutcomeButtons from "./outcomes/OutcomeButtons";
+import EntryDrawer from "./agenda/EntryDrawer";
+
+// ... imports ...
+
+
 
 type AnyObj = Record<string, any>;
+
 type Consulente = { id: string; nome?: string | null; name?: string | null };
 type TipoAbbonamento = { id: string; nome?: string | null; name?: string | null };
 
@@ -136,6 +142,34 @@ export default function EntriesSection({ title }: { title: string }) {
     })();
   }, []);
 
+  // Outcome Manager
+  const {
+    salePopup, setSalePopup,
+    reschedulePopup, setReschedulePopup,
+    verifyPopup, setVerifyPopup,
+    absentPopup, setAbsentPopup,
+    rescheduleDrawerOpen, setRescheduleDrawerOpen,
+    rescheduleEntryData,
+    handleOutcomeClick,
+    confirmVerify,
+    confirmSale,
+    confirmMiss,
+    confirmAbsent,
+    onRescheduleSaved
+  } = useOutcomeManager(() => {
+    // Reload logic
+    setReloadTrigger(prev => prev + 1);
+  });
+
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  // Load subscription types for SalePopup
+  const [subscriptionTypes, setSubscriptionTypes] = useState<string[]>([]);
+  useEffect(() => {
+    if (tipi.length > 0) setSubscriptionTypes(tipi.map(t => t.name || "").filter(Boolean));
+  }, [tipi]);
+
+
   // ---- LOAD ENTRIES con FILTRI
   useEffect(() => {
     let active = true;
@@ -146,10 +180,10 @@ export default function EntriesSection({ title }: { title: string }) {
       let qy = supabase
         .from("entries")
         .select(`
-          *,
-          consulente: consulenti(*),
-          tipo_abbonamento: tipi_abbonamento(*)
-        `)
+  *,
+  consulente: consulenti(*),
+    tipo_abbonamento: tipi_abbonamento(*)
+      `)
         .eq("section", title)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: true });
@@ -163,7 +197,7 @@ export default function EntriesSection({ title }: { title: string }) {
       if (q && q.trim().length > 0) {
         const like = `%${q.trim()}%`;
         qy = qy.or(
-          `nome.ilike.${like}, cognome.ilike.${like}, telefono.ilike.${like}, fonte.ilike.${like}, note.ilike.${like}`
+          `nome.ilike.${like},cognome.ilike.${like},telefono.ilike.${like},fonte.ilike.${like},note.ilike.${like}`
         );
       }
 
@@ -343,6 +377,16 @@ export default function EntriesSection({ title }: { title: string }) {
   };
 
   // ---- WA / CALL
+
+
+  // ... existing useEffects ...
+
+  // Replace manual handlers with handleOutcomeClick usage in renderRow
+  // But first, let's add the Popups to the return JSX
+  // We'll do that in a separate edit or at the end of the file.
+
+  // ...
+
   // ---- WA / CALL
   const handleWhatsApp = async (row: Entry) => {
     const link = getWhatsAppLink(row as any);
@@ -360,58 +404,17 @@ export default function EntriesSection({ title }: { title: string }) {
   const handleCall = (row: Entry) => {
     const to = cleanPhone(row.telefono);
     if (!to) return alert("Numero non valido.");
-    window.location.href = `tel:${to} `;
+    window.location.href = `tel:${to}`;
   };
 
-  // ---- Toggle Miss/Venduto/Presentato/Contattato
-  const toggleMiss = async (row: Entry) => {
-    const nextMiss = !row.miss;
-    const { error } = await supabase
-      .from("entries")
-      .update({ miss: nextMiss, venduto: nextMiss ? false : row.venduto })
-      .eq("id", row.id);
-    if (error) return alert("Errore aggiornamento: " + error.message);
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === row.id ? { ...r, miss: nextMiss, venduto: nextMiss ? false : r.venduto } : r
-      )
-    );
-  };
-  const toggleVenduto = async (row: Entry) => {
-    const nextVend = !row.venduto;
-    const { error } = await supabase
-      .from("entries")
-      .update({ venduto: nextVend, miss: nextVend ? false : row.miss })
-      .eq("id", row.id);
-    if (error) return alert("Errore aggiornamento: " + error.message);
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === row.id ? { ...r, venduto: nextVend, miss: nextVend ? false : r.miss } : r
-      )
-    );
-  };
-  const togglePresentato = async (row: Entry) => {
-    const next = !row.presentato;
-    const { error } = await supabase
-      .from("entries")
-      .update({ presentato: next })
-      .eq("id", row.id);
-    if (error) return alert("Errore aggiornamento: " + error.message);
-    setRows((prev) =>
-      prev.map((r) => (r.id === row.id ? { ...r, presentato: next } : r))
-    );
-  };
   const toggleContattato = async (row: Entry) => {
-    const next = !row.contattato;
-    const { error } = await supabase
-      .from("entries")
-      .update({ contattato: next })
-      .eq("id", row.id);
-    if (error) return alert("Errore aggiornamento: " + error.message);
-    setRows((prev) =>
-      prev.map((r) => (r.id === row.id ? { ...r, contattato: next } : r))
-    );
+    const newValue = !row.contattato;
+    setRows(prev => prev.map(r => r.id === row.id ? { ...r, contattato: newValue } : r));
+    await supabase.from("entries").update({ contattato: newValue }).eq("id", row.id);
   };
+
+  // Removed manual toggle functions (toggleMiss, toggleVenduto, etc.) as they are replaced by useOutcomeManager
+
 
   // ====== DUPLICAZIONE ======
   const openDuplicate = (row: Entry) => {
@@ -483,10 +486,8 @@ export default function EntriesSection({ title }: { title: string }) {
     cols.push(<col key="c-fonte" style={{ width: 120 }} />);
     cols.push(<col key="c-comeback" style={{ width: 90 }} />);
     cols.push(<col key="c-tipo" style={{ width: 160 }} />);
-    cols.push(<col key="c-miss" style={{ width: 90 }} />);
     cols.push(<col key="c-note" />); // flessibile
-    if (hasPresentato) cols.push(<col key="c-presentato" style={{ width: 110 }} />);
-    cols.push(<col key="c-venduto" style={{ width: 100 }} />);
+    cols.push(<col key="c-stato" style={{ width: 200 }} />); // Merged outcome column
     cols.push(<col key="c-actions" style={{ width: 220 }} />);
     return <colgroup>{cols}</colgroup>;
   };
@@ -522,10 +523,8 @@ export default function EntriesSection({ title }: { title: string }) {
           <th>Fonte</th>
           <th className="text-center">Come Back</th>
           <th>Tipo Abbonamento</th>
-          <th className="text-center">Miss</th>
           <th>Note</th>
-          {hasPresentato && <th className="text-center">Presentato</th>}
-          <th className="text-center">Venduto</th>
+          <th className="text-center">Stato</th>
           <th>Azioni</th>
         </tr>
       </thead>
@@ -748,22 +747,6 @@ export default function EntriesSection({ title }: { title: string }) {
           ) : (lbl(r.tipo_abbonamento))}
         </td>
 
-        {/* MISS */}
-        <td className="text-center">
-          {isEditing ? (
-            <input
-              type="checkbox"
-              className="check-lg"
-              checked={!!draft.miss}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, miss: e.target.checked, venduto: e.target.checked ? false : d.venduto }))
-              }
-            />
-          ) : (
-            <input type="checkbox" className="check-lg" checked={!!r.miss} readOnly />
-          )}
-        </td>
-
         {/* NOTE */}
         <td className="break-words">
           {isEditing ? (
@@ -771,42 +754,21 @@ export default function EntriesSection({ title }: { title: string }) {
           ) : (r.note ?? "")}
         </td>
 
-        {/* PRESENTATO — solo se hasPresentato */}
-        {hasPresentato && (
-          <td className="text-center">
-            {isEditing ? (
-              <input
-                type="checkbox"
-                className="check-lg"
-                checked={!!draft.presentato}
-                onChange={(e) => setDraft((d) => ({ ...d, presentato: e.target.checked }))}
-              />
-            ) : (
-              <input
-                type="checkbox"
-                className="check-lg"
-                checked={!!r.presentato}
-                onChange={() => togglePresentato(r)}
-              />
-            )}
-          </td>
-        )}
-
-        {/* VENDUTO */}
-        <td className="text-center">
+        {/* STATO (OutcomeButtons) */}
+        <td className="text-center" colSpan={hasPresentato ? 3 : 2}>
+          {/* Merging Miss, Presentato, Venduto columns */}
           {isEditing ? (
-            <input
-              type="checkbox"
-              className="check-lg"
-              checked={!!draft.venduto}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, venduto: e.target.checked, miss: e.target.checked ? false : d.miss }))
-              }
-            />
+            <div className="text-xs text-slate-400">Salva per modificare</div>
           ) : (
-            <input type="checkbox" className="check-lg" checked={!!r.venduto} readOnly />
+            <OutcomeButtons
+              entry={r}
+              onOutcomeClick={(type) => handleOutcomeClick(type, r)}
+              size="sm"
+              showLabels={false}
+            />
           )}
         </td>
+
 
         {/* AZIONI */}
         <td className="actions-cell whitespace-nowrap">
@@ -841,7 +803,7 @@ export default function EntriesSection({ title }: { title: string }) {
             )}
           </div>
         </td>
-      </tr>
+      </tr >
     );
   };
 
@@ -921,9 +883,7 @@ export default function EntriesSection({ title }: { title: string }) {
             onDelete={handleDelete}
             onWhatsapp={handleWhatsApp}
             onCall={handleCall}
-            onToggleMiss={toggleMiss}
-            onToggleVenduto={toggleVenduto}
-            onTogglePresentato={togglePresentato}
+            onOutcomeClick={handleOutcomeClick}
             onToggleContattato={toggleContattato}
             onDuplicate={openDuplicate}
           />
@@ -1200,6 +1160,45 @@ export default function EntriesSection({ title }: { title: string }) {
           SALVATO
         </div>
       )}
+
+      {/* Outcome Popups */}
+      <SalePopup
+        isOpen={salePopup.open}
+        onClose={() => setSalePopup({ ...salePopup, open: false })}
+        onConfirm={confirmSale}
+        subscriptionTypes={subscriptionTypes}
+        entry={salePopup.entry}
+      />
+      <ReschedulePopup
+        isOpen={reschedulePopup.open}
+        onClose={() => setReschedulePopup({ ...reschedulePopup, open: false })}
+        onConfirm={confirmMiss}
+        entry={reschedulePopup.entry}
+      />
+      <VerifyPopup
+        isOpen={verifyPopup.open}
+        onClose={() => setVerifyPopup({ ...verifyPopup, open: false })}
+        onConfirm={confirmVerify}
+        entry={verifyPopup.entry}
+      />
+      <AbsentPopup
+        isOpen={absentPopup.open}
+        onClose={() => setAbsentPopup({ ...absentPopup, open: false })}
+        onConfirm={confirmAbsent}
+        entry={absentPopup.entry}
+      />
+
+      {/* Reschedule Drawer */}
+      <EntryDrawer
+        isOpen={rescheduleDrawerOpen}
+        onClose={() => setRescheduleDrawerOpen(false)}
+        entry={rescheduleEntryData}
+        section={rescheduleEntryData?.section || title}
+        date={rescheduleEntryData?.entry_date || dateParam}
+        onSave={onRescheduleSaved}
+        onDelete={() => { }}
+      />
+
     </SectionTableShell>
   );
 }

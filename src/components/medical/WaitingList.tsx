@@ -119,7 +119,9 @@ export default function WaitingList() {
 
             {/* List */}
             <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white">
-                <table className="w-full text-left text-sm">
+
+                {/* Desktop Table */}
+                <table className="hidden md:table w-full text-left text-sm">
                     <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200 sticky top-0 z-10">
                         <tr>
                             <th className="p-3 w-10"></th>
@@ -195,6 +197,71 @@ export default function WaitingList() {
                         )}
                     </tbody>
                 </table>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-4 p-4">
+                    {loading ? (
+                        <div className="text-center py-8 text-slate-400">
+                            <Loader2 className="animate-spin mx-auto mb-2" /> Caricamento...
+                        </div>
+                    ) : items.length === 0 ? (
+                        <div className="text-center py-8 text-slate-400 text-sm bg-slate-50 rounded-xl border border-slate-100">
+                            Nessuna persona in lista d'attesa.
+                        </div>
+                    ) : (
+                        items.map(item => (
+                            <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div>
+                                        <h3 className="font-bold text-slate-900 text-lg">{item.name} {item.surname}</h3>
+                                        {item.phone && (
+                                            <a href={`tel:${item.phone}`} className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                                <Phone size={14} /> {item.phone}
+                                            </a>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => toggleContacted(item.id, item.contacted)}
+                                        className={cn(
+                                            "h-10 w-10 flex items-center justify-center rounded-full border transition-all",
+                                            item.contacted
+                                                ? "bg-emerald-100 text-emerald-600 border-emerald-200"
+                                                : "bg-white text-slate-300 border-slate-200"
+                                        )}
+                                    >
+                                        {item.contacted ? <CheckCircle size={20} /> : <Circle size={20} />}
+                                    </button>
+                                </div>
+
+                                {item.notes && (
+                                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-yellow-800 text-sm mb-4 italic">
+                                        {item.notes}
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                                    {item.phone && (
+                                        <button
+                                            onClick={() => {
+                                                const phone = item.phone.replace(/\D/g, '');
+                                                if (phone) window.open(`https://wa.me/${phone}`, '_blank');
+                                            }}
+                                            className="flex-1 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center gap-2 font-medium text-sm"
+                                        >
+                                            <MessageCircle size={16} /> WhatsApp
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleDelete(item.id)}
+                                        className="h-10 w-10 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );

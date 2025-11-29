@@ -17,14 +17,14 @@ async function getDaily(filters: {
   return { error: null, rows: (data ?? []) as any[] };
 }
 async function getMonthly(dateISO: string) {
-  const monthStart = dateISO.slice(0,7) + "-01";
+  const monthStart = dateISO.slice(0, 7) + "-01";
   const { data: baseArr } = await supabase.from("monthly_overview").select("*").eq("month_start", monthStart).limit(1);
   const base = baseArr?.[0] ?? null;
   const { data: tipis } = await supabase.from("monthly_venduti_per_tipo").select("*").eq("month_start", monthStart).order("tipo_abbonamento_name");
   return { base, tipis: tipis ?? [] };
 }
 async function getAnnual(dateISO: string) {
-  const yearStart = dateISO.slice(0,4) + "-01-01";
+  const yearStart = dateISO.slice(0, 4) + "-01-01";
   const { data: baseArr } = await supabase.from("annual_overview").select("*").eq("year_start", yearStart).limit(1);
   const base = baseArr?.[0] ?? null;
   const { data: tipis } = await supabase.from("annual_venduti_per_tipo").select("*").eq("year_start", yearStart).order("tipo_abbonamento_name");
@@ -64,6 +64,7 @@ export default async function SummariesRow({
             <>
               <div>Tour Spontanei: <b>{tourSpontanei}</b></div>
               <div>Miss: <b>{missCount}</b></div>
+              <div>Assente: <b>{rows.filter((r) => r.assente).length}</b></div>
               <div>Venduti (totale): <b>{vendutiTotal}</b></div>
               <div className="mt-2"><b>Venduti per tipologia</b></div>
               {perTipo.size === 0 ? <div>Nessun venduto.</div> : (

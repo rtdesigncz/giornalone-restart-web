@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Summary = {
-  base: { tour_spontanei: number; miss: number; venduti_total: number };
+  base: { tour_spontanei: number; miss: number; assente: number; venduti_total: number };
   tipi: { tipo_id: string | null; tipo_nome: string; quanti: number }[];
 };
 
@@ -17,7 +17,7 @@ function normalizeSummaryPayload(data: any): Summary {
   let obj = data;
   if (Array.isArray(obj)) obj = obj[0] ?? null;
   if (obj && typeof obj === "object" && "entries_summary" in obj) obj = (obj as any).entries_summary;
-  if (!obj || !obj.base) return { base: { tour_spontanei: 0, miss: 0, venduti_total: 0 }, tipi: [] };
+  if (!obj || !obj.base) return { base: { tour_spontanei: 0, miss: 0, assente: 0, venduti_total: 0 }, tipi: [] };
   return obj as Summary;
 }
 
@@ -81,6 +81,7 @@ async function fetchEntriesClient(from: string, to: string, filters: Record<stri
 function summarizeClient(rows: AnyObj[]): Summary {
   const tour = rows.filter(r => r.section === "TOUR SPONTANEI").length;
   const miss = rows.filter(r => r.miss === true).length;
+  const assente = rows.filter(r => r.assente === true).length;
   const vend = rows.filter(r => r.venduto === true).length;
 
   const vendRows = rows.filter(r => r.venduto === true);
@@ -93,22 +94,22 @@ function summarizeClient(rows: AnyObj[]): Summary {
     by[key].quanti += 1;
   }
   const tipi = Object.values(by).sort((a, b) => a.tipo_nome.localeCompare(b.tipo_nome, "it", { sensitivity: "base" }));
-  return { base: { tour_spontanei: tour, miss, venduti_total: vend }, tipi };
+  return { base: { tour_spontanei: tour, miss, assente, venduti_total: vend }, tipi };
 }
 
 export default function SummaryCards() {
   const sp = useSearchParams();
 
-  const date = sp.get("date") ?? fmtISO(new Date());
-  const from = sp.get("from") ?? date;
-  const to = sp.get("to") ?? date;
+  const date = sp?.get("date") ?? fmtISO(new Date());
+  const from = sp?.get("from") ?? date;
+  const to = sp?.get("to") ?? date;
 
   const filters = useMemo(() => ({
-    q: sp.get("q") ?? "",
-    consulente: sp.get("consulente") ?? "",
-    tipo: sp.get("tipo") ?? "",
-    miss: sp.get("miss") ?? "",
-    venduto: sp.get("venduto") ?? "",
+    q: sp?.get("q") ?? "",
+    consulente: sp?.get("consulente") ?? "",
+    tipo: sp?.get("tipo") ?? "",
+    miss: sp?.get("miss") ?? "",
+    venduto: sp?.get("venduto") ?? "",
   }), [sp]);
 
   const [daily, setDaily] = useState<Summary | null>(null);
@@ -193,6 +194,11 @@ export default function SummaryCards() {
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase text-slate-400 font-semibold">Miss</span>
                 <span className="text-2xl font-bold text-rose-500">{data?.base?.miss ?? 0}</span>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase text-slate-400 font-semibold">Assente</span>
+                <span className="text-2xl font-bold text-orange-500">{data?.base?.assente ?? 0}</span>
               </div>
 
               <div className="flex flex-col">

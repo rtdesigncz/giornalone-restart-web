@@ -1,18 +1,14 @@
-"use client";
-
+import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcomes/OutcomePopups";
+import { useOutcomeManager } from "@/hooks/useOutcomeManager";
+import OutcomeButtons from "../outcomes/OutcomeButtons";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
-import { useSearchParams, useRouter } from "next/navigation";
-import EntryDrawer from "./EntryDrawer";
-import { Plus, Search, Filter, MessageCircle, Copy, Check, Euro, CalendarX, ThumbsDown, Phone, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
-
+import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
-
-// Helper
-// const toHHMM = (t: string | null) => t?.slice(0, 5) || ""; // Imported
-const cleanPhone = (num?: string) => num?.replace(/[^0-9]/g, "") || "";
+import { supabase } from "@/lib/supabaseClient";
+import EntryDrawer from "./EntryDrawer";
 
 export default function AgendaTable({ section }: { section: string }) {
     const router = useRouter();
@@ -49,6 +45,32 @@ export default function AgendaTable({ section }: { section: string }) {
         fetchRows();
     }, [section, dateParam]);
 
+    // Outcome Manager
+    const {
+        salePopup, setSalePopup,
+        reschedulePopup, setReschedulePopup,
+        verifyPopup, setVerifyPopup,
+        absentPopup, setAbsentPopup,
+        rescheduleDrawerOpen, setRescheduleDrawerOpen,
+        rescheduleEntryData,
+        handleOutcomeClick,
+        confirmVerify,
+        confirmSale,
+        confirmMiss,
+        confirmAbsent,
+        onRescheduleSaved
+    } = useOutcomeManager(fetchRows); // Refresh rows on update
+
+    // Load subscription types for SalePopup
+    const [subscriptionTypes, setSubscriptionTypes] = useState<string[]>([]);
+    useEffect(() => {
+        fetch("/api/settings/tipo/list")
+            .then(res => res.json())
+            .then(data => {
+                if (data.items) setSubscriptionTypes(data.items.map((t: any) => t.name));
+            });
+    }, []);
+
     const filteredRows = rows.filter(r => {
         if (!search) return true;
         const s = search.toLowerCase();
@@ -84,44 +106,6 @@ export default function AgendaTable({ section }: { section: string }) {
         fetchRows();
     };
 
-    const handleStatusToggle = async (row: any, field: 'venduto' | 'miss' | 'presentato' | 'negativo') => {
-        const newValue = !row[field];
-
-        // Optimistic update
-        const updatedRow = { ...row, [field]: newValue };
-        if (newValue) {
-            if (field === 'venduto') {
-                updatedRow.negativo = false;
-                updatedRow.miss = false;
-            }
-            if (field === 'negativo') {
-                updatedRow.venduto = false;
-            }
-            if (field === 'miss') {
-                updatedRow.venduto = false;
-            }
-        }
-
-        setRows(prev => prev.map(r => r.id === row.id ? updatedRow : r));
-
-        // DB Update
-        const updates: any = { [field]: newValue };
-        if (newValue) {
-            if (field === 'venduto') {
-                updates.negativo = false;
-                updates.miss = false;
-            }
-            if (field === 'negativo') {
-                updates.venduto = false;
-            }
-            if (field === 'miss') {
-                updates.venduto = false;
-            }
-        }
-
-        await supabase.from("entries").update(updates).eq("id", row.id);
-    };
-
     const handlePhoneToggle = async (row: any) => {
         const newValue = !row.contattato;
         setRows(prev => prev.map(r => r.id === row.id ? { ...r, contattato: newValue } : r));
@@ -144,7 +128,7 @@ export default function AgendaTable({ section }: { section: string }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm">
+        <div className="flex flex-col bg-white/50 backdrop-blur-sm">
             {/* Toolbar */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-white/40">
                 <div className="relative flex-1 max-w-md group">
@@ -166,7 +150,7 @@ export default function AgendaTable({ section }: { section: string }) {
             </div>
 
             {/* Table */}
-            <div className="flex-1 overflow-auto custom-scrollbar">
+            <div className="w-full">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-200">
                         <tr>
@@ -174,7 +158,7 @@ export default function AgendaTable({ section }: { section: string }) {
                             <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
                             <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Consulente</th>
                             {!isTelefonici && <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Abbonamento</th>}
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Stato</th>
+                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Stato</th>
                             <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
                         </tr>
                     </thead>
@@ -229,8 +213,8 @@ export default function AgendaTable({ section }: { section: string }) {
                                                 )}
                                             </td>
                                         )}
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
+                                        <td className="py-4 px-6 text-center">
+                                            <div className="flex items-center justify-center">
                                                 {isTelefonici ? (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handlePhoneToggle(row); }}
@@ -245,63 +229,12 @@ export default function AgendaTable({ section }: { section: string }) {
                                                         <Phone size={14} />
                                                     </button>
                                                 ) : (
-                                                    <>
-                                                        {/* Presentato */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleStatusToggle(row, 'presentato'); }}
-                                                            className={cn(
-                                                                "h-8 w-8 flex items-center justify-center rounded-lg transition-all border",
-                                                                row.presentato
-                                                                    ? "bg-blue-500 text-white border-blue-600 shadow-md shadow-blue-200"
-                                                                    : "bg-white text-slate-400 border-slate-200 hover:border-blue-300 hover:text-blue-500"
-                                                            )}
-                                                            title="Presentato"
-                                                        >
-                                                            <Check size={14} />
-                                                        </button>
-
-                                                        {/* Venduto */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleStatusToggle(row, 'venduto'); }}
-                                                            className={cn(
-                                                                "h-8 w-8 flex items-center justify-center rounded-lg transition-all border",
-                                                                row.venduto
-                                                                    ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-200"
-                                                                    : "bg-white text-slate-400 border-slate-200 hover:border-emerald-300 hover:text-emerald-500"
-                                                            )}
-                                                            title="Venduto"
-                                                        >
-                                                            <Euro size={14} />
-                                                        </button>
-
-                                                        {/* Miss */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleStatusToggle(row, 'miss'); }}
-                                                            className={cn(
-                                                                "h-8 w-8 flex items-center justify-center rounded-lg transition-all border",
-                                                                row.miss
-                                                                    ? "bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-200"
-                                                                    : "bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-500"
-                                                            )}
-                                                            title="Miss"
-                                                        >
-                                                            <CalendarX size={14} />
-                                                        </button>
-
-                                                        {/* Negativo */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleStatusToggle(row, 'negativo'); }}
-                                                            className={cn(
-                                                                "h-8 w-8 flex items-center justify-center rounded-lg transition-all border",
-                                                                row.negativo
-                                                                    ? "bg-red-500 text-white border-red-600 shadow-md shadow-red-200"
-                                                                    : "bg-white text-slate-400 border-slate-200 hover:border-red-300 hover:text-red-500"
-                                                            )}
-                                                            title="Negativo"
-                                                        >
-                                                            <ThumbsDown size={14} />
-                                                        </button>
-                                                    </>
+                                                    <OutcomeButtons
+                                                        entry={row}
+                                                        onOutcomeClick={handleOutcomeClick}
+                                                        size="sm"
+                                                        showLabels={true}
+                                                    />
                                                 )}
                                             </div>
                                         </td>
@@ -348,6 +281,45 @@ export default function AgendaTable({ section }: { section: string }) {
                 onSave={fetchRows}
                 onDelete={handleDelete}
                 isDuplicate={isDuplicateMode}
+            />
+
+            {/* Reschedule Drawer */}
+            <EntryDrawer
+                isOpen={rescheduleDrawerOpen}
+                onClose={() => setRescheduleDrawerOpen(false)}
+                entry={rescheduleEntryData}
+                section={rescheduleEntryData?.section || "TOUR SPONTANEI"}
+                date={new Date().toISOString().slice(0, 10)}
+                onSave={onRescheduleSaved}
+                onDelete={() => { }}
+                allowSectionChange={true}
+            />
+
+            {/* Popups */}
+            <SalePopup
+                isOpen={salePopup.open}
+                onClose={() => setSalePopup({ open: false, entry: null })}
+                entry={salePopup.entry}
+                subscriptionTypes={subscriptionTypes}
+                onConfirm={confirmSale}
+            />
+            <ReschedulePopup
+                isOpen={reschedulePopup.open}
+                onClose={() => setReschedulePopup({ open: false, entry: null })}
+                entry={reschedulePopup.entry}
+                onConfirm={confirmMiss}
+            />
+            <VerifyPopup
+                isOpen={verifyPopup.open}
+                onClose={() => setVerifyPopup({ open: false, entry: null })}
+                entry={verifyPopup.entry}
+                onConfirm={confirmVerify}
+            />
+            <AbsentPopup
+                isOpen={absentPopup.open}
+                onClose={() => setAbsentPopup({ open: false, entry: null })}
+                entry={absentPopup.entry}
+                onConfirm={confirmAbsent}
             />
         </div>
     );

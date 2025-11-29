@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Save, Trash2, MessageCircle, Edit2, X, Check, Loader2, Euro, FileDown } from "lucide-react";
+import { Save, Trash2, MessageCircle, Edit2, X, Check, Loader2, Euro, FileDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cleanPhone } from "@/lib/whatsapp";
 import jsPDF from "jspdf";
@@ -257,7 +257,9 @@ Ti aspettiamo!`;
             </div>
 
             <div className="border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm">
+
+                {/* Desktop Table */}
+                <table className="hidden md:table w-full text-left text-sm">
                     <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                         <tr>
                             <th className="p-3 w-20 text-center">Ora</th>
@@ -389,6 +391,152 @@ Ti aspettiamo!`;
                         })}
                     </tbody>
                 </table>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-3 p-4 bg-slate-50/50">
+                    {slots.map(slot => {
+                        const app = appointments[slot];
+                        const isEditing = editingSlot === slot;
+
+                        if (isEditing) {
+                            return (
+                                <div key={slot} className="bg-white p-4 rounded-xl border border-brand shadow-lg ring-4 ring-brand/10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="text-lg font-bold text-brand">{slot}</span>
+                                        <span className="text-xs font-bold uppercase text-slate-400">Modifica</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Nome</label>
+                                                <input
+                                                    className="input w-full"
+                                                    placeholder="Nome"
+                                                    value={editForm.client_name}
+                                                    onChange={e => setEditForm({ ...editForm, client_name: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Cognome</label>
+                                                <input
+                                                    className="input w-full"
+                                                    placeholder="Cognome"
+                                                    value={editForm.client_surname}
+                                                    onChange={e => setEditForm({ ...editForm, client_surname: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Telefono</label>
+                                            <input
+                                                className="input w-full"
+                                                placeholder="Telefono"
+                                                value={editForm.client_phone}
+                                                onChange={e => setEditForm({ ...editForm, client_phone: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Prezzo</label>
+                                                <div className="relative">
+                                                    <Euro size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="number"
+                                                        className="input w-full pl-8"
+                                                        value={editForm.price}
+                                                        onChange={e => setEditForm({ ...editForm, price: parseFloat(e.target.value) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-4">
+                                                <input
+                                                    type="checkbox"
+                                                    className="checkbox checkbox-primary"
+                                                    checked={editForm.is_paid}
+                                                    onChange={e => setEditForm({ ...editForm, is_paid: e.target.checked })}
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">Pagato</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button onClick={() => setEditingSlot(null)} className="btn btn-ghost flex-1">Annulla</button>
+                                            <button onClick={() => handleSave(slot)} className="btn btn-primary flex-1">Salva</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div key={slot} className={cn(
+                                "bg-white p-4 rounded-xl border shadow-sm transition-all",
+                                app ? "border-slate-200" : "border-slate-100 bg-slate-50/50 opacity-80"
+                            )}>
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{slot}</span>
+                                        {app ? (
+                                            <div>
+                                                <div className="font-bold text-slate-900">{app.client_name} {app.client_surname}</div>
+                                                {app.client_phone && <div className="text-xs text-slate-500 font-mono">{app.client_phone}</div>}
+                                            </div>
+                                        ) : (
+                                            <span className="text-slate-400 italic text-sm">Libero</span>
+                                        )}
+                                    </div>
+                                    {app && (
+                                        <button
+                                            onClick={() => togglePaid(app)}
+                                            className={cn(
+                                                "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border",
+                                                app.is_paid
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                    : "bg-rose-50 text-rose-700 border-rose-200"
+                                            )}
+                                        >
+                                            {app.is_paid ? "Pagato" : "Non Pagato"}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {app ? (
+                                    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                                        <button
+                                            onClick={() => handleWhatsApp(app)}
+                                            className={cn(
+                                                "flex-1 h-10 flex items-center justify-center rounded-lg border transition-colors",
+                                                app.whatsapp_sent
+                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                                    : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-600"
+                                            )}
+                                        >
+                                            <MessageCircle size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => startEdit(slot, app)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-600"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(app.id)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-rose-300 hover:text-rose-600"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => startEdit(slot)}
+                                        className="w-full mt-2 py-2 bg-white border border-dashed border-slate-300 text-slate-400 rounded-lg hover:border-brand hover:text-brand transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={16} /> Prenota
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
