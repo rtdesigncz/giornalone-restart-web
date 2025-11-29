@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, ArrowUpRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, ArrowUpRight, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
 import StatCard from "./StatCard";
 import Link from "next/link";
 import { useState } from "react";
@@ -165,6 +165,9 @@ export default function DashboardMobile({
                             const isPresentato = entry.presentato;
                             const isExpired = currentTime && entry.entry_time < currentTime;
 
+                            const tel = cleanPhone(entry.telefono);
+                            const waLink = tel ? `https://wa.me/${tel}` : null;
+
                             return (
                                 <div
                                     key={entry.id}
@@ -183,6 +186,19 @@ export default function DashboardMobile({
                                                 {getSectionLabel(entry.section)}
                                             </span>
                                         </div>
+                                        {waLink && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleWhatsApp(entry); }}
+                                                className={cn(
+                                                    "p-2 rounded-full transition-all border shadow-sm",
+                                                    entry.whatsapp_sent
+                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                                        : "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white"
+                                                )}
+                                            >
+                                                {entry.whatsapp_sent ? <CheckCircle size={16} /> : <MessageCircle size={16} />}
+                                            </button>
+                                        )}
                                     </div>
                                     <h3 className="font-bold text-slate-900 text-lg mb-1">{entry.nome} {entry.cognome}</h3>
                                     <div className="flex items-center gap-3 text-sm text-slate-500 mb-3">
