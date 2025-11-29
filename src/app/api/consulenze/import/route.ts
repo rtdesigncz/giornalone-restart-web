@@ -200,8 +200,8 @@ function normalizeRow(r: RowObj): RowObj {
   const out: RowObj = {};
   const txt = (v: any) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim());
 
-  if ("nome" in r) out.nome = safeText(r.nome);
-  if ("cognome" in r) out.cognome = safeText(r.cognome);
+  if ("nome" in r) out.nome = sanitizeName(r.nome);
+  if ("cognome" in r) out.cognome = sanitizeName(r.cognome);
   if ("telefono" in r) out.telefono = normalizePhone(r.telefono);
   if ("scadenza" in r) out.scadenza = normalizeDate(r.scadenza);
   if ("tipo_abbonamento_corrente" in r) out.tipo_abbonamento_corrente = safeText(r.tipo_abbonamento_corrente);
@@ -220,6 +220,14 @@ function normalizeRow(r: RowObj): RowObj {
 
   if ("note" in r) out.note = safeText(r.note);
   return out;
+}
+
+function sanitizeName(v: any): string | null {
+  let s = typeof v === "string" ? v : v == null ? "" : String(v);
+  // Rimuove tutto ciò che non è lettera, spazio, apostrofo o trattino
+  // Supporta caratteri accentati
+  s = s.replace(/[^a-zA-Z\u00C0-\u00FF\s'\-]/g, " ").replace(/\s+/g, " ").trim();
+  return s.length ? s : null;
 }
 
 function safeText(v: any): string | null {

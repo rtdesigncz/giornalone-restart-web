@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, Upload, FileSpreadsheet, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   gestioneId: string;
@@ -13,19 +14,19 @@ type Props = {
 type Mapping = Record<string, string>; // CSV header -> target field
 
 const TARGET_FIELDS = [
-  { key: "nome", label: "NOME" },
-  { key: "cognome", label: "COGNOME" },
-  { key: "telefono", label: "TELEFONO" },
-  { key: "scadenza", label: "SCADENZA (YYYY-MM-DD)" },
-  { key: "tipo_abbonamento_corrente", label: "TIPO ABB." },
-  { key: "contattato", label: "CONTATTATO (flag)" },
-  { key: "preso_appuntamento", label: "PRESO APP. (flag)" },
-  { key: "consulenza_fatta", label: "CONS. FATTA (flag)" },
-  { key: "data_consulenza", label: "DATA CONSULENZA (YYYY-MM-DD)" },
-  { key: "esito", label: "ESITO (ISCRIZIONE|RINNOVO|INTEGRAZIONE|IN ATTESA|NEGATIVO)" },
-  { key: "nuovo_abbonamento_name", label: "NUOVO ABBONAMENTO (nome)" },
-  { key: "data_risposta", label: "DATA RISPOSTA (YYYY-MM-DD)" },
-  { key: "note", label: "NOTE" },
+  { key: "nome", label: "Nome" },
+  { key: "cognome", label: "Cognome" },
+  { key: "telefono", label: "Telefono" },
+  { key: "scadenza", label: "Scadenza (YYYY-MM-DD)" },
+  { key: "tipo_abbonamento_corrente", label: "Tipo Abbonamento" },
+  { key: "contattato", label: "Contattato (flag)" },
+  { key: "preso_appuntamento", label: "Preso App. (flag)" },
+  { key: "consulenza_fatta", label: "Cons. Fatta (flag)" },
+  { key: "data_consulenza", label: "Data Consulenza" },
+  { key: "esito", label: "Esito" },
+  { key: "nuovo_abbonamento_name", label: "Nuovo Abbonamento" },
+  { key: "data_risposta", label: "Data Risposta" },
+  { key: "note", label: "Note" },
 ] as const;
 
 export default function ImportCsvModal({ gestioneId, onClose, onImported }: Props) {
@@ -125,136 +126,219 @@ export default function ImportCsvModal({ gestioneId, onClose, onImported }: Prop
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-[min(1000px,96vw)] max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
+
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="text-lg font-semibold">Importa CSV</div>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Chiudi">
-            <X className="w-4 h-4" />
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+              <FileSpreadsheet className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Importa CSV</h2>
+              <p className="text-sm text-slate-500">Carica un file per aggiungere nuove consulenze</p>
+            </div>
+          </div>
+          <button
+            className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+            onClick={onClose}
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-4 space-y-4 overflow-auto">
-          {/* Upload */}
-          <div className="flex items-center gap-3">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
+
+          {/* Upload Section */}
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-xl p-8 transition-all text-center cursor-pointer group",
+              fileName ? "border-emerald-300 bg-emerald-50/30" : "border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30"
+            )}
+            onClick={() => fileInputRef.current?.click()}
+          >
             <input
               ref={fileInputRef}
               type="file"
               accept=".csv,text/csv"
+              className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) onPickFile(f);
               }}
             />
-            <div className="text-slate-600 text-sm">{fileName}</div>
+            <div className="flex flex-col items-center gap-3">
+              {fileName ? (
+                <>
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900">{fileName}</div>
+                    <div className="text-sm text-emerald-600 font-medium">File caricato con successo</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900">Clicca per caricare</div>
+                    <div className="text-sm text-slate-500">o trascina il file CSV qui</div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Mappatura */}
           {headers.length > 0 && (
-            <div className="rounded-lg border">
-              <div className="px-3 py-2 border-b font-medium">Mappatura colonne</div>
-              <div className="p-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {headers.map((h) => (
-                    <div key={h} className="flex items-center gap-2">
-                      <div className="w-1/2">
-                        <div className="text-xs text-slate-500">Colonna CSV</div>
-                        <div className="font-medium truncate" title={h}>{h}</div>
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+
+              {/* Mapping Section */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center">1</span>
+                    Mappatura Colonne
+                  </h3>
+                  <div className="text-xs text-slate-500">
+                    {mappedTargetsUsed.size} campi collegati
+                  </div>
+                </div>
+
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {headers.map((h, i) => (
+                    <div key={`${i}-${h}`} className={cn(
+                      "p-3 rounded-lg border transition-all",
+                      mapping[h] ? "bg-indigo-50/30 border-indigo-200" : "bg-slate-50 border-slate-200 opacity-70"
+                    )}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider truncate max-w-[120px]" title={h}>
+                          {h}
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-slate-400" />
                       </div>
-                      <div className="w-1/2">
-                        <div className="text-xs text-slate-500">Campo destinazione</div>
-                        <select
-                          className="input w-full"
-                          value={mapping[h] || ""}
-                          onChange={(e) => setMap(h, e.target.value)}
-                        >
-                          <option value="">— ignora —</option>
-                          {TARGET_FIELDS.map((t) => (
-                            <option key={t.key} value={t.key}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <select
+                        className={cn(
+                          "w-full text-sm rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 py-1.5",
+                          mapping[h] ? "text-indigo-900 font-medium" : "text-slate-500"
+                        )}
+                        value={mapping[h] || ""}
+                        onChange={(e) => setMap(h, e.target.value)}
+                      >
+                        <option value="">Ignora</option>
+                        {TARGET_FIELDS.map((t) => (
+                          <option key={t.key} value={t.key}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-3 flex flex-col md:flex-row md:items-center gap-4">
-                  <label className="inline-flex items-center gap-2">
+                <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-center">
+                  <label className="flex items-center gap-2 cursor-pointer group">
                     <input
                       type="checkbox"
-                      className="h-4 w-4"
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       checked={saveDefaultMapping}
                       onChange={(e) => setSaveDefaultMapping(e.target.checked)}
                     />
-                    <span className="text-sm">Salva come mappatura predefinita per questa gestione</span>
+                    <span className="text-sm text-slate-600 group-hover:text-slate-900">Salva come mappatura predefinita</span>
                   </label>
 
-                  <label className="inline-flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer group">
                     <input
                       type="checkbox"
-                      className="h-4 w-4"
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       checked={skipDuplicates}
                       onChange={(e) => setSkipDuplicates(e.target.checked)}
                     />
-                    <span className="text-sm">Salta duplicati per TELEFONO nella stessa gestione</span>
+                    <span className="text-sm text-slate-600 group-hover:text-slate-900">Salta duplicati (per telefono)</span>
                   </label>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center">2</span>
+                    Anteprima Dati
+                  </h3>
+                </div>
+                <div className="overflow-x-auto max-h-[300px]">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 sticky top-0 z-10">
+                      <tr>
+                        {headers.map((h, i) => (
+                          <th key={`${i}-${h}`} className="py-3 px-4 font-semibold text-slate-600 border-b whitespace-nowrap">
+                            <div className="flex flex-col gap-1">
+                              <span>{h}</span>
+                              {mapping[h] && (
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] w-fit">
+                                  {TARGET_FIELDS.find(t => t.key === mapping[h])?.label}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {rows.map((r, i) => (
+                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                          {r.map((c, j) => (
+                            <td key={j} className="px-4 py-2.5 text-slate-600 whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis">
+                              {c}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Preview */}
-          {rows.length > 0 && (
-            <div className="rounded-lg border">
-              <div className="px-3 py-2 border-b font-medium">Anteprima (prime {rows.length} righe)</div>
-              <div className="overflow-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600">
-                      {headers.map((h) => (
-                        <th key={h} className="py-2 px-2 border-b text-left whitespace-nowrap">
-                          {h}
-                          {mapping[h] ? (
-                            <span className="ml-2 text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-1 py-[1px] rounded">
-                              {mapping[h]}
-                            </span>
-                          ) : null}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={i} className="border-t">
-                        {r.map((c, j) => (
-                          <td key={j} className="px-2 py-1.5 align-top">{c}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {err && (
+            <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-start gap-3 text-red-700 animate-in shake">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="text-sm font-medium">{err}</div>
             </div>
           )}
-
-          {err && <div className="text-red-600">{err}</div>}
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t flex items-center justify-between">
-          <div className="text-xs text-slate-500">
-            Campi mappabili: {Array.from(mappedTargetsUsed).join(", ") || "— nessuno —"}
-          </div>
-          <div className="flex gap-2">
-            <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
-            <button className="btn" disabled={!csvText || loading} onClick={submit}>
-              {loading ? "Import in corso…" : "Importa"}
-            </button>
-          </div>
+        <div className="px-6 py-4 border-t border-slate-100 bg-white shrink-0 flex items-center justify-end gap-3">
+          <button
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            onClick={onClose}
+          >
+            Annulla
+          </button>
+          <button
+            className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={!csvText || loading}
+            onClick={submit}
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Importazione...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                Importa Dati
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
