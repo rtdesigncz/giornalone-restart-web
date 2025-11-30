@@ -691,7 +691,7 @@ export default function ConsulenzeClientV2() {
                                 <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
                                 {/* Gestione Selector */}
-                                <div className="flex items-center gap-2 hidden sm:flex">
+                                <div className="flex items-center gap-2">
                                     <div className="relative group">
                                         <select
                                             className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold min-w-[180px] transition-all hover:border-cyan-300 cursor-pointer"
@@ -1320,12 +1320,9 @@ export default function ConsulenzeClientV2() {
             </div >
 
             {/* FOOTER */}
-            < div className="border-t border-slate-200 bg-white px-6 py-3 text-xs text-slate-400 flex justify-between items-center shrink-0" >
-                <div className="font-medium">
-                    Visualizzazione di <span className="text-slate-700">{rows.length}</span> clienti
-                </div>
-                <div>Progettato da Roberto Tavano</div>
-            </div >
+            <div className="border-t bg-white px-4 py-2 text-xs text-slate-400 flex justify-between items-center shrink-0">
+                <div>{rows.length} righe visualizzate</div>
+            </div>
 
             {/* AGENDA DRAWER */}
             < EntryDrawer
