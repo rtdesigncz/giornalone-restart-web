@@ -218,7 +218,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Nome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                     placeholder="Nome"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleChange("nome", e.target.value)}
@@ -227,7 +227,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Cognome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                     placeholder="Cognome"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleChange("cognome", e.target.value)}
@@ -236,7 +236,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Telefono</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                     placeholder="Telefono"
                                     type="tel"
                                     value={formData.telefono || ""}
@@ -254,7 +254,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Consulente</label>
                                 <select
-                                    className="input w-full h-12 text-lg box-border"
+                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                     value={formData.consulente_id || ""}
                                     onChange={(e) => handleChange("consulente_id", e.target.value)}
                                 >
@@ -269,7 +269,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                                     <div>
                                         <label className="label">Fonte</label>
                                         <input
-                                            className="input w-full h-12 text-lg box-border"
+                                            className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                             value={formData.fonte || ""}
                                             onChange={(e) => handleChange("fonte", e.target.value)}
                                         />
@@ -277,7 +277,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                                     <div>
                                         <label className="label">Tipo Abbonamento</label>
                                         <select
-                                            className="input w-full h-12 text-lg box-border"
+                                            className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
                                             value={formData.tipo_abbonamento_id || ""}
                                             onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
                                         >
@@ -300,7 +300,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Note</label>
                                 <textarea
-                                    className="input w-full h-32 text-lg resize-none p-3 box-border"
+                                    className="input w-full h-32 text-lg resize-none p-3 box-border min-w-0 max-w-full"
                                     placeholder="Note opzionali..."
                                     value={formData.note || ""}
                                     onChange={(e) => handleChange("note", e.target.value)}

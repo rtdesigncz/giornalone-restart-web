@@ -185,14 +185,14 @@ export default function SessionManager() {
                                     type="time"
                                     value={editingSession.start_time}
                                     onChange={e => setEditingSession({ ...editingSession, start_time: e.target.value })}
-                                    className="input h-10 flex-1 text-sm"
+                                    className="input h-10 flex-1 text-sm min-w-0"
                                 />
                                 <span className="text-slate-400">-</span>
                                 <input
                                     type="time"
                                     value={editingSession.end_time}
                                     onChange={e => setEditingSession({ ...editingSession, end_time: e.target.value })}
-                                    className="input h-10 flex-1 text-sm"
+                                    className="input h-10 flex-1 text-sm min-w-0"
                                 />
                             </div>
                             <div className="flex gap-2 mt-1">
