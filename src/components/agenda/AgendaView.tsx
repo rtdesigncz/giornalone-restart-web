@@ -41,7 +41,7 @@ export default function AgendaView() {
                         <button
                             onClick={() => {
                                 const d = new Date(dateParam);
-                                d.setDate(d.getDate() - 1);
+                                d.setDate(d.getDate() - (viewMode === "calendar" ? 7 : 1));
                                 const newDate = d.toISOString().slice(0, 10);
                                 router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
                             }}
@@ -52,10 +52,19 @@ export default function AgendaView() {
 
                         <div className="relative flex-1 flex flex-col items-center justify-center bg-white h-11 px-4 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mb-0.5">
-                                {new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
+                                {viewMode === "calendar" ? "Settimana" : new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
                             </span>
                             <span className="text-sm font-bold text-slate-800 leading-none">
-                                {new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
+                                {viewMode === "calendar" ? (() => {
+                                    const d = new Date(dateParam);
+                                    const day = d.getDay();
+                                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                                    const start = new Date(d);
+                                    start.setDate(diff);
+                                    const end = new Date(start);
+                                    end.setDate(start.getDate() + 6);
+                                    return `${start.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`;
+                                })() : new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
                             </span>
 
                             {/* Invisible Full-Cover Input */}
@@ -70,7 +79,7 @@ export default function AgendaView() {
                         <button
                             onClick={() => {
                                 const d = new Date(dateParam);
-                                d.setDate(d.getDate() + 1);
+                                d.setDate(d.getDate() + (viewMode === "calendar" ? 7 : 1));
                                 const newDate = d.toISOString().slice(0, 10);
                                 router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
                             }}
@@ -114,7 +123,7 @@ export default function AgendaView() {
                             )}
                         >
                             <CalendarIcon size={16} />
-                            Calendario
+                            Settimana
                         </button>
                     </div>
                 </div>

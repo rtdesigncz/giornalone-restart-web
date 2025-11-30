@@ -16,6 +16,7 @@ import { cleanPhone } from "@/lib/whatsapp";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import ExportPdfButton from "./ExportPdfButton";
 import PassDeliveryTask from "./PassDeliveryTask";
+import AbsentTask from "./AbsentTask";
 import MotivationalQuote from "./MotivationalQuote";
 
 interface DashboardMobileProps {
@@ -37,6 +38,8 @@ interface DashboardMobileProps {
     rescheduleEntryData: any;
     onRescheduleSaved: () => void;
     passDeliveryCount: number;
+    absentEntries: any[];
+    setAbsentListOpen: (open: boolean) => void;
 }
 
 export default function DashboardMobile({
@@ -57,7 +60,9 @@ export default function DashboardMobile({
     setRescheduleDrawerOpen,
     rescheduleEntryData,
     onRescheduleSaved,
-    passDeliveryCount
+    passDeliveryCount,
+    absentEntries,
+    setAbsentListOpen
 }: DashboardMobileProps) {
     const router = useRouter();
     const [notesOpen, setNotesOpen] = useState(false);
@@ -65,6 +70,7 @@ export default function DashboardMobile({
     const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
     const showMedicalReminders = medicalAppointments.length > 0;
     const showPassDelivery = passDeliveryCount > 0;
+    const showAbsentTask = absentEntries && absentEntries.length > 0;
 
     return (
         <div className="space-y-6 pb-24 animate-in-fade-in">
@@ -129,20 +135,7 @@ export default function DashboardMobile({
                 </div>
             </div>
 
-            {/* Vertical Stack Widgets */}
-            <div className="space-y-4">
-                {showDailyTasks && <DailyTasks entries={todayEntries} />}
-                {showPassDelivery && <PassDeliveryTask count={passDeliveryCount} />}
-                {showMedicalReminders && <MedicalReminders appointments={medicalAppointments} />}
-                <CallsWidget
-                    todos={todos}
-                    loading={loading}
-                    currentTime={currentTime}
-                    onCompleteCall={handleCompleteCall}
-                />
-            </div>
-
-            {/* Agenda Preview */}
+            {/* 1. Agenda Preview (Moved to Top) */}
             <div className="glass-card p-5 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -223,6 +216,22 @@ export default function DashboardMobile({
                         })
                     )}
                 </div>
+            </div>
+
+            {/* 2. Calls Widget (Moved to Second) */}
+            <CallsWidget
+                todos={todos}
+                loading={loading}
+                currentTime={currentTime}
+                onCompleteCall={handleCompleteCall}
+            />
+
+            {/* 3. Vertical Stack Widgets (Tasks) */}
+            <div className="space-y-4">
+                {showDailyTasks && <DailyTasks entries={todayEntries} />}
+                {showPassDelivery && <PassDeliveryTask count={passDeliveryCount} />}
+                {showAbsentTask && <AbsentTask count={absentEntries.length} onClick={() => setAbsentListOpen(true)} />}
+                {showMedicalReminders && <MedicalReminders appointments={medicalAppointments} />}
             </div>
 
             {/* Team Notes (Always Visible) */}

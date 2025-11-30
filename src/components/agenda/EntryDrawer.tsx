@@ -84,7 +84,31 @@ export default function EntryDrawer({
         if (isOpen) {
             setTargetSection(section);
             if (entry) {
-                setFormData({ ...entry });
+                if (isDuplicate) {
+                    // Clean copy: only take visual fields, treat as new
+                    setFormData({
+                        section: targetSection,
+                        entry_date: date, // Use the passed date (usually today)
+                        entry_time: "", // Reset time for new appointment
+                        nome: entry.nome,
+                        cognome: entry.cognome,
+                        telefono: entry.telefono,
+                        consulente_id: entry.consulente_id || "", // Ensure empty string if null for inputs
+                        tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
+                        fonte: entry.fonte,
+                        note: entry.note,
+                        // Reset all outcomes
+                        miss: false,
+                        venduto: false,
+                        presentato: false,
+                        negativo: false,
+                        assente: false,
+                        comeback: false,
+                        contattato: false,
+                    });
+                } else {
+                    setFormData({ ...entry });
+                }
             } else {
                 setFormData({
                     section,
@@ -129,21 +153,34 @@ export default function EntryDrawer({
 
         try {
             // Prepare payload (sanitize empty strings to null for IDs if needed)
-            const payload = { ...formData };
-            // Remove joined objects that cause errors on insert/update
-            delete payload.consulente;
-            delete payload.tipo_abbonamento;
-            delete payload.id; // Always remove ID from payload (it's either auto-generated for insert or used in .eq() for update)
+            // Whitelist approach: Explicitly construct payload with only allowed fields
+            // This guarantees no garbage fields or "null" strings are sent
+            const payload: AnyObj = {
+                section: isDuplicate || allowSectionChange ? effectiveSection : formData.section,
+                entry_date: formData.entry_date,
+                entry_time: formData.entry_time || null,
+                nome: formData.nome || "",
+                cognome: formData.cognome || "",
+                telefono: formData.telefono || "",
+                consulente_id: formData.consulente_id || null, // Convert "" to null
+                tipo_abbonamento_id: formData.tipo_abbonamento_id || null, // Convert "" to null
+                fonte: formData.fonte || "",
+                note: formData.note || "",
+                // Booleans
+                miss: !!formData.miss,
+                venduto: !!formData.venduto,
+                presentato: !!formData.presentato,
+                negativo: !!formData.negativo,
+                assente: !!formData.assente,
+                comeback: !!formData.comeback,
+                contattato: !!formData.contattato,
+            };
 
-            if (isDuplicate || allowSectionChange) {
-                payload.section = effectiveSection;
-            }
+            // Double check for "null" string just in case (though whitelist should prevent it)
+            if (payload.consulente_id === "null") payload.consulente_id = null;
+            if (payload.tipo_abbonamento_id === "null") payload.tipo_abbonamento_id = null;
 
-            if (!payload.consulente_id) payload.consulente_id = null;
-            if (!payload.tipo_abbonamento_id) payload.tipo_abbonamento_id = null;
-            if (!payload.entry_time) {
-                payload.entry_time = null;
-            } else if (payload.entry_time.length === 5) {
+            if (payload.entry_time && payload.entry_time.length === 5) {
                 payload.entry_time += ":00";
             }
 
@@ -173,7 +210,25 @@ export default function EntryDrawer({
                 onSave={onSave}
                 section={effectiveSection}
                 date={date}
-                initialData={entry ? { ...entry } : undefined}
+                initialData={entry ? (isDuplicate ? {
+                    section: targetSection,
+                    entry_date: date,
+                    entry_time: "",
+                    nome: entry.nome,
+                    cognome: entry.cognome,
+                    telefono: entry.telefono,
+                    consulente_id: entry.consulente_id || "",
+                    tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
+                    fonte: entry.fonte,
+                    note: entry.note,
+                    miss: false,
+                    venduto: false,
+                    presentato: false,
+                    negativo: false,
+                    assente: false,
+                    comeback: false,
+                    contattato: false,
+                } : { ...entry }) : undefined}
             />
         );
     }
@@ -384,7 +439,8 @@ export default function EntryDrawer({
                                     });
                                 }}
                                 layout="grid"
-                                size="sm"
+                                size="md"
+                                section={effectiveSection}
                             />
                         )}
                     </div>

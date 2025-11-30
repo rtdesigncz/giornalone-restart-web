@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Plus, Calendar as CalendarIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLocalDateISO } from "@/lib/dateUtils";
 import AppointmentTable from "./AppointmentTable";
 
 export default function SessionManager() {
@@ -15,6 +16,7 @@ export default function SessionManager() {
     const [endTime, setEndTime] = useState("18:00");
 
     const [editingSession, setEditingSession] = useState<any | null>(null);
+    const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
 
     const fetchSessions = async () => {
         setLoading(true);
@@ -32,6 +34,22 @@ export default function SessionManager() {
                 // Logic to select nearest future date could go here, for now just pick first
                 setSelectedSessionId(data[0].id);
             }
+
+            // Fetch pending counts for all sessions
+            if (data && data.length > 0) {
+                const sessionIds = data.map(s => s.id);
+                const { data: appointments } = await supabase
+                    .from("medical_appointments")
+                    .select("session_id")
+                    .in("session_id", sessionIds)
+                    .not("whatsapp_sent", "eq", true);
+
+                const counts: Record<string, number> = {};
+                appointments?.forEach((app: any) => {
+                    counts[app.session_id] = (counts[app.session_id] || 0) + 1;
+                });
+                setPendingCounts(counts);
+            }
         }
         setLoading(false);
     };
@@ -39,6 +57,16 @@ export default function SessionManager() {
     useEffect(() => {
         fetchSessions();
     }, []);
+
+    const shouldShowBadge = (sessionDate: string) => {
+        const today = getLocalDateISO();
+        const d = new Date(today);
+        const maxDateObj = new Date(d);
+        maxDateObj.setDate(d.getDate() + 2);
+        const maxDate = maxDateObj.toISOString().slice(0, 10);
+
+        return sessionDate >= today && sessionDate <= maxDate;
+    };
 
     const handleAddSession = async () => {
         if (!newDate) return;
@@ -84,6 +112,7 @@ export default function SessionManager() {
         const { error } = await supabase
             .from("medical_sessions")
             .update({
+                date: editingSession.date,
                 start_time: editingSession.start_time,
                 end_time: editingSession.end_time
             })
@@ -145,7 +174,7 @@ export default function SessionManager() {
 
             {/* 2. Session List (Middle) */}
             <div className="mb-6 w-full overflow-hidden">
-                <div className="flex items-center gap-2 overflow-x-auto w-full pb-2 no-scrollbar snap-x">
+                <div className="flex items-center gap-2 overflow-x-auto w-full py-3 px-1 no-scrollbar snap-x">
                     {loading && sessions.length === 0 ? (
                         <div className="flex items-center text-slate-400 text-sm w-full justify-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                             <Loader2 className="animate-spin mr-2" size={16} /> Caricamento date...
@@ -160,7 +189,7 @@ export default function SessionManager() {
                                 key={session.id}
                                 onClick={() => setSelectedSessionId(session.id)}
                                 className={cn(
-                                    "flex-shrink-0 snap-start flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border transition-all whitespace-nowrap shadow-sm",
+                                    "relative flex-shrink-0 snap-start flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border transition-all whitespace-nowrap shadow-sm",
                                     selectedSessionId === session.id
                                         ? "bg-brand text-white border-brand shadow-brand/20"
                                         : "bg-white border-slate-200 text-slate-600 hover:border-brand/50 hover:text-brand"
@@ -168,6 +197,12 @@ export default function SessionManager() {
                             >
                                 <CalendarIcon size={16} />
                                 {new Date(session.date).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+
+                                {pendingCounts[session.id] > 0 && shouldShowBadge(session.date) && (
+                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white z-10">
+                                        {pendingCounts[session.id]}
+                                    </span>
+                                )}
                             </button>
                         ))
                     )}
@@ -179,21 +214,29 @@ export default function SessionManager() {
                 <div className="mb-6 bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
                     {editingSession && editingSession.id === selectedSessionId ? (
                         <div className="flex flex-col gap-3">
-                            <span className="text-sm font-bold text-slate-700">Modifica Orari</span>
-                            <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-slate-700">Modifica Data e Orari</span>
+                            <div className="flex flex-col gap-2 w-full min-w-0">
                                 <input
-                                    type="time"
-                                    value={editingSession.start_time}
-                                    onChange={e => setEditingSession({ ...editingSession, start_time: e.target.value })}
-                                    className="input h-10 flex-1 text-sm min-w-0"
+                                    type="date"
+                                    value={editingSession.date}
+                                    onChange={e => setEditingSession({ ...editingSession, date: e.target.value })}
+                                    className="input h-10 w-full max-w-full min-w-0 box-border block appearance-none text-base"
                                 />
-                                <span className="text-slate-400">-</span>
-                                <input
-                                    type="time"
-                                    value={editingSession.end_time}
-                                    onChange={e => setEditingSession({ ...editingSession, end_time: e.target.value })}
-                                    className="input h-10 flex-1 text-sm min-w-0"
-                                />
+                                <div className="flex items-center gap-2 w-full min-w-0">
+                                    <input
+                                        type="time"
+                                        value={editingSession.start_time}
+                                        onChange={e => setEditingSession({ ...editingSession, start_time: e.target.value })}
+                                        className="input h-10 flex-1 min-w-0 max-w-full box-border appearance-none text-base"
+                                    />
+                                    <span className="text-slate-400 flex-shrink-0">-</span>
+                                    <input
+                                        type="time"
+                                        value={editingSession.end_time}
+                                        onChange={e => setEditingSession({ ...editingSession, end_time: e.target.value })}
+                                        className="input h-10 flex-1 min-w-0 max-w-full box-border appearance-none text-base"
+                                    />
+                                </div>
                             </div>
                             <div className="flex gap-2 mt-1">
                                 <button onClick={handleUpdateSession} className="btn btn-brand flex-1 h-9 text-xs">Salva</button>
@@ -241,7 +284,7 @@ export default function SessionManager() {
             {/* Content */}
             <div className="mt-4">
                 {selectedSessionId ? (
-                    <AppointmentTable sessionId={selectedSessionId} />
+                    <AppointmentTable sessionId={selectedSessionId} onUpdate={fetchSessions} />
                 ) : (
                     <div className="py-12 flex flex-col items-center justify-center text-slate-400">
                         <CalendarIcon size={48} className="mb-4 opacity-20" />

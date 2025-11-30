@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -272,7 +271,7 @@ export default function ConsegnaPassClient() {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-white text-slate-900 font-sans">
+        <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans">
             {/* Success Toast */}
             {successMsg && (
                 <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-in slide-in-from-bottom-5 fade-in duration-300">
@@ -282,170 +281,215 @@ export default function ConsegnaPassClient() {
             )}
 
             {/* TOP HEADER */}
-            <header className="flex items-center justify-between px-4 py-2 border-b bg-white z-20 shrink-0 h-14">
-                <div className="flex items-center gap-4">
-                    <div className="font-bold text-lg tracking-tight text-slate-800">Consegna Pass</div>
-                    <div className="h-6 w-px bg-slate-200 mx-2"></div>
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+                <div className="max-w-[1600px] mx-auto px-4 py-3">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-xl font-bold text-slate-800 hidden sm:block">Consegna Pass</h1>
+                                </div>
 
-                    {/* Gestione Selector */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <select
-                                className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-md pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium min-w-[200px]"
-                                value={gestioneId}
-                                onChange={(e) => setGestioneId(e.target.value)}
-                            >
-                                {gestioni.map(g => (
-                                    <option key={g.id} value={g.id}>{g.nome}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
+                                <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-                        <div className="flex items-center">
-                            <button className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500" title="Nuova Gestione" onClick={creaGestione}>
-                                <Plus className="w-4 h-4" />
-                            </button>
-                            <button className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500" title="Rinomina" onClick={rinominaGestione} disabled={!gestioneId}>
-                                <Pencil className="w-4 h-4" />
-                            </button>
-                            <button className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 hover:text-red-600" title="Elimina" onClick={eliminaGestione} disabled={!gestioneId}>
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                                {/* Gestione Selector */}
+                                <div className="flex items-center gap-2 hidden sm:flex">
+                                    <div className="relative group">
+                                        <select
+                                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold min-w-[180px] transition-all hover:border-cyan-300 cursor-pointer"
+                                            value={gestioneId}
+                                            onChange={(e) => setGestioneId(e.target.value)}
+                                        >
+                                            {gestioni.map(g => (
+                                                <option key={g.id} value={g.id}>{g.nome}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-cyan-500 transition-colors" />
+                                    </div>
+
+                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Nuova Gestione" onClick={creaGestione}>
+                                            <Plus className="w-3.5 h-3.5" />
+                                        </button>
+                                        <div className="w-px h-3.5 bg-slate-200 mx-0.5"></div>
+                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Rinomina" onClick={rinominaGestione} disabled={!gestioneId}>
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-red-600 transition-colors" title="Elimina" onClick={eliminaGestione} disabled={!gestioneId}>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 max-w-md relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
+                                <input
+                                    type="text"
+                                    placeholder="Cerca cliente..."
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                                    value={q}
+                                    onChange={e => setQ(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={aggiungiRiga}
+                                    className="btn btn-brand"
+                                >
+                                    <Plus className="w-4 h-4" /> Nuovo
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                        <input
-                            className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64 transition-all"
-                            placeholder="Cerca..."
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                        />
-                    </div>
-                    <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                    <button className="btn btn-primary flex items-center gap-2 px-4 py-1.5 text-sm" onClick={aggiungiRiga}>
-                        <Plus className="w-4 h-4" />
-                        Nuovo
-                    </button>
-                </div>
-            </header>
+            </div>
 
             {/* KPI RIBBON */}
-            <div className="flex items-center gap-6 px-6 py-2 bg-slate-50 border-b text-sm overflow-x-auto shrink-0">
-                <div className="flex items-center gap-2 text-slate-600">
-                    <Users className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium text-slate-900">{kpi.totale}</span> Pass Consegnati
+            <div className="flex items-center gap-4 px-4 md:gap-8 md:px-8 py-3 bg-white border-b border-slate-200 text-sm overflow-x-auto shrink-0 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-slate-100 rounded-md text-slate-500">
+                        <Users className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col leading-none">
+                        <span className="text-lg font-bold text-slate-900">{kpi.totale}</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Pass Totali</span>
+                    </div>
                 </div>
-                <div className="w-px h-4 bg-slate-300"></div>
-                <div className="flex items-center gap-2 text-slate-600">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span className="font-medium text-slate-900">{kpi.attivati}</span> Attivati
+                <div className="w-px h-8 bg-slate-100"></div>
+
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span className="text-slate-600 font-medium">{kpi.attivati} <span className="text-slate-400 font-normal">Attivati</span></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                        <span className="text-slate-600 font-medium">{kpi.iscritti} <span className="text-slate-400 font-normal">Iscritti</span></span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-600">
-                    <Flag className="w-4 h-4 text-indigo-500" />
-                    <span className="font-medium text-slate-900">{kpi.iscritti}</span> Iscritti da Pass
-                </div>
-                <div className="w-px h-4 bg-slate-300"></div>
-                <div className="flex gap-3">
+
+                <div className="w-px h-8 bg-slate-100"></div>
+
+                <div className="flex gap-2">
                     {kpi.abbonamenti.map(e => (
-                        <div key={e.name} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border text-xs">
-                            <span className="text-slate-500 capitalize">{e.name.toLowerCase()}:</span>
-                            <span className="font-semibold">{e.cnt}</span>
+                        <div key={e.name} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs transition-colors hover:bg-slate-100">
+                            <span className="text-slate-500 capitalize font-medium">{e.name.toLowerCase()}</span>
+                            <span className="bg-white px-1.5 rounded-md shadow-sm border border-slate-100 font-bold text-slate-700">{e.cnt}</span>
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* MAIN TABLE AREA */}
-            <div className="flex-1 overflow-auto relative bg-slate-100/50">
-                {loading && (
-                    <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-sm">
-                        <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                            <div className="text-sm text-slate-500 font-medium">Caricamento...</div>
-                        </div>
-                    </div>
-                )}
-
+            <div className="flex-1 overflow-auto relative bg-slate-50 p-6">
                 {err && (
-                    <div className="p-8 text-center">
-                        <div className="text-red-500 font-medium mb-2">Si è verificato un errore</div>
-                        <div className="text-slate-500 text-sm">{err}</div>
-                        <button className="mt-4 btn btn-outline btn-sm" onClick={() => reloadItems(gestioneId)}>Riprova</button>
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                            <AlertTriangle className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Si è verificato un errore</h3>
+                        <p className="text-slate-500 max-w-md mb-6">{err}</p>
+                        <button className="btn bg-cyan-600 text-white hover:bg-cyan-700 px-6 py-2 rounded-lg" onClick={() => reloadItems(gestioneId)}>Riprova</button>
                     </div>
                 )}
 
-                {!loading && !err && (
-                    <table className="w-full text-sm border-collapse">
-                        <thead className="bg-white sticky top-0 z-10 shadow-sm">
-                            <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                {[
-                                    ["Cliente", "min-w-[140px] pl-2"], ["Tel. Cli.", "min-w-[100px]"], ["Consegna", "min-w-[90px]"],
-                                    ["Ref. Nome", "min-w-[100px]"], ["Ref. Cogn.", "min-w-[100px]"], ["Ref. Tel", "min-w-[100px]"],
-                                    ["Att.", "w-10 text-center"], ["Data Att.", "min-w-[90px]"], ["Iscr.", "w-10 text-center"], ["Tipo Abb.", "min-w-[120px]"],
-                                    ["Note", "min-w-[150px]"], ["", "w-20 pr-2"]
-                                ].map(([label, extra], i) => (
-                                    <th key={i} className={`py-2 px-1 border-b border-slate-200 bg-white ${extra}`}>
-                                        {label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-100">
-                            {rows.length > 0 ? rows.map(r => {
-                                const inputCls = "w-full bg-transparent border-b border-indigo-300 focus:border-indigo-600 focus:outline-none px-1 py-0.5 text-slate-900 placeholder-slate-300 transition-colors";
+                {!err && (
+                    <div className="w-full max-w-[1600px] mx-auto">
+                        <table className="w-full border-separate border-spacing-y-3">
+                            <thead>
+                                <tr className="text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    {[
+                                        ["Cliente", "pl-4"], ["Telefono", ""], ["Consegna", ""],
+                                        ["Referral", ""], ["Tel. Ref.", ""],
+                                        ["Attivato", "text-center"], ["Data Att.", ""], ["Iscritto", "text-center"], ["Abbonamento", ""],
+                                        ["Note", ""], ["Azioni", "text-right pr-4"]
+                                    ].map(([label, extra], i) => (
+                                        <th key={i} className={`pb-2 whitespace-nowrap ${extra}`}>
+                                            {label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    // Skeleton Rows
+                                    [...Array(5)].map((_, i) => (
+                                        <tr key={i} className="bg-white shadow-sm rounded-xl border border-transparent animate-pulse">
+                                            <td className="py-4 pl-4 rounded-l-xl">
+                                                <div className="h-4 bg-slate-200 rounded w-32 mb-2"></div>
+                                                <div className="h-3 bg-slate-100 rounded w-24"></div>
+                                            </td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-24"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-20"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-24"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-24"></div></td>
+                                            <td className="py-4 text-center"><div className="w-4 h-4 bg-slate-200 rounded mx-auto"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-20"></div></td>
+                                            <td className="py-4 text-center"><div className="w-4 h-4 bg-slate-200 rounded mx-auto"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-24"></div></td>
+                                            <td className="py-4"><div className="h-3 bg-slate-100 rounded w-full"></div></td>
+                                            <td className="py-4 pr-4 rounded-r-xl text-right"><div className="h-8 w-8 bg-slate-200 rounded-lg ml-auto"></div></td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    rows.length > 0 ? rows.map(r => {
+                                        const isEditing = editable(r);
+                                        const inputCls = "input-sm w-full";
 
-                                const isActivated = !!r.data_attivazione;
-                                const today = new Date();
-                                const consegnaDate = r.data_consegna ? new Date(r.data_consegna) : null;
-                                let rowColorClass = "hover:bg-slate-50"; // Default
+                                        const isActivated = !!r.data_attivazione;
+                                        const today = new Date();
+                                        const consegnaDate = r.data_consegna ? new Date(r.data_consegna) : null;
+                                        let rowBorderClass = "border-transparent"; // Default
 
-                                if (isActivated) {
-                                    rowColorClass = "bg-emerald-50/60 hover:bg-emerald-100/50";
-                                } else if (consegnaDate) {
-                                    const diffTime = Math.abs(today.getTime() - consegnaDate.getTime());
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                        if (isActivated) {
+                                            rowBorderClass = "border-emerald-300 bg-emerald-50";
+                                        } else if (consegnaDate) {
+                                            const diffTime = Math.abs(today.getTime() - consegnaDate.getTime());
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                                    if (diffDays >= 7) {
-                                        rowColorClass = "bg-red-50/60 hover:bg-red-100/50";
-                                    } else if (diffDays >= 3) {
-                                        rowColorClass = "bg-yellow-50/60 hover:bg-yellow-100/50";
-                                    }
-                                }
+                                            if (diffDays >= 7) {
+                                                rowBorderClass = "border-red-300 bg-red-50";
+                                            } else if (diffDays >= 3) {
+                                                rowBorderClass = "border-amber-300 bg-amber-50";
+                                            }
+                                        }
 
-                                return (
-                                    <tr key={r.id} className={`group transition-colors cursor-pointer hover:brightness-95 ${rowColorClass}`} onDoubleClick={() => entraInModifica(r.id)}>
-                                        <td className="py-1 px-1 pl-2">
-                                            {editable(r) ? (
-                                                <div className="flex gap-1">
-                                                    <input className={inputCls} value={r.cliente_nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_nome: e.target.value } : x))} placeholder="Nome" />
-                                                    <input className={inputCls} value={r.cliente_cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_cognome: e.target.value } : x))} placeholder="Cognome" />
-                                                </div>
-                                            ) : <ReadOnlyCell className="font-medium text-slate-700 text-xs">{r.cliente_nome} {r.cliente_cognome}</ReadOnlyCell>}
-                                        </td>
+                                        return (
+                                            <tr key={r.id} className={cn("group bg-white shadow-sm hover:shadow-md transition-all duration-200 rounded-xl border", rowBorderClass)}>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input className={inputCls} value={r.cliente_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_telefono: e.target.value } : x))} placeholder="Tel. Cliente" />
-                                            ) : (
-                                                <div className="flex items-center gap-1">
-                                                    <ReadOnlyCell className="font-mono text-slate-600 text-[10px]">{r.cliente_telefono}</ReadOnlyCell>
-                                                    {r.cliente_telefono && !editable(r) && !r._isDraft && (
-                                                        <button
-                                                            className={cn(
-                                                                "p-1 rounded hover:bg-white/50 transition-colors",
-                                                                r.whatsapp_sent_date ? "text-emerald-600" : "text-slate-400 hover:text-emerald-600"
-                                                            )}
-                                                            title={r.whatsapp_sent_date ? "Follow-up inviato" : "Invia Follow-up WhatsApp"}
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (!r.cliente_telefono) return;
+                                                {/* CLIENTE */}
+                                                <td className="py-4 pl-4 rounded-l-xl align-top max-w-[200px]">
+                                                    {isEditing ? (
+                                                        <div className="space-y-2">
+                                                            <input className="input-sm w-full font-bold" placeholder="Nome" value={r.cliente_nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_nome: e.target.value } : x))} />
+                                                            <input className="input-sm w-full" placeholder="Cognome" value={r.cliente_cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_cognome: e.target.value } : x))} />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="font-bold text-slate-800 text-sm">{r.cliente_nome} {r.cliente_cognome}</div>
+                                                    )}
+                                                </td>
 
-                                                                const msg = `Ciao ${r.cliente_nome || ""}, 
+                                                {/* TELEFONO CLIENTE */}
+                                                <td className="py-4 align-top">
+                                                    {isEditing ? (
+                                                        <input className="input-sm w-full font-mono text-xs" placeholder="Telefono" value={r.cliente_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cliente_telefono: e.target.value } : x))} />
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-mono text-slate-500 text-xs">{r.cliente_telefono || "—"}</div>
+                                                            {r.cliente_telefono && !r._isDraft && (
+                                                                <button
+                                                                    className={cn(
+                                                                        "p-1 rounded-full transition-colors",
+                                                                        r.whatsapp_sent_date ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400 hover:bg-emerald-100 hover:text-emerald-600"
+                                                                    )}
+                                                                    title={r.whatsapp_sent_date ? "Follow-up inviato" : "Invia Follow-up WhatsApp"}
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        if (!r.cliente_telefono) return;
+
+                                                                        const msg = `Ciao ${r.cliente_nome || ""}, 
 Ti scriviamo da Restart Fitness Club!
 
 Qualche giorno fa ti abbiamo affidato un pass da donare a qualcuno a cui vuoi bene… un piccolo gesto che può diventare il primo passo verso più movimento, più energia, più benessere.
@@ -455,162 +499,177 @@ Se la risposta è sì, puoi lasciarci il suo contatto, ci farebbe piacere farci 
 
 Che ne pensi? Facci sapere, grazie di cuore!`;
 
-                                                                const link = `https://wa.me/${r.cliente_telefono.replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`;
-                                                                window.open(link, '_blank');
+                                                                        const link = `https://wa.me/${r.cliente_telefono.replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`;
+                                                                        window.open(link, '_blank');
 
-                                                                // Update sent date
-                                                                if (!r.whatsapp_sent_date) {
-                                                                    const now = new Date().toISOString();
-                                                                    try {
-                                                                        await fetch(`/api/pass/items?id=${r.id}`, {
-                                                                            method: "PATCH",
-                                                                            headers: { "Content-Type": "application/json" },
-                                                                            body: JSON.stringify({ whatsapp_sent_date: now })
-                                                                        });
-                                                                        setItems(it => it.map(x => x.id === r.id ? { ...x, whatsapp_sent_date: now } : x));
-                                                                    } catch (err) {
-                                                                        console.error("Error updating whatsapp date", err);
-                                                                    }
-                                                                }
-                                                            }}
-                                                        >
-                                                            {r.whatsapp_sent_date ? <CheckCircle2 className="w-3 h-3" /> : <MessageCircle className="w-3 h-3" />}
-                                                        </button>
+                                                                        // Update sent date
+                                                                        if (!r.whatsapp_sent_date) {
+                                                                            const now = new Date().toISOString();
+                                                                            try {
+                                                                                await fetch(`/api/pass/items?id=${r.id}`, {
+                                                                                    method: "PATCH",
+                                                                                    headers: { "Content-Type": "application/json" },
+                                                                                    body: JSON.stringify({ whatsapp_sent_date: now })
+                                                                                });
+                                                                                setItems(it => it.map(x => x.id === r.id ? { ...x, whatsapp_sent_date: now } : x));
+                                                                            } catch (err) {
+                                                                                console.error("Error updating whatsapp date", err);
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {r.whatsapp_sent_date ? <CheckCircle2 className="w-3 h-3" /> : <MessageCircle className="w-3 h-3" />}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
-                                                </div>
-                                            )}
-                                        </td>
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input type="date" className={inputCls} value={r.data_consegna || ""} onChange={e => { const v = e.target.value; setItems(it => it.map(x => x.id === r.id ? { ...x, data_consegna: v } : x)); }} />
-                                            ) : <ReadOnlyCell className="text-slate-500 text-xs">{formatDate(r.data_consegna)}</ReadOnlyCell>}
-                                        </td>
+                                                {/* DATA CONSEGNA */}
+                                                <td className="py-4 align-top">
+                                                    {isEditing ? (
+                                                        <input type="date" className="input-sm w-32 text-xs" value={r.data_consegna || ""} onChange={e => { const v = e.target.value; setItems(it => it.map(x => x.id === r.id ? { ...x, data_consegna: v } : x)); }} />
+                                                    ) : (
+                                                        <div className="text-slate-500 text-xs font-medium">{formatDate(r.data_consegna)}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input className={inputCls} value={r.referral_nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_nome: e.target.value } : x))} placeholder="Ref. Nome" />
-                                            ) : <ReadOnlyCell className="text-slate-600 text-xs">{r.referral_nome}</ReadOnlyCell>}
-                                        </td>
+                                                {/* REFERRAL */}
+                                                <td className="py-4 align-top max-w-[200px]">
+                                                    {isEditing ? (
+                                                        <div className="space-y-2">
+                                                            <input className="input-sm w-full" placeholder="Ref. Nome" value={r.referral_nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_nome: e.target.value } : x))} />
+                                                            <input className="input-sm w-full" placeholder="Ref. Cognome" value={r.referral_cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_cognome: e.target.value } : x))} />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-slate-600 text-sm">{r.referral_nome} {r.referral_cognome}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input className={inputCls} value={r.referral_cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_cognome: e.target.value } : x))} placeholder="Ref. Cognome" />
-                                            ) : <ReadOnlyCell className="text-slate-600 text-xs">{r.referral_cognome}</ReadOnlyCell>}
-                                        </td>
+                                                {/* REFERRAL TEL */}
+                                                <td className="py-4 align-top">
+                                                    {isEditing ? (
+                                                        <input className="input-sm w-full font-mono text-xs" placeholder="Ref. Tel" value={r.referral_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_telefono: e.target.value } : x))} />
+                                                    ) : (
+                                                        <div className="font-mono text-slate-500 text-xs">{r.referral_telefono || "—"}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input className={inputCls} value={r.referral_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_telefono: e.target.value } : x))} placeholder="Ref. Tel" />
-                                            ) : <ReadOnlyCell className="font-mono text-slate-600 text-[10px]">{r.referral_telefono}</ReadOnlyCell>}
-                                        </td>
+                                                {/* ATTIVATO (CHECKBOX) */}
+                                                <td className="py-4 align-top text-center">
+                                                    <input type="checkbox" className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                                                        disabled={!editable(r)}
+                                                        checked={!!r.data_attivazione}
+                                                        onChange={e => {
+                                                            const v = e.target.checked;
+                                                            const today = new Date().toISOString().slice(0, 10);
+                                                            setItems(it => it.map(x => x.id === r.id ? { ...x, data_attivazione: v ? today : null } : x));
+                                                        }}
+                                                    />
+                                                </td>
 
-                                        <td className="py-1 px-1 text-center">
-                                            <input type="checkbox" className="checkbox checkbox-xs checkbox-secondary"
-                                                disabled={!editable(r)}
-                                                checked={!!r.data_attivazione}
-                                                onChange={e => {
-                                                    const v = e.target.checked;
-                                                    const today = new Date().toISOString().slice(0, 10);
-                                                    setItems(it => it.map(x => x.id === r.id ? { ...x, data_attivazione: v ? today : null } : x));
-                                                }}
-                                            />
-                                        </td>
+                                                {/* DATA ATTIVAZIONE */}
+                                                <td className="py-4 align-top">
+                                                    {isEditing ? (
+                                                        <input type="date" className="input-sm w-32 text-xs" disabled={!r.data_attivazione} value={r.data_attivazione || ""} onChange={e => { const v = e.target.value; setItems(it => it.map(x => x.id === r.id ? { ...x, data_attivazione: v } : x)); }} />
+                                                    ) : (
+                                                        <div className={cn("text-xs font-medium", r.data_attivazione ? "text-emerald-600" : "text-slate-300")}>{formatDate(r.data_attivazione) || "—"}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <input type="date" className={inputCls} disabled={!r.data_attivazione} value={r.data_attivazione || ""} onChange={e => { const v = e.target.value; setItems(it => it.map(x => x.id === r.id ? { ...x, data_attivazione: v } : x)); }} />
-                                            ) : <ReadOnlyCell className="text-slate-500 text-xs">{formatDate(r.data_attivazione)}</ReadOnlyCell>}
-                                        </td>
+                                                {/* ISCRITTO (CHECKBOX) */}
+                                                <td className="py-4 align-top text-center">
+                                                    <input type="checkbox" className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                        disabled={!editable(r)}
+                                                        checked={!!r.iscritto}
+                                                        onChange={e => {
+                                                            const v = e.target.checked;
+                                                            const patch: any = { iscritto: v };
+                                                            if (!v) patch.tipo_abbonamento = null;
+                                                            setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
+                                                        }}
+                                                    />
+                                                </td>
 
-                                        <td className="py-1 px-1 text-center">
-                                            <input type="checkbox" className="checkbox checkbox-xs checkbox-primary"
-                                                disabled={!editable(r)}
-                                                checked={!!r.iscritto}
-                                                onChange={e => {
-                                                    const v = e.target.checked;
-                                                    const patch: any = { iscritto: v };
-                                                    if (!v) patch.tipo_abbonamento = null;
-                                                    setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
-                                                }}
-                                            />
-                                        </td>
+                                                {/* ABBONAMENTO */}
+                                                <td className="py-4 align-top">
+                                                    {isEditing ? (
+                                                        <select className="input-sm w-full text-xs" disabled={!r.iscritto} value={r.tipo_abbonamento || ""} onChange={e => { const v = e.target.value || null; setItems(it => it.map(x => x.id === r.id ? { ...x, tipo_abbonamento: v } : x)); }} >
+                                                            <option value=""></option>
+                                                            {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                                                        </select>
+                                                    ) : (
+                                                        <div className="text-xs text-slate-700 font-medium">{r.tipo_abbonamento || "—"}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <select className={inputCls} disabled={!r.iscritto} value={r.tipo_abbonamento || ""} onChange={e => { const v = e.target.value || null; setItems(it => it.map(x => x.id === r.id ? { ...x, tipo_abbonamento: v } : x)); }} >
-                                                    <option value=""></option>
-                                                    {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                                                </select>
-                                            ) : (
-                                                <ReadOnlyCell className="text-xs">{r.tipo_abbonamento}</ReadOnlyCell>
-                                            )}
-                                        </td>
+                                                {/* NOTE */}
+                                                <td className="py-4 align-top max-w-[200px]">
+                                                    {isEditing ? (
+                                                        <textarea className="input-sm w-full min-h-[60px] resize-none"
+                                                            value={r.note || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, note: e.target.value } : x))}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-slate-500 text-xs leading-relaxed line-clamp-2" title={r.note || ""}>{r.note || "—"}</div>
+                                                    )}
+                                                </td>
 
-                                        <td className="py-1 px-1">
-                                            {editable(r) ? (
-                                                <textarea className="w-full bg-transparent border-b border-indigo-300 focus:border-indigo-600 focus:outline-none px-1 py-0.5 text-slate-900 placeholder-slate-300 transition-colors min-h-[24px] resize-none overflow-hidden"
-                                                    value={r.note || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, note: e.target.value } : x))}
-                                                />
-                                            ) : (
-                                                <div className="min-w-[150px] whitespace-normal break-words text-slate-500 text-[10px] leading-relaxed line-clamp-2" title={r.note || ""}>{r.note || <span className="text-slate-200">—</span>}</div>
-                                            )}
-                                        </td>
-
-                                        <td className="py-1 px-1 pr-2 text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {r._isDraft ? (
-                                                    <>
-                                                        <button className="p-1 hover:bg-emerald-50 text-emerald-600 rounded" title="Salva" onClick={() => salvaBozza(r.id)}><Check className="w-4 h-4" /></button>
-                                                        <button className="p-1 hover:bg-red-50 text-red-600 rounded" title="Annulla" onClick={() => annullaBozza(r.id)}><X className="w-4 h-4" /></button>
-                                                    </>
-                                                ) : r._editing ? (
-                                                    <>
-                                                        <button className="p-1 hover:bg-emerald-50 text-emerald-600 rounded" title="Salva" onClick={() => salvaModifica(r.id)}><Check className="w-4 h-4" /></button>
-                                                        <button className="p-1 hover:bg-red-50 text-red-600 rounded" title="Annulla" onClick={() => annullaModifica(r.id)}><X className="w-4 h-4" /></button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        {r.referral_telefono && (
-                                                            <a className="p-1 hover:bg-emerald-50 text-emerald-600 rounded" href={`https://wa.me/${encodeURIComponent(r.referral_telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp Referral">
-                                                                <MessageCircle className="w-4 h-4" />
-                                                            </a>
+                                                {/* AZIONI */}
+                                                <td className="py-4 pr-4 rounded-r-xl align-top text-right">
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {r._isDraft ? (
+                                                            <>
+                                                                <button className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" title="Salva" onClick={() => salvaBozza(r.id)}><Check className="w-4 h-4" /></button>
+                                                                <button className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors" title="Annulla" onClick={() => annullaBozza(r.id)}><X className="w-4 h-4" /></button>
+                                                            </>
+                                                        ) : r._editing ? (
+                                                            <>
+                                                                <button className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" title="Salva" onClick={() => salvaModifica(r.id)}><Check className="w-4 h-4" /></button>
+                                                                <button className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors" title="Annulla" onClick={() => annullaModifica(r.id)}><X className="w-4 h-4" /></button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {r.referral_telefono && (
+                                                                    <a className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" href={`https://wa.me/${encodeURIComponent(r.referral_telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp Referral">
+                                                                        <MessageCircle className="w-4 h-4" />
+                                                                    </a>
+                                                                )}
+                                                                <button className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors" title="Modifica" onClick={() => entraInModifica(r.id)}><Pencil className="w-4 h-4" /></button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setDrawerEntry({
+                                                                            nome: r.referral_nome,
+                                                                            cognome: r.referral_cognome,
+                                                                            telefono: r.referral_telefono,
+                                                                            note: r.note
+                                                                        });
+                                                                        setDrawerOpen(true);
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                                                                    title="Aggiungi in Agenda (Referral)"
+                                                                >
+                                                                    <Calendar className="w-4 h-4" />
+                                                                </button>
+                                                                <button className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors" title="Elimina" onClick={() => eliminaRiga(r.id)}><Trash2 className="w-4 h-4" /></button>
+                                                            </>
                                                         )}
-                                                        <button className="p-1 hover:bg-indigo-50 text-indigo-600 rounded" title="Modifica" onClick={() => entraInModifica(r.id)}><Pencil className="w-4 h-4" /></button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setDrawerEntry({
-                                                                    nome: r.referral_nome,
-                                                                    cognome: r.referral_cognome,
-                                                                    telefono: r.referral_telefono,
-                                                                    note: r.note
-                                                                });
-                                                                setDrawerOpen(true);
-                                                            }}
-                                                            className="p-1 hover:bg-blue-50 text-blue-600 rounded"
-                                                            title="Aggiungi in Agenda (Referral)"
-                                                        >
-                                                            <Calendar className="w-4 h-4" />
-                                                        </button>
-                                                        <button className="p-1 hover:bg-red-50 text-red-600 rounded" title="Elimina" onClick={() => eliminaRiga(r.id)}><Trash2 className="w-4 h-4" /></button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            }) : (
-                                <tr>
-                                    <td colSpan={12} className="py-12 text-center text-slate-400">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Search className="w-8 h-8 opacity-20" />
-                                            <div>Nessun risultato trovato</div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }) : (
+                                        <tr>
+                                            <td colSpan={11} className="py-12 text-center text-slate-400">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Search className="w-8 h-8 opacity-20" />
+                                                    <div>Nessun risultato trovato</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 
@@ -619,6 +678,7 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                 <div>{rows.length} righe visualizzate</div>
                 <div>Progettato da Roberto Tavano</div>
             </div>
+
             {/* AGENDA DRAWER */}
             <EntryDrawer
                 isOpen={drawerOpen}

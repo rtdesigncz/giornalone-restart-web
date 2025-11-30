@@ -23,6 +23,8 @@ import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcome
 import DashboardMobile from "./DashboardMobile";
 import PassDeliveryTask from "./PassDeliveryTask";
 import MotivationalQuote from "./MotivationalQuote";
+import AbsentTask from "./AbsentTask";
+import AbsentListPopup from "./AbsentListPopup";
 
 // Helper
 export default function DashboardHome() {
@@ -52,6 +54,12 @@ export default function DashboardHome() {
     const [dismissedReminders, setDismissedReminders] = useState<string[]>([]);
     const [completedOpen, setCompletedOpen] = useState(false);
     const [passDeliveryCount, setPassDeliveryCount] = useState(0);
+
+    // Absent Task State
+    const [absentEntries, setAbsentEntries] = useState<any[]>([]);
+    const [absentListOpen, setAbsentListOpen] = useState(false);
+    const [absentRescheduleDrawerOpen, setAbsentRescheduleDrawerOpen] = useState(false);
+    const [absentRescheduleEntry, setAbsentRescheduleEntry] = useState<any | null>(null);
 
     const fetchDashboardData = async () => {
         const today = getLocalDateISO();
@@ -135,7 +143,11 @@ export default function DashboardHome() {
 
             if (appointments) {
                 setMedicalAppointments(appointments);
+            } else {
+                setMedicalAppointments([]);
             }
+        } else {
+            setMedicalAppointments([]);
         }
     };
 
@@ -157,10 +169,65 @@ export default function DashboardHome() {
         setPassDeliveryCount(count || 0);
     };
 
+    const fetchAbsentEntries = async () => {
+        const today = getLocalDateISO();
+
+        // Fetch entries that are currently marked as absent
+        const { data: currentAbsent, error: absentError } = await supabase
+            .from("entries")
+            .select(`
+                id,
+                entry_date,
+                entry_time,
+                created_at,
+                assente,
+                *,
+                consulente:consulenti(name),
+                tipo_abbonamento:tipi_abbonamento(name)
+            `)
+            .eq("assente", true)
+            .not("negativo", "eq", true);
+
+        if (absentError) {
+            console.error("Error fetching absent entries:", absentError);
+            return;
+        }
+
+        // Filter client-side for entries before today 06:30
+        const filteredAbsent = (currentAbsent || []).filter((e: any) => {
+            // For PAST dates: include ALL absents regardless of when created
+            if (e.entry_date < today) {
+                return true;
+            }
+
+            // For TODAY's dates: only include if created before 06:30 AND entry_time < 06:30
+            if (e.entry_date === today) {
+                const entryCutoff = new Date(`${e.entry_date}T06:30:00`);
+                const entryCreated = new Date(e.created_at);
+                const createdBeforeCutoff = entryCreated < entryCutoff;
+                const timeBeforeCutoff = e.entry_time && e.entry_time < "06:30:00";
+
+                return createdBeforeCutoff && timeBeforeCutoff;
+            }
+
+            // Future dates: exclude
+            return false;
+        });
+
+        const entries = filteredAbsent.map((e: any) => ({
+            ...e,
+            consulente_name: e.consulente?.name,
+            tipo_abbonamento_name: e.tipo_abbonamento?.name
+        }));
+
+        setAbsentEntries(entries);
+    };
+
     useEffect(() => {
         fetchDashboardData();
         fetchMedicalReminders();
         fetchPassDeliveries();
+        fetchAbsentEntries();
     }, []);
 
     useEffect(() => {
@@ -289,13 +356,86 @@ export default function DashboardHome() {
         setActiveCallReminder(null);
     };
 
-    // Responsive Grid Logic
-    const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
-    const showMedicalReminders = medicalAppointments.length > 0;
-    const showPassDelivery = passDeliveryCount > 0;
-    const showCallsWidget = true; // Always shown
+    // Absent Task Handlers
+    const handleAbsentWhatsApp = async (entry: any) => {
+        const link = getWhatsAppLink(entry);
+        if (!link) return alert("Numero non valido.");
+        window.open(link, "_blank");
 
-    const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showPassDelivery, showCallsWidget].filter(Boolean).length;
+        if (!entry.whatsapp_sent) {
+            const success = await markWhatsAppSent(entry.id);
+            if (success) {
+                setAbsentEntries(prev => prev.map(e => e.id === entry.id ? { ...e, whatsapp_sent: true } : e));
+            }
+        }
+    };
+
+    const handleAbsentReschedule = (entry: any) => {
+        setAbsentRescheduleEntry(entry);
+        setAbsentRescheduleDrawerOpen(true);
+        setAbsentListOpen(false); // Close popup when opening drawer
+    };
+
+    const handleAbsentRescheduleSaved = async () => {
+        if (!absentRescheduleEntry) return;
+
+        // Update old entry: remove assente, set miss to true
+        const { error } = await supabase
+            .from("entries")
+            .update({
+                assente: false,
+                miss: true
+            })
+            .eq("id", absentRescheduleEntry.id);
+
+        if (error) {
+            console.error("Error updating absent entry:", error);
+            alert("Errore durante l'aggiornamento dell'appuntamento assente.");
+            return;
+        }
+
+        // Refresh data
+        await fetchDashboardData();
+        await fetchAbsentEntries();
+
+        setAbsentRescheduleDrawerOpen(false);
+        setAbsentRescheduleEntry(null);
+    };
+
+    const handleAbsentNegative = async (entry: any) => {
+        if (!confirm("Sei sicuro che questo cliente non verrà?")) {
+            return;
+        }
+
+        // Update entry to set both assente AND negativo
+        const { error } = await supabase
+            .from("entries")
+            .update({
+                assente: true,
+                negativo: true
+            })
+            .eq("id", entry.id);
+
+        if (error) {
+            console.error("Error updating entry to negative:", error);
+            alert("Errore durante l'aggiornamento.");
+            return;
+        }
+
+        // Refresh data
+        await fetchDashboardData();
+        await fetchAbsentEntries();
+    };
+
+    // Responsive Grid Logic
+    // Responsive Grid Logic
+    const showDailyTasks = true; // Always shown
+    const showMedicalReminders = medicalAppointments.length > 0;
+    const showPassDelivery = true; // Always shown
+    const showAbsentTask = true; // Always shown
+    // CallsWidget moved to right column, so not part of this grid anymore
+
+    const activeWidgetsCount = [showDailyTasks, showMedicalReminders, showPassDelivery, showAbsentTask].filter(Boolean).length;
     const gridColsClass = activeWidgetsCount === 1 ? 'grid-cols-1' : activeWidgetsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : activeWidgetsCount === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
 
     // ... existing imports ...
@@ -325,6 +465,8 @@ export default function DashboardHome() {
                     rescheduleEntryData={rescheduleEntryData}
                     onRescheduleSaved={onRescheduleSaved}
                     passDeliveryCount={passDeliveryCount}
+                    absentEntries={absentEntries}
+                    setAbsentListOpen={setAbsentListOpen}
                 />
             </div>
 
@@ -410,16 +552,16 @@ export default function DashboardHome() {
                         <PassDeliveryTask count={passDeliveryCount} />
                     )}
 
+                    {showAbsentTask && (
+                        <AbsentTask
+                            count={absentEntries.length}
+                            onClick={() => setAbsentListOpen(true)}
+                        />
+                    )}
+
                     {showMedicalReminders && (
                         <MedicalReminders appointments={medicalAppointments} />
                     )}
-
-                    <CallsWidget
-                        todos={todos}
-                        loading={loading}
-                        currentTime={currentTime}
-                        onCompleteCall={handleCompleteCall}
-                    />
                 </div>
 
                 {/* Main Content: Agenda & Notes */}
@@ -599,6 +741,12 @@ export default function DashboardHome() {
 
                     {/* Right Column: Notes (1/3 width) */}
                     <div className="space-y-6 flex flex-col">
+                        <CallsWidget
+                            todos={todos}
+                            loading={loading}
+                            currentTime={currentTime}
+                            onCompleteCall={handleCompleteCall}
+                        />
                         <div className="flex-1">
                             <NotesWidget />
                         </div>
@@ -661,6 +809,51 @@ export default function DashboardHome() {
                 call={activeCallReminder}
                 onComplete={handleReminderComplete}
                 onClose={handleReminderClose}
+            />
+
+            {/* Absent List Popup */}
+            <AbsentListPopup
+                isOpen={absentListOpen}
+                onClose={() => setAbsentListOpen(false)}
+                entries={absentEntries}
+                onWhatsApp={handleAbsentWhatsApp}
+                onReschedule={handleAbsentReschedule}
+                onNegative={handleAbsentNegative}
+            />
+
+            {/* Absent Reschedule Drawer */}
+            <EntryDrawer
+                isOpen={absentRescheduleDrawerOpen}
+                onClose={() => {
+                    setAbsentRescheduleDrawerOpen(false);
+                    setAbsentRescheduleEntry(null);
+                }}
+                entry={absentRescheduleEntry ? {
+                    id: "new", // Force "new" ID
+                    section: absentRescheduleEntry.section, // Keep section but allow change
+                    entry_date: new Date().toISOString().slice(0, 10), // Today
+                    entry_time: "", // Reset time
+                    nome: absentRescheduleEntry.nome,
+                    cognome: absentRescheduleEntry.cognome,
+                    telefono: absentRescheduleEntry.telefono,
+                    consulente_id: absentRescheduleEntry.consulente_id,
+                    tipo_abbonamento_id: absentRescheduleEntry.tipo_abbonamento_id,
+                    fonte: absentRescheduleEntry.fonte,
+                    note: absentRescheduleEntry.note,
+                    // Reset all outcomes
+                    miss: false,
+                    venduto: false,
+                    presentato: false,
+                    negativo: false,
+                    assente: false,
+                    comeback: false,
+                    contattato: false
+                } : null}
+                section={absentRescheduleEntry?.section || "TOUR SPONTANEI"}
+                date={new Date().toISOString().slice(0, 10)}
+                onSave={handleAbsentRescheduleSaved}
+                onDelete={() => { }}
+                allowSectionChange={true}
             />
         </>
     );

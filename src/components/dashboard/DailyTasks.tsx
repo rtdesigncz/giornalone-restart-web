@@ -24,52 +24,76 @@ export default function DailyTasks({ entries }: DailyTasksProps) {
     const total = reminderEntries.length;
     const sent = reminderEntries.filter(e => e.whatsapp_sent).length;
     const isComplete = total > 0 && sent === total;
+    const pending = total - sent;
     const progress = total > 0 ? Math.round((sent / total) * 100) : 0;
 
-    if (total === 0) return null;
+    // Even if total is 0, we render the widget as "Complete" (0/0)
+    const isZeroTotal = total === 0;
 
     return (
-        <div className="glass-card p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className={cn("p-1.5 rounded-lg bg-emerald-100 text-emerald-600")}>
-                        <MessageCircle size={16} />
+        <div className="glass-card p-5 flex flex-col gap-4 border-l-4 border-emerald-500 border-t-0 border-r-0 border-b-0 h-full justify-between">
+            <div className="space-y-4 w-full">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={cn("p-1.5 rounded-lg bg-emerald-100 text-emerald-600")}>
+                            <MessageCircle size={16} />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-800">Whatsapp Conferma</h2>
                     </div>
-                    <h2 className="text-base font-bold text-slate-800">Whatsapp di Conferma</h2>
+                    <span className={cn("text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600")}>
+                        {sent}/{total}
+                    </span>
                 </div>
-                <span className={cn("text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600")}>
-                    {sent}/{total}
-                </span>
+
+                {/* Progress Bar - Always visible to maintain alignment */}
+                <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-slate-500">
+                        <span>Progresso invio</span>
+                        <span>{progress}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className={cn("h-full rounded-full transition-all duration-500 bg-emerald-500")}
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Status Box - Fixed height */}
+                <div className="h-[52px]">
+                    {(isComplete || isZeroTotal) ? (
+                        <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-100 h-full">
+                            <CheckCircle size={18} />
+                            <span>Tutto confermato!</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-rose-600 text-sm font-bold bg-rose-50 p-3 rounded-xl border border-rose-100 animate-pulse h-full">
+                            <AlertCircle size={18} />
+                            <span>{pending} {pending === 1 ? "messaggio" : "messaggi"} da inviare</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-500">
-                    <span>Progresso invio</span>
-                    <span>{progress}%</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                        className={cn("h-full rounded-full transition-all duration-500 bg-emerald-500")}
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
+            {/* Button - Always visible or placeholder? User said "Tutti devono presentare... non deve scomparire" 
+                But if complete, maybe we don't need the button? 
+                The screenshot shows "Vai ai Pass" even if there are alerts. 
+                If complete, maybe we show a disabled button or just keep the space?
+                User said "I pulsanti... devono essere in linea". 
+                If I remove the button when complete, alignment breaks.
+                I will keep the button but maybe disable it or make it "Vedi Agenda" always.
+            */}
+            <div className="h-[34px]">
+                {pending > 0 ? (
+                    <Link href="/agenda" className="btn btn-outline border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 w-full justify-center text-xs h-full">
+                        Vai all'Agenda
+                    </Link>
+                ) : (
+                    <Link href="/agenda" className="btn btn-outline border-slate-200 text-slate-400 hover:bg-slate-50 w-full justify-center text-xs h-full">
+                        Vai all'Agenda
+                    </Link>
+                )}
             </div>
-
-            {isComplete ? (
-                <div className="flex items-center gap-2 text-emerald-600 text-sm font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                    <CheckCircle size={18} />
-                    <span>Tutti i messaggi inviati!</span>
-                </div>
-            ) : (
-                <div className="flex items-center gap-2 text-rose-600 text-sm font-bold bg-rose-50 p-3 rounded-xl border border-rose-100 animate-pulse">
-                    <AlertCircle size={18} />
-                    <span>{total - sent} messaggi da inviare</span>
-                </div>
-            )}
-
-            <Link href="/agenda" className="btn btn-outline w-full justify-center text-xs">
-                Vai all'Agenda
-            </Link>
         </div>
     );
 }

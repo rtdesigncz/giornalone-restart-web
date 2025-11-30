@@ -142,7 +142,7 @@ export default function AgendaTable({ section }: { section: string }) {
                 </div>
                 <button
                     onClick={handleNewClick}
-                    className="btn bg-brand text-white hover:bg-brand-ink shadow-lg shadow-brand/20 border-transparent transition-all hover:scale-105 active:scale-95"
+                    className="btn btn-brand"
                 >
                     <Plus size={18} className="mr-2" />
                     Nuovo
@@ -234,6 +234,7 @@ export default function AgendaTable({ section }: { section: string }) {
                                                         onOutcomeClick={handleOutcomeClick}
                                                         size="sm"
                                                         showLabels={true}
+                                                        section={section}
                                                     />
                                                 )}
                                             </div>

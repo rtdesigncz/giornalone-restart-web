@@ -10,9 +10,10 @@ import autoTable from "jspdf-autotable";
 
 interface AppointmentTableProps {
     sessionId: string;
+    onUpdate?: () => void;
 }
 
-export default function AppointmentTable({ sessionId }: AppointmentTableProps) {
+export default function AppointmentTable({ sessionId, onUpdate }: AppointmentTableProps) {
     const [appointments, setAppointments] = useState<Record<string, any>>({}); // Map slot -> appointment
     const [loading, setLoading] = useState(false);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -116,6 +117,7 @@ export default function AppointmentTable({ sessionId }: AppointmentTableProps) {
         } else {
             setEditingSlot(null);
             fetchAppointments();
+            if (onUpdate) onUpdate();
         }
     };
 
@@ -123,6 +125,7 @@ export default function AppointmentTable({ sessionId }: AppointmentTableProps) {
         if (!confirm("Eliminare appuntamento?")) return;
         await supabase.from("medical_appointments").delete().eq("id", id);
         fetchAppointments();
+        if (onUpdate) onUpdate();
     };
 
     const startEdit = (slot: string, app?: any) => {
@@ -177,6 +180,7 @@ Ti aspettiamo!`;
             .eq("id", app.id);
 
         fetchAppointments();
+        if (onUpdate) onUpdate();
     };
 
     const togglePaid = async (app: any) => {
@@ -185,6 +189,7 @@ Ti aspettiamo!`;
             .update({ is_paid: !app.is_paid })
             .eq("id", app.id);
         fetchAppointments();
+        if (onUpdate) onUpdate();
     };
 
     const exportPDF = async () => {

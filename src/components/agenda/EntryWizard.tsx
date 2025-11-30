@@ -13,9 +13,11 @@ interface EntryWizardProps {
     onClose: () => void;
     onSave: () => void;
     initialData?: any;
+    section?: string;
+    date?: string;
 }
 
-export default function EntryWizard({ isOpen, onClose, onSave, initialData }: EntryWizardProps) {
+export default function EntryWizard({ isOpen, onClose, onSave, initialData, section, date }: EntryWizardProps) {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -30,8 +32,8 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
             const isEditing = initialData && initialData.id && initialData.id !== 'new';
 
             setFormData(initialData || {
-                section: "",
-                entry_date: new Date().toISOString().split('T')[0],
+                section: section || "",
+                entry_date: date || new Date().toISOString().split('T')[0],
                 entry_time: "",
                 nome: "",
                 cognome: "",
@@ -50,10 +52,11 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
             });
 
             if (!isEditing && (!initialData || initialData.id === 'new')) {
-                setFormData((prev: any) => ({ ...prev, section: "" }));
+                // If section passed as prop, use it, otherwise clear it
+                setFormData((prev: any) => ({ ...prev, section: section || "" }));
             }
         }
-    }, [isOpen, initialData]);
+    }, [isOpen, initialData, section, date]);
 
     useEffect(() => {
         // Update entry_time default if section changes to "TOUR SPONTANEI"
@@ -101,8 +104,19 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
             delete payload.tipo_abbonamento;
             delete payload.id;
 
-            if (!payload.consulente_id) payload.consulente_id = null;
-            if (!payload.tipo_abbonamento_id) payload.tipo_abbonamento_id = null;
+            // Aggressive sanitization for ALL fields
+            Object.keys(payload).forEach(key => {
+                const val = payload[key];
+                // Convert string "null" to actual null (for any field)
+                if (val === "null") {
+                    payload[key] = null;
+                }
+                // Convert empty strings to null ONLY for ID fields (to avoid UUID errors)
+                if (key.endsWith('_id') && val === "") {
+                    payload[key] = null;
+                }
+            });
+
             if (!payload.entry_time) payload.entry_time = null;
             else if (payload.entry_time.length === 5) payload.entry_time += ":00";
 
@@ -218,7 +232,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Nome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Nome"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleChange("nome", e.target.value)}
@@ -227,7 +241,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Cognome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Cognome"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleChange("cognome", e.target.value)}
@@ -236,7 +250,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Telefono</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                    className="input w-full h-12 text-lg box-border"
                                     placeholder="Telefono"
                                     type="tel"
                                     value={formData.telefono || ""}
@@ -254,7 +268,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Consulente</label>
                                 <select
-                                    className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                    className="input w-full h-12 text-lg box-border"
                                     value={formData.consulente_id || ""}
                                     onChange={(e) => handleChange("consulente_id", e.target.value)}
                                 >
@@ -269,7 +283,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                                     <div>
                                         <label className="label">Fonte</label>
                                         <input
-                                            className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                            className="input w-full h-12 text-lg box-border"
                                             value={formData.fonte || ""}
                                             onChange={(e) => handleChange("fonte", e.target.value)}
                                         />
@@ -277,7 +291,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                                     <div>
                                         <label className="label">Tipo Abbonamento</label>
                                         <select
-                                            className="input w-full h-12 text-lg box-border min-w-0 max-w-full"
+                                            className="input w-full h-12 text-lg box-border"
                                             value={formData.tipo_abbonamento_id || ""}
                                             onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
                                         >
@@ -300,7 +314,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                             <div>
                                 <label className="label">Note</label>
                                 <textarea
-                                    className="input w-full h-32 text-lg resize-none p-3 box-border min-w-0 max-w-full"
+                                    className="input w-full h-32 text-lg resize-none p-3 box-border"
                                     placeholder="Note opzionali..."
                                     value={formData.note || ""}
                                     onChange={(e) => handleChange("note", e.target.value)}
@@ -332,6 +346,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData }: En
                                     }}
                                     layout="grid"
                                     size="lg"
+                                    section={formData.section}
                                 />
                             </div>
                         </div>

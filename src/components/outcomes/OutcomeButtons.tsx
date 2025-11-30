@@ -9,6 +9,7 @@ interface OutcomeButtonsProps {
     size?: 'sm' | 'md' | 'lg';
     showLabels?: boolean;
     layout?: 'row' | 'grid'; // 'row' for tables, 'grid' for drawer
+    section?: string;
 }
 
 export default function OutcomeButtons({
@@ -16,14 +17,15 @@ export default function OutcomeButtons({
     onOutcomeClick,
     size = 'md',
     showLabels = true,
-    layout = 'row'
+    layout = 'row',
+    section
 }: OutcomeButtonsProps) {
 
     const btnBase = "flex flex-col items-center justify-center transition-all duration-200 border rounded-xl active:scale-95 relative group";
     const sizeClasses = size === 'sm' ? "h-8 w-8 p-1" : size === 'md' ? "h-12 w-12 p-2" : "h-16 w-16 p-3";
     const iconSize = size === 'sm' ? 14 : size === 'md' ? 20 : 24;
 
-    const buttons = [
+    const allButtons = [
         {
             type: 'presentato' as OutcomeType,
             label: 'Presentato',
@@ -65,6 +67,13 @@ export default function OutcomeButtons({
             isActive: entry.miss
         }
     ];
+
+    const buttons = allButtons.filter(btn => {
+        if (section === 'TOUR SPONTANEI') {
+            return ['venduto', 'negativo', 'miss'].includes(btn.type);
+        }
+        return true;
+    });
 
     return (
         <div className={cn(

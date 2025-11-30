@@ -752,7 +752,7 @@ export default function ConsulenzeClientV2() {
                                 </button>
                                 <button
                                     onClick={aggiungiRiga}
-                                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm font-bold hover:bg-cyan-700 shadow-lg shadow-cyan-200 transition-all active:scale-95"
+                                    className="btn btn-brand"
                                 >
                                     <Plus className="w-4 h-4" /> Nuovo
                                 </button>
@@ -844,15 +844,6 @@ export default function ConsulenzeClientV2() {
 
             {/* MAIN TABLE AREA */}
             < div className="flex-1 overflow-auto relative bg-slate-50 p-6" >
-                {loading && (
-                    <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm">
-                        <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-xl border border-slate-100">
-                            <div className="w-8 h-8 border-3 border-cyan-600 border-t-transparent rounded-full animate-spin"></div>
-                            <div className="text-sm text-slate-600 font-medium">Caricamento dati...</div>
-                        </div>
-                    </div>
-                )
-                }
 
                 {
                     err && (
@@ -868,7 +859,7 @@ export default function ConsulenzeClientV2() {
                 }
 
                 {
-                    !loading && !err && (
+                    !err && (
                         <div className="w-full max-w-[1600px] mx-auto">
                             {/* DESKTOP TABLE */}
                             <div className="hidden md:block">
@@ -884,272 +875,312 @@ export default function ConsulenzeClientV2() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {rows.length > 0 ? rows.map(r => {
-                                            const isEditing = editable(r);
-
-                                            // Date Logic
-                                            let dateClass = "text-slate-500";
-                                            if (r.preso_appuntamento && !r.consulenza_fatta && r.data_consulenza) {
-                                                const d = new Date(r.data_consulenza);
-                                                const today = new Date();
-                                                today.setHours(0, 0, 0, 0);
-                                                if (d < today) {
-                                                    dateClass = "text-slate-500"; // Past = Gray
-                                                } else {
-                                                    dateClass = "text-teal-600 font-medium"; // Future = Teal
-                                                }
-                                            }
-
-                                            return (
-                                                <tr key={r.id} className="group bg-white shadow-sm hover:shadow-md transition-all duration-200 rounded-xl border border-transparent hover:border-cyan-100">
-
-                                                    {/* CLIENTE */}
-                                                    <td className="py-4 pl-4 rounded-l-xl align-top max-w-[250px]">
-                                                        {isEditing ? (
-                                                            <div className="space-y-2">
-                                                                <input className="input-sm w-full font-bold" placeholder="Nome" value={r.nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nome: e.target.value } : x))} />
-                                                                <input className="input-sm w-full" placeholder="Cognome" value={r.cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cognome: e.target.value } : x))} />
-                                                                <input className="input-sm w-full font-mono text-xs" placeholder="Telefono" value={r.telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, telefono: e.target.value } : x))} />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex flex-col">
-                                                                <div className="font-bold text-slate-800 text-sm">{cleanName(r.nome)} {cleanName(r.cognome)}</div>
-                                                                {r.telefono ? (
-                                                                    <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded">
-                                                                        <Phone className="w-3 h-3" />
-                                                                        {r.telefono}
-                                                                    </div>
-                                                                ) : <span className="text-slate-300 text-xs italic mt-1">Nessun telefono</span>}
-                                                            </div>
-                                                        )}
+                                        {loading ? (
+                                            // Skeleton Rows
+                                            [...Array(5)].map((_, i) => (
+                                                <tr key={i} className="bg-white shadow-sm rounded-xl border border-transparent animate-pulse">
+                                                    <td className="py-4 pl-4 rounded-l-xl">
+                                                        <div className="h-4 bg-slate-200 rounded w-32 mb-2"></div>
+                                                        <div className="h-3 bg-slate-100 rounded w-24"></div>
                                                     </td>
-
-                                                    {/* ABBONAMENTO */}
-                                                    <td className="py-4 align-top max-w-[200px] text-center">
-                                                        {isEditing ? (
-                                                            <div className="space-y-2">
-                                                                <input className="input-sm w-full text-xs" placeholder="Tipo Abb." value={r.tipo_abbonamento_corrente || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, tipo_abbonamento_corrente: e.target.value } : x))} />
-                                                                <input type="date" className="input-sm w-full text-xs" value={r.scadenza || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, scadenza: e.target.value } : x))} />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex flex-col gap-1 items-center">
-                                                                <div className="font-medium text-slate-700 text-sm truncate" title={r.tipo_abbonamento_corrente || ""}>
-                                                                    {cleanSubscription(r.tipo_abbonamento_corrente) || <span className="text-slate-300">—</span>}
-                                                                </div>
-                                                                <div className="text-xs text-slate-500 flex items-center gap-1">
-                                                                    <Clock className="w-3 h-3" />
-                                                                    Scad: {formatDate(r.scadenza) || "—"}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                    <td className="py-4 text-center">
+                                                        <div className="h-4 bg-slate-200 rounded w-24 mx-auto mb-1"></div>
+                                                        <div className="h-3 bg-slate-100 rounded w-16 mx-auto"></div>
                                                     </td>
-
-                                                    {/* STATO (STEPPER) */}
-                                                    <td className="py-4 align-top min-w-[300px]">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            {/* Step 1: Contattato */}
-                                                            <div className="flex flex-col items-center gap-1 w-20">
-                                                                <StepIcon
-                                                                    active={!r.contattato}
-                                                                    completed={r.contattato}
-                                                                    icon={MessageCircle}
-                                                                    colorClass="amber"
-                                                                    disabled={isEditing}
-                                                                    onClick={() => handleStepClick(r, 'CONTATTATO')}
-                                                                />
-                                                                <span className={cn("text-[10px] font-medium uppercase", r.contattato ? "text-amber-600" : "text-slate-300")}>Contattato</span>
+                                                    <td className="py-4">
+                                                        <div className="flex justify-center gap-2">
+                                                            <div className="w-20 flex flex-col items-center gap-1">
+                                                                <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                                                                <div className="h-2 w-12 bg-slate-100 rounded"></div>
                                                             </div>
-
-                                                            <div className={cn("w-4 h-0.5 mb-4", (r.contattato && r.preso_appuntamento) ? "bg-amber-200" : "bg-slate-100")}></div>
-
-                                                            {/* Step 2: Appuntamento */}
-                                                            <div className="flex flex-col items-center gap-1 w-20">
-                                                                <StepIcon
-                                                                    active={r.contattato && !r.preso_appuntamento}
-                                                                    completed={r.preso_appuntamento}
-                                                                    icon={Calendar}
-                                                                    colorClass="teal"
-                                                                    disabled={isEditing}
-                                                                    onClick={() => handleStepClick(r, 'APPUNTAMENTO')}
-                                                                />
-                                                                <span className={cn("text-[10px] font-medium uppercase", r.preso_appuntamento ? "text-teal-600" : "text-slate-300")}>Appuntam.</span>
+                                                            <div className="w-20 flex flex-col items-center gap-1">
+                                                                <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                                                                <div className="h-2 w-12 bg-slate-100 rounded"></div>
                                                             </div>
-
-                                                            <div className={cn("w-4 h-0.5 mb-4", (r.preso_appuntamento && r.consulenza_fatta) ? "bg-teal-200" : "bg-slate-100")}></div>
-
-                                                            {/* Step 3: Fatta */}
-                                                            <div className="flex flex-col items-center gap-1 w-20">
-                                                                <StepIcon
-                                                                    active={r.preso_appuntamento && !r.consulenza_fatta}
-                                                                    completed={r.consulenza_fatta}
-                                                                    icon={CheckCircle2}
-                                                                    colorClass="emerald"
-                                                                    disabled={isEditing}
-                                                                    onClick={() => handleStepClick(r, 'FATTA')}
-                                                                />
-                                                                <span className={cn("text-[10px] font-medium uppercase", r.consulenza_fatta ? "text-emerald-600" : "text-slate-300")}>Fatta</span>
+                                                            <div className="w-20 flex flex-col items-center gap-1">
+                                                                <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                                                                <div className="h-2 w-12 bg-slate-100 rounded"></div>
                                                             </div>
                                                         </div>
-
-                                                        {/* Date Info below stepper */}
-                                                        {r.preso_appuntamento && (
-                                                            <div className="mt-3 flex justify-center">
-                                                                {isEditing ? (
-                                                                    <input type="date" className="input-sm text-xs w-32 text-center" value={r.data_consulenza || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, data_consulenza: e.target.value } : x))} />
-                                                                ) : (
-                                                                    <div className={cn("text-xs flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50", dateClass)}>
-                                                                        <Calendar className="w-3 h-3" />
-                                                                        {formatDate(r.data_consulenza) || "Data non fissata"}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
                                                     </td>
-
-                                                    {/* ESITO */}
-                                                    <td className="py-4 align-top min-w-[200px] text-center">
-                                                        {isEditing ? (
-                                                            <div className="space-y-2">
-                                                                <select className="input-sm w-full text-xs" disabled={!r.consulenza_fatta} value={r.esito || ""}
-                                                                    onChange={e => {
-                                                                        const v = (e.target.value || null) as Item["esito"];
-                                                                        const patch: any = { esito: v };
-                                                                        if (!v || !["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(v)) patch.nuovo_abbonamento_name = null;
-                                                                        if (v !== "IN ATTESA") patch.data_risposta = "";
-                                                                        setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
-                                                                    }}
-                                                                >
-                                                                    <option value="">— Esito —</option>
-                                                                    {ESITI.map(e => <option key={e} value={e}>{e}</option>)}
-                                                                </select>
-
-                                                                {r.esito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(r.esito) && (
-                                                                    <select className="input-sm w-full text-xs" value={r.nuovo_abbonamento_name || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nuovo_abbonamento_name: e.target.value } : x))}>
-                                                                        <option value="">— Nuovo Abb —</option>
-                                                                        {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
-                                                                    </select>
-                                                                )}
-
-                                                                {r.esito === "IN ATTESA" && (
-                                                                    <input type="date" className="input-sm w-full text-xs" value={r.data_risposta || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, data_risposta: e.target.value } : x))} />
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex flex-col gap-2 items-center">
-                                                                {r.esito ? (
-                                                                    <div className="flex flex-col items-center gap-1">
-                                                                        <StatusBadge
-                                                                            label={r.esito}
-                                                                            color={
-                                                                                r.esito === "NEGATIVO" ? "red" :
-                                                                                    r.esito === "IN ATTESA" ? "amber" : "emerald"
-                                                                            }
-                                                                        />
-
-                                                                        {r.nuovo_abbonamento_name && (
-                                                                            <div className="text-xs text-slate-600 font-medium flex items-center gap-1 mt-1">
-                                                                                <ArrowRight className="w-3 h-3 text-slate-400" />
-                                                                                {r.nuovo_abbonamento_name}
-                                                                            </div>
-                                                                        )}
-
-                                                                        {r.data_risposta && (
-                                                                            <div className="text-xs text-amber-600 flex items-center gap-1 mt-1 bg-amber-50 px-1.5 py-0.5 rounded">
-                                                                                <Clock className="w-3 h-3" />
-                                                                                Risp: {formatDate(r.data_risposta)}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-300 text-xs">—</span>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                    <td className="py-4 text-center">
+                                                        <div className="h-6 bg-slate-200 rounded-full w-24 mx-auto"></div>
                                                     </td>
-
-                                                    {/* NOTE */}
-                                                    <td className="py-4 align-top max-w-[200px]">
-                                                        {isEditing ? (
-                                                            <textarea
-                                                                className="input-sm w-full text-xs min-h-[80px] resize-none"
-                                                                placeholder="Note..."
-                                                                value={r.note || ""}
-                                                                onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, note: e.target.value } : x))}
-                                                            />
-                                                        ) : (
-                                                            <div className="relative group/note">
-                                                                <div className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
-                                                                    {r.note || <span className="text-slate-300 italic">Nessuna nota</span>}
-                                                                </div>
-                                                                {r.note && r.note.length > 50 && (
-                                                                    <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover/note:opacity-100 transition-opacity z-50 pointer-events-none">
-                                                                        {r.note}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                    <td className="py-4">
+                                                        <div className="h-4 bg-slate-100 rounded w-full max-w-[200px]"></div>
                                                     </td>
+                                                    <td className="py-4 pr-4 rounded-r-xl text-right">
+                                                        <div className="h-8 w-8 bg-slate-200 rounded-lg ml-auto"></div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            rows.length > 0 ? rows.map(r => {
+                                                const isEditing = editable(r);
 
-                                                    {/* AZIONI */}
-                                                    <td className="py-4 pr-4 rounded-r-xl align-top text-right">
-                                                        <div className="flex items-center justify-end gap-1">
+                                                // Date Logic
+                                                let dateClass = "text-slate-500";
+                                                if (r.preso_appuntamento && !r.consulenza_fatta && r.data_consulenza) {
+                                                    const d = new Date(r.data_consulenza);
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+                                                    if (d < today) {
+                                                        dateClass = "text-slate-500"; // Past = Gray
+                                                    } else {
+                                                        dateClass = "text-teal-600 font-medium"; // Future = Teal
+                                                    }
+                                                }
+
+                                                return (
+                                                    <tr key={r.id} className="group bg-white shadow-sm hover:shadow-md transition-all duration-200 rounded-xl border border-transparent hover:border-cyan-100">
+
+                                                        {/* CLIENTE */}
+                                                        <td className="py-4 pl-4 rounded-l-xl align-top max-w-[250px]">
                                                             {isEditing ? (
-                                                                <>
-                                                                    <button className="p-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors" title="Salva" onClick={() => r._isDraft ? salvaBozza(r.id) : salvaModifica(r.id)}>
-                                                                        <Check className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Annulla" onClick={() => r._isDraft ? annullaBozza(r.id) : annullaModifica(r.id)}>
-                                                                        <X className="w-4 h-4" />
-                                                                    </button>
-                                                                </>
+                                                                <div className="space-y-2">
+                                                                    <input className="input-sm w-full font-bold" placeholder="Nome" value={r.nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nome: e.target.value } : x))} />
+                                                                    <input className="input-sm w-full" placeholder="Cognome" value={r.cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, cognome: e.target.value } : x))} />
+                                                                    <input className="input-sm w-full font-mono text-xs" placeholder="Telefono" value={r.telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, telefono: e.target.value } : x))} />
+                                                                </div>
                                                             ) : (
-                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    {r.telefono && (
-                                                                        <a className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" href={`https://wa.me/${encodeURIComponent(r.telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp">
-                                                                            <MessageCircle className="w-4 h-4" />
-                                                                        </a>
-                                                                    )}
-                                                                    <button className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors" title="Modifica" onClick={() => entraInModifica(r.id)}>
-                                                                        <Pencil className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setDrawerEntry({
-                                                                                nome: r.nome,
-                                                                                cognome: r.cognome,
-                                                                                telefono: r.telefono,
-                                                                                note: r.note,
-                                                                                entry_date: r.data_consulenza
-                                                                            });
-                                                                            setDrawerOpen(true);
-                                                                        }}
-                                                                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-                                                                        title="Aggiungi in Agenda"
-                                                                    >
-                                                                        <Calendar className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors" title="Elimina" onClick={() => eliminaRiga(r.id)}>
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
+                                                                <div className="flex flex-col">
+                                                                    <div className="font-bold text-slate-800 text-sm">{cleanName(r.nome)} {cleanName(r.cognome)}</div>
+                                                                    {r.telefono ? (
+                                                                        <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded">
+                                                                            <Phone className="w-3 h-3" />
+                                                                            {r.telefono}
+                                                                        </div>
+                                                                    ) : <span className="text-slate-300 text-xs italic mt-1">Nessun telefono</span>}
                                                                 </div>
                                                             )}
+                                                        </td>
+
+                                                        {/* ABBONAMENTO */}
+                                                        <td className="py-4 align-top max-w-[200px] text-center">
+                                                            {isEditing ? (
+                                                                <div className="space-y-2">
+                                                                    <input className="input-sm w-full text-xs" placeholder="Tipo Abb." value={r.tipo_abbonamento_corrente || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, tipo_abbonamento_corrente: e.target.value } : x))} />
+                                                                    <input type="date" className="input-sm w-full text-xs" value={r.scadenza || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, scadenza: e.target.value } : x))} />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-1 items-center">
+                                                                    <div className="font-medium text-slate-700 text-sm truncate" title={r.tipo_abbonamento_corrente || ""}>
+                                                                        {cleanSubscription(r.tipo_abbonamento_corrente) || <span className="text-slate-300">—</span>}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                                        <Clock className="w-3 h-3" />
+                                                                        Scad: {formatDate(r.scadenza) || "—"}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* STATO (STEPPER) */}
+                                                        <td className="py-4 align-top min-w-[300px]">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                {/* Step 1: Contattato */}
+                                                                <div className="flex flex-col items-center gap-1 w-20">
+                                                                    <StepIcon
+                                                                        active={!r.contattato}
+                                                                        completed={r.contattato}
+                                                                        icon={MessageCircle}
+                                                                        colorClass="amber"
+                                                                        disabled={isEditing}
+                                                                        onClick={() => handleStepClick(r, 'CONTATTATO')}
+                                                                    />
+                                                                    <span className={cn("text-[10px] font-medium uppercase", r.contattato ? "text-amber-600" : "text-slate-300")}>Contattato</span>
+                                                                </div>
+
+                                                                <div className={cn("w-4 h-0.5 mb-4", (r.contattato && r.preso_appuntamento) ? "bg-amber-200" : "bg-slate-100")}></div>
+
+                                                                {/* Step 2: Appuntamento */}
+                                                                <div className="flex flex-col items-center gap-1 w-20">
+                                                                    <StepIcon
+                                                                        active={r.contattato && !r.preso_appuntamento}
+                                                                        completed={r.preso_appuntamento}
+                                                                        icon={Calendar}
+                                                                        colorClass="teal"
+                                                                        disabled={isEditing}
+                                                                        onClick={() => handleStepClick(r, 'APPUNTAMENTO')}
+                                                                    />
+                                                                    <span className={cn("text-[10px] font-medium uppercase", r.preso_appuntamento ? "text-teal-600" : "text-slate-300")}>Appuntam.</span>
+                                                                </div>
+
+                                                                <div className={cn("w-4 h-0.5 mb-4", (r.preso_appuntamento && r.consulenza_fatta) ? "bg-teal-200" : "bg-slate-100")}></div>
+
+                                                                {/* Step 3: Fatta */}
+                                                                <div className="flex flex-col items-center gap-1 w-20">
+                                                                    <StepIcon
+                                                                        active={r.preso_appuntamento && !r.consulenza_fatta}
+                                                                        completed={r.consulenza_fatta}
+                                                                        icon={CheckCircle2}
+                                                                        colorClass="emerald"
+                                                                        disabled={isEditing}
+                                                                        onClick={() => handleStepClick(r, 'FATTA')}
+                                                                    />
+                                                                    <span className={cn("text-[10px] font-medium uppercase", r.consulenza_fatta ? "text-emerald-600" : "text-slate-300")}>Fatta</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Date Info below stepper */}
+                                                            {r.preso_appuntamento && (
+                                                                <div className="mt-3 flex justify-center">
+                                                                    {isEditing ? (
+                                                                        <input type="date" className="input-sm text-xs w-32 text-center" value={r.data_consulenza || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, data_consulenza: e.target.value } : x))} />
+                                                                    ) : (
+                                                                        <div className={cn("text-xs flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50", dateClass)}>
+                                                                            <Calendar className="w-3 h-3" />
+                                                                            {formatDate(r.data_consulenza) || "Data non fissata"}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* ESITO */}
+                                                        <td className="py-4 align-top min-w-[200px] text-center">
+                                                            {isEditing ? (
+                                                                <div className="space-y-2">
+                                                                    <select className="input-sm w-full text-xs" disabled={!r.consulenza_fatta} value={r.esito || ""}
+                                                                        onChange={e => {
+                                                                            const v = (e.target.value || null) as Item["esito"];
+                                                                            const patch: any = { esito: v };
+                                                                            if (!v || !["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(v)) patch.nuovo_abbonamento_name = null;
+                                                                            if (v !== "IN ATTESA") patch.data_risposta = "";
+                                                                            setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
+                                                                        }}
+                                                                    >
+                                                                        <option value="">— Esito —</option>
+                                                                        {ESITI.map(e => <option key={e} value={e}>{e}</option>)}
+                                                                    </select>
+
+                                                                    {r.esito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(r.esito) && (
+                                                                        <select className="input-sm w-full text-xs" value={r.nuovo_abbonamento_name || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nuovo_abbonamento_name: e.target.value } : x))}>
+                                                                            <option value="">— Nuovo Abb —</option>
+                                                                            {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                                                                        </select>
+                                                                    )}
+
+                                                                    {r.esito === "IN ATTESA" && (
+                                                                        <input type="date" className="input-sm w-full text-xs" value={r.data_risposta || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, data_risposta: e.target.value } : x))} />
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-2 items-center">
+                                                                    {r.esito ? (
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <StatusBadge
+                                                                                label={r.esito}
+                                                                                color={
+                                                                                    r.esito === "NEGATIVO" ? "red" :
+                                                                                        r.esito === "IN ATTESA" ? "amber" : "emerald"
+                                                                                }
+                                                                            />
+
+                                                                            {r.nuovo_abbonamento_name && (
+                                                                                <div className="text-xs text-slate-600 font-medium flex items-center gap-1 mt-1">
+                                                                                    <ArrowRight className="w-3 h-3 text-slate-400" />
+                                                                                    {r.nuovo_abbonamento_name}
+                                                                                </div>
+                                                                            )}
+
+                                                                            {r.data_risposta && (
+                                                                                <div className="text-xs text-amber-600 flex items-center gap-1 mt-1 bg-amber-50 px-1.5 py-0.5 rounded">
+                                                                                    <Clock className="w-3 h-3" />
+                                                                                    Risp: {formatDate(r.data_risposta)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-slate-300 text-xs">—</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* NOTE */}
+                                                        <td className="py-4 align-top max-w-[200px]">
+                                                            {isEditing ? (
+                                                                <textarea
+                                                                    className="input-sm w-full text-xs min-h-[80px] resize-none"
+                                                                    placeholder="Note..."
+                                                                    value={r.note || ""}
+                                                                    onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, note: e.target.value } : x))}
+                                                                />
+                                                            ) : (
+                                                                <div className="relative group/note">
+                                                                    <div className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                                                                        {r.note || <span className="text-slate-300 italic">Nessuna nota</span>}
+                                                                    </div>
+                                                                    {r.note && r.note.length > 50 && (
+                                                                        <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover/note:opacity-100 transition-opacity z-50 pointer-events-none">
+                                                                            {r.note}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* AZIONI */}
+                                                        <td className="py-4 pr-4 rounded-r-xl align-top text-right">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                {isEditing ? (
+                                                                    <>
+                                                                        <button className="p-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors" title="Salva" onClick={() => r._isDraft ? salvaBozza(r.id) : salvaModifica(r.id)}>
+                                                                            <Check className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Annulla" onClick={() => r._isDraft ? annullaBozza(r.id) : annullaModifica(r.id)}>
+                                                                            <X className="w-4 h-4" />
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        {r.telefono && (
+                                                                            <a className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" href={`https://wa.me/${encodeURIComponent(r.telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp">
+                                                                                <MessageCircle className="w-4 h-4" />
+                                                                            </a>
+                                                                        )}
+                                                                        <button className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors" title="Modifica" onClick={() => entraInModifica(r.id)}>
+                                                                            <Pencil className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setDrawerEntry({
+                                                                                    nome: r.nome,
+                                                                                    cognome: r.cognome,
+                                                                                    telefono: r.telefono,
+                                                                                    note: r.note,
+                                                                                    entry_date: r.data_consulenza
+                                                                                });
+                                                                                setDrawerOpen(true);
+                                                                            }}
+                                                                            className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                                                                            title="Aggiungi in Agenda"
+                                                                        >
+                                                                            <Calendar className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors" title="Elimina" onClick={() => eliminaRiga(r.id)}>
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }) : (
+                                                <tr>
+                                                    <td colSpan={6} className="py-20 text-center">
+                                                        <div className="flex flex-col items-center gap-4 text-slate-300">
+                                                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
+                                                                <Search className="w-10 h-10" />
+                                                            </div>
+                                                            <div className="text-lg font-medium text-slate-500">Nessun risultato trovato</div>
+                                                            <p className="text-sm">Prova a cambiare i filtri o aggiungi un nuovo cliente.</p>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            );
-                                        }) : (
-                                            <tr>
-                                                <td colSpan={6} className="py-20 text-center">
-                                                    <div className="flex flex-col items-center gap-4 text-slate-300">
-                                                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center">
-                                                            <Search className="w-10 h-10" />
-                                                        </div>
-                                                        <div className="text-lg font-medium text-slate-500">Nessun risultato trovato</div>
-                                                        <p className="text-sm">Prova a cambiare i filtri o aggiungi un nuovo cliente.</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
