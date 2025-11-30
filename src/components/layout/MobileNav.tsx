@@ -71,7 +71,7 @@ export default function MobileNav() {
 
                 {/* Centered Logo */}
                 <div className="flex items-center justify-center">
-                    <img src="/logo-restart.png" alt="Restart" className="h-8 w-auto object-contain" />
+                    <img src="/app-logo.png" alt="Restart" className="h-10 w-auto object-contain" />
                 </div>
 
                 {/* Burger Menu Button */}

@@ -117,6 +117,7 @@ export default function EntryCard({
               onOutcomeClick={(type) => onOutcomeClick?.(type, row)}
               size="md"
               showLabels={true}
+              section={row.section}
             />
           </div>
         )}

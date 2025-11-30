@@ -67,10 +67,10 @@ export default function DashboardMobile({
     const router = useRouter();
     const [notesOpen, setNotesOpen] = useState(false);
 
-    const showDailyTasks = todayEntries.filter(e => e.section !== "TOUR SPONTANEI").length > 0;
+    const showDailyTasks = true;
     const showMedicalReminders = medicalAppointments.length > 0;
-    const showPassDelivery = passDeliveryCount > 0;
-    const showAbsentTask = absentEntries && absentEntries.length > 0;
+    const showPassDelivery = true;
+    const showAbsentTask = true;
 
     return (
         <div className="space-y-6 pb-24 animate-in-fade-in">

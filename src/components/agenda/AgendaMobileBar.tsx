@@ -25,7 +25,7 @@ export default function AgendaMobileBar({ activeSection, onSelect, onNewClick }:
     return createPortal(
         <>
             {/* Bottom Bar (Fixed to Viewport) */}
-            <div className="fixed bottom-16 left-0 right-0 z-[90] bg-[#21b5ba] border-t border-[#1a9296] shadow-[0_-4px_6px_-1px_rgba(33,181,186,0.2)] md:hidden flex items-center justify-between px-4 py-2 h-[72px]">
+            <div className="fixed bottom-0 left-0 right-0 z-[90] bg-[#21b5ba] border-t border-[#1a9296] shadow-[0_-4px_6px_-1px_rgba(33,181,186,0.2)] md:hidden flex items-center justify-between px-4 py-2 h-[72px]">
                 {/* Section Selector Trigger */}
                 <button
                     onClick={() => setIsOpen(true)}

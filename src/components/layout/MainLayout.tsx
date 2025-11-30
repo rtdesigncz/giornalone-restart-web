@@ -21,7 +21,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:pt-0 md:pb-0">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden pt-16 md:pt-0 md:pb-0">
                 {/* Desktop TopBar - Hidden on Mobile - REMOVED as requested */}
                 {/* <div className="hidden md:block">
                     <Suspense fallback={<div className="h-16 bg-white/50 border-b border-slate-200" />}>

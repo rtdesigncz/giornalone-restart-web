@@ -682,8 +682,8 @@ export default function ConsulenzeClientV2() {
                 <div className="max-w-[1600px] mx-auto px-4 py-3">
                     <div className="flex flex-col gap-3">
                         {/* Top Bar: Title + Gestione + Search + Main Actions */}
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center justify-between sm:justify-start gap-4">
                                 <div className="flex items-center gap-2">
                                     <h1 className="text-xl font-bold text-slate-800 hidden sm:block">Consulenze</h1>
                                 </div>
@@ -691,10 +691,10 @@ export default function ConsulenzeClientV2() {
                                 <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
                                 {/* Gestione Selector */}
-                                <div className="flex items-center gap-2">
-                                    <div className="relative group">
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <div className="relative group flex-1 sm:flex-none">
                                         <select
-                                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold min-w-[180px] transition-all hover:border-cyan-300 cursor-pointer"
+                                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold w-full sm:w-auto sm:min-w-[180px] transition-all hover:border-cyan-300 cursor-pointer"
                                             value={gestioneId}
                                             onChange={(e) => setGestioneId(e.target.value)}
                                         >
@@ -705,7 +705,7 @@ export default function ConsulenzeClientV2() {
                                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-cyan-500 transition-colors" />
                                     </div>
 
-                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm shrink-0">
                                         <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Nuova Gestione" onClick={creaGestione}>
                                             <Plus className="w-3.5 h-3.5" />
                                         </button>
@@ -720,42 +720,44 @@ export default function ConsulenzeClientV2() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 max-w-md relative group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
-                                <input
-                                    type="text"
-                                    placeholder="Cerca cliente..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
-                                    value={q}
-                                    onChange={e => setQ(e.target.value)}
-                                />
-                            </div>
+                            <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 sm:justify-end">
+                                <div className="flex-1 sm:max-w-md relative group">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
+                                    <input
+                                        type="text"
+                                        placeholder="Cerca cliente..."
+                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                                        value={q}
+                                        onChange={e => setQ(e.target.value)}
+                                    />
+                                </div>
 
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setShowFilters(!showFilters)}
-                                    className={cn(
-                                        "p-2 rounded-lg border transition-all relative",
-                                        showFilters ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                    )}
-                                >
-                                    <Filter className="w-4 h-4" />
-                                    {(fContattati || fAppuntamenti || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
-                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setShowImport(true)}
-                                    className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-                                >
-                                    <Upload className="w-4 h-4" /> Importa
-                                </button>
-                                <button
-                                    onClick={aggiungiRiga}
-                                    className="btn btn-brand"
-                                >
-                                    <Plus className="w-4 h-4" /> Nuovo
-                                </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={() => setShowFilters(!showFilters)}
+                                        className={cn(
+                                            "p-2 rounded-lg border transition-all relative",
+                                            showFilters ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        <Filter className="w-4 h-4" />
+                                        {(fContattati || fAppuntamenti || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
+                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowImport(true)}
+                                        className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Upload className="w-4 h-4" /> Importa
+                                    </button>
+                                    <button
+                                        onClick={aggiungiRiga}
+                                        className="btn btn-brand whitespace-nowrap"
+                                    >
+                                        <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nuovo</span><span className="sm:hidden">Nuovo</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -804,9 +806,7 @@ export default function ConsulenzeClientV2() {
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* KPI RIBBON */}
+            </div>                {/* KPI RIBBON */}
             <div className="flex items-center gap-4 px-4 md:gap-8 md:px-8 py-3 bg-white border-b border-slate-200 text-sm overflow-x-auto shrink-0 shadow-sm">
                 <div className="flex items-center gap-2.5">
                     <div className="p-1.5 bg-slate-100 rounded-md text-slate-500">
@@ -840,10 +840,10 @@ export default function ConsulenzeClientV2() {
                         </div>
                     ))}
                 </div>
-            </div >
+            </div>
 
             {/* MAIN TABLE AREA */}
-            < div className="flex-1 overflow-auto relative bg-slate-50 p-6" >
+            <div className="flex-1 overflow-auto relative bg-slate-50 p-6" >
 
                 {
                     err && (
@@ -1315,9 +1315,8 @@ export default function ConsulenzeClientV2() {
                                 })}
                             </div>
                         </div>
-                    )
-                }
-            </div >
+                    )}
+            </div>
 
             {/* FOOTER */}
             <div className="border-t bg-white px-4 py-2 text-xs text-slate-400 flex justify-between items-center shrink-0">
@@ -1325,10 +1324,9 @@ export default function ConsulenzeClientV2() {
             </div>
 
             {/* AGENDA DRAWER */}
-            < EntryDrawer
+            <EntryDrawer
                 isOpen={drawerOpen}
-                onClose={() => setDrawerOpen(false)
-                }
+                onClose={() => setDrawerOpen(false)}
                 entry={null}
                 section="TOUR SPONTANEI"
                 date={new Date().toISOString().slice(0, 10)}
@@ -1337,6 +1335,6 @@ export default function ConsulenzeClientV2() {
                 allowSectionChange={true}
                 {...((drawerEntry && { entry: { ...drawerEntry, id: "new" } }) || {})}
             />
-        </div >
+        </div>
     );
 }
