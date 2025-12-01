@@ -157,7 +157,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/settings/consulente/delete", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `id = ${encodeURIComponent(id)} `,
+      body: `id=${encodeURIComponent(id)}`,
     });
     if (!res.ok) {
       alert(
@@ -209,7 +209,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/settings/tipo/delete", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `id = ${encodeURIComponent(id)} `,
+      body: `id=${encodeURIComponent(id)}`,
     });
     if (!res.ok) {
       alert(`Errore eliminazione: ${(await res.json()).error ?? res.statusText} `);

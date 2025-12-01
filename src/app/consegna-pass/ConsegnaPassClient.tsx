@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
+import { cleanPhone } from "@/lib/whatsapp";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 
 type Gestione = { id: string; nome: string; descrizione?: string | null };
@@ -503,7 +504,7 @@ Se la risposta è sì, puoi lasciarci il suo contatto, ci farebbe piacere farci 
 
 Che ne pensi? Facci sapere, grazie di cuore!`;
 
-                                                                            const link = `https://wa.me/${r.cliente_telefono.replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`;
+                                                                            const link = `https://wa.me/${cleanPhone(r.cliente_telefono)}?text=${encodeURIComponent(msg)}`;
                                                                             window.open(link, '_blank');
 
                                                                             // Update sent date
@@ -629,7 +630,7 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                                                             ) : (
                                                                 <>
                                                                     {r.referral_telefono && (
-                                                                        <a className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" href={`https://wa.me/${encodeURIComponent(r.referral_telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp Referral">
+                                                                        <a className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors" href={`https://wa.me/${cleanPhone(r.referral_telefono)}`} target="_blank" rel="noreferrer" title="WhatsApp Referral">
                                                                             <MessageCircle className="w-4 h-4" />
                                                                         </a>
                                                                     )}
