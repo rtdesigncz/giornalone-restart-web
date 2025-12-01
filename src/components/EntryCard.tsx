@@ -1,7 +1,7 @@
 // src/components/EntryCard.tsx
 "use client";
 
-import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle, Copy, Users } from "lucide-react";
+import { Phone, MessageCircle, Pencil, Trash2, CheckCircle, XCircle, Copy, Users, Check } from "lucide-react";
 
 type Entry = {
   id: string;
@@ -80,11 +80,24 @@ export default function EntryCard({
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="text-[16px] font-bold text-slate-900 leading-tight">
             {row.nome ?? ""} {row.cognome ?? ""}
+            {row.whatsapp_sent && (
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
+                <MessageCircle size={10} className="fill-emerald-600" />
+                CONFERMA INVIATA
+              </div>
+            )}
           </div>
-          {!isTelefonici && ora && (
-            <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">
-              {ora}
-            </span>
+          {ora && (
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">
+                {ora}
+              </span>
+              {row.whatsapp_sent && (
+                <div title="Conferma inviata">
+                  <Check size={16} className="text-emerald-500" strokeWidth={3} />
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -140,10 +153,10 @@ export default function EntryCard({
       {/* Bottom Actions Row */}
       <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
         <button
-          className={`h-11 flex-1 rounded-xl flex items-center justify-center border transition-all active:scale-95 ${row.whatsapp_sent ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-white border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600"}`}
+          className="h-11 flex-1 rounded-xl flex items-center justify-center border transition-all active:scale-95 bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
           onClick={() => onWhatsapp(row)}
         >
-          {row.whatsapp_sent ? <CheckCircle size={20} /> : <MessageCircle size={20} />}
+          <MessageCircle size={20} />
         </button>
 
         <button

@@ -117,13 +117,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
         if (!link) return;
 
         window.open(link, "_blank");
-
-        if (!row.whatsapp_sent) {
-            const success = await markWhatsAppSent(row.id);
-            if (success) {
-                setRows(prev => prev.map(r => r.id === row.id ? { ...r, whatsapp_sent: true } : r));
-            }
-        }
+        // Generic button does NOT mark as sent anymore
     };
 
     const handleCallClick = (row: any) => {

@@ -94,15 +94,24 @@ export function useOutcomeManager(onUpdate: () => void) {
             setEntryToMiss({ ...reschedulePopup.entry, wasPresent }); // Store wasPresent for later
             setRescheduleEntryData({
                 ...reschedulePopup.entry,
-                nome: reschedulePopup.entry.nome,
-                cognome: reschedulePopup.entry.cognome,
-                telefono: reschedulePopup.entry.telefono,
-                section: reschedulePopup.entry.section, // Keep same section
-                note: `Riprogrammato da Miss il ${new Date().toLocaleDateString()}`
+                id: "new", // Treat as new entry
+                // Reset outcomes for the new copy
+                miss: false,
+                venduto: false,
+                presentato: false,
+                negativo: false,
+                assente: false,
+                comeback: false,
+                contattato: false,
+                // Clear time to force selection
+                entry_time: "",
+                note: `Riprogrammato da Miss il ${new Date().toLocaleDateString()}. ${reschedulePopup.entry.note ? `Note prec: ${reschedulePopup.entry.note}` : ""}`,
+                // Reset WhatsApp status
+                whatsapp_sent: false,
+                whatsapp_sent_date: null
             });
             setRescheduleDrawerOpen(true);
         } else {
-            // Cancel action (shouldn't happen with new UI, but safe fallback)
             setReschedulePopup({ open: false, entry: null });
         }
         setReschedulePopup({ open: false, entry: null });
@@ -116,13 +125,15 @@ export function useOutcomeManager(onUpdate: () => void) {
 
     const onRescheduleSaved = async () => {
         if (entryToMiss) {
-            await updateEntry(entryToMiss.id, {
+            // Direct update to avoid updateEntry's mutual exclusivity logic
+            await supabase.from("entries").update({
                 miss: true,
-                assente: false,
-                presentato: entryToMiss.wasPresent || false, // Use stored state
+                presentato: entryToMiss.wasPresent || false,
+                assente: !entryToMiss.wasPresent,
                 venduto: false,
                 negativo: false
-            });
+            }).eq("id", entryToMiss.id);
+
             setEntryToMiss(null);
         }
         setRescheduleDrawerOpen(false);
@@ -144,7 +155,6 @@ export function useOutcomeManager(onUpdate: () => void) {
         confirmSale,
         confirmMiss,
         confirmAbsent,
-        onRescheduleSaved,
-        setRescheduleDrawerOpen // Needed for closing drawer
+        onRescheduleSaved
     };
 }

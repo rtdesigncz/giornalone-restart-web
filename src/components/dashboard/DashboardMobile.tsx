@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, ArrowUpRight, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
+import { Users, Phone, CalendarCheck, TrendingUp, Plus, CheckCircle, ArrowUpRight, ChevronDown, ChevronUp, MessageCircle, Check } from "lucide-react";
 import StatCard from "./StatCard";
 import Link from "next/link";
 import { useState } from "react";
@@ -19,6 +19,8 @@ import PassDeliveryTask from "./PassDeliveryTask";
 import AbsentTask from "./AbsentTask";
 import MotivationalQuote from "./MotivationalQuote";
 
+import ConfirmationListPopup from "./ConfirmationListPopup";
+
 interface DashboardMobileProps {
     stats: any;
     loading: boolean;
@@ -30,6 +32,7 @@ interface DashboardMobileProps {
     handleCompleteCall: (id: string) => void;
     handleOutcomeClick: (type: string, entry: any) => void;
     handleWhatsApp: (entry: any) => void;
+    handleConfirmSent: (entry: any) => void;
     setDrawerOpen: (open: boolean) => void;
     drawerOpen: boolean;
     fetchDashboardData: () => void;
@@ -53,6 +56,7 @@ export default function DashboardMobile({
     handleCompleteCall,
     handleOutcomeClick,
     handleWhatsApp,
+    handleConfirmSent,
     setDrawerOpen,
     drawerOpen,
     fetchDashboardData,
@@ -66,11 +70,24 @@ export default function DashboardMobile({
 }: DashboardMobileProps) {
     const router = useRouter();
     const [notesOpen, setNotesOpen] = useState(false);
+    const [confirmationPopupOpen, setConfirmationPopupOpen] = useState(false);
 
     const showDailyTasks = true;
     const showMedicalReminders = medicalAppointments.length > 0;
     const showPassDelivery = true;
     const showAbsentTask = true;
+
+    // Filter for appointments that typically need reminders (Same logic as DailyTasks)
+    const dailyTaskEntries = todayEntries.filter(e => {
+        if (e.section === "TOUR SPONTANEI") return false;
+        if (e.section === "APPUNTAMENTI TELEFONICI") return false;
+
+        // Logic: Show reminder ONLY if created BEFORE 06:30 of the appointment date.
+        const cutoff = new Date(`${e.entry_date}T06:30:00`);
+        const created = new Date(e.created_at);
+
+        return created < cutoff;
+    });
 
     return (
         <div className="space-y-6 pb-24 animate-in-fade-in">
@@ -188,16 +205,22 @@ export default function DashboardMobile({
                                                 onClick={(e) => { e.stopPropagation(); handleWhatsApp(entry); }}
                                                 className={cn(
                                                     "p-2 rounded-full transition-all border shadow-sm",
-                                                    entry.whatsapp_sent
-                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                                        : "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white"
+                                                    "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white"
                                                 )}
                                             >
-                                                {entry.whatsapp_sent ? <CheckCircle size={16} /> : <MessageCircle size={16} />}
+                                                <MessageCircle size={16} />
                                             </button>
                                         )}
                                     </div>
-                                    <h3 className="font-bold text-slate-900 text-lg mb-1">{entry.nome} {entry.cognome}</h3>
+                                    <h3 className="font-bold text-slate-900 text-lg mb-1">
+                                        {entry.nome} {entry.cognome}
+                                        {entry.whatsapp_sent && (
+                                            <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
+                                                <MessageCircle size={10} className="fill-emerald-600" />
+                                                CONFERMA INVIATA
+                                            </div>
+                                        )}
+                                    </h3>
                                     <div className="flex items-center gap-3 text-sm text-slate-500 mb-3">
                                         <span className="flex items-center gap-1"><Users size={12} /> {entry.consulente_name || "N/D"}</span>
                                     </div>
@@ -228,7 +251,7 @@ export default function DashboardMobile({
 
             {/* 3. Vertical Stack Widgets (Tasks) */}
             <div className="space-y-4">
-                {showDailyTasks && <DailyTasks entries={todayEntries} />}
+                {showDailyTasks && <DailyTasks entries={todayEntries} onClick={() => setConfirmationPopupOpen(true)} />}
                 {showPassDelivery && <PassDeliveryTask count={passDeliveryCount} />}
                 {showAbsentTask && <AbsentTask count={absentEntries.length} onClick={() => setAbsentListOpen(true)} />}
                 {showMedicalReminders && <MedicalReminders appointments={medicalAppointments} />}
@@ -260,6 +283,13 @@ export default function DashboardMobile({
                 onSave={onRescheduleSaved}
                 onDelete={() => { }}
                 allowSectionChange={true}
+            />
+
+            <ConfirmationListPopup
+                isOpen={confirmationPopupOpen}
+                onClose={() => setConfirmationPopupOpen(false)}
+                entries={dailyTaskEntries}
+                onConfirm={handleConfirmSent}
             />
         </div>
     );

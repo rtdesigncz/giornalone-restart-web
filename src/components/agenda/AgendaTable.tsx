@@ -4,7 +4,7 @@ import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy } from "lucide-react";
+import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
@@ -113,18 +113,11 @@ export default function AgendaTable({ section }: { section: string }) {
     };
 
     const handleWhatsAppClick = async (row: any) => {
-        const link = getWhatsAppLink(row);
+        const link = getWhatsAppLink(row, true); // Use empty message
         if (!link) return;
 
         window.open(link, "_blank");
-
-        // Mark as sent if not already
-        if (!row.whatsapp_sent) {
-            const success = await markWhatsAppSent(row.id);
-            if (success) {
-                setRows(prev => prev.map(r => r.id === row.id ? { ...r, whatsapp_sent: true } : r));
-            }
-        }
+        // Generic button does NOT mark as sent anymore
     };
 
     return (
@@ -193,7 +186,16 @@ export default function AgendaTable({ section }: { section: string }) {
                                         </td>
                                         <td className="py-4 px-6">
                                             <div className="font-bold text-slate-800 text-sm group-hover:text-brand transition-colors">{row.nome} {row.cognome}</div>
-                                            <div className="text-xs text-slate-400 md:hidden mt-0.5">{row.consulente?.name}</div>
+                                            {row.whatsapp_sent && (
+                                                <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
+                                                    <MessageCircle size={10} className="fill-emerald-600" />
+                                                    CONFERMA INVIATA
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                                <span className="flex items-center gap-1"><Users size={12} /> {row.consulente?.name || "N/D"}</span>
+                                                {row.tipo_abbonamento?.name && <span className="text-brand-ink font-medium">• {row.tipo_abbonamento.name}</span>}
+                                            </div>
                                         </td>
                                         <td className="py-4 px-6 text-sm text-slate-600 hidden md:table-cell">
                                             {row.consulente?.name ? (
@@ -241,20 +243,18 @@ export default function AgendaTable({ section }: { section: string }) {
                                         </td>
                                         <td className="py-4 px-6 text-right" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {row.telefono && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleWhatsAppClick(row); }}
-                                                        className={cn(
-                                                            "p-2 rounded-lg transition-colors border",
-                                                            row.whatsapp_sent
-                                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
-                                                                : "bg-green-50 text-green-600 hover:bg-green-100 border-green-100"
-                                                        )}
-                                                        title={row.whatsapp_sent ? "WhatsApp Inviato" : "Invia WhatsApp"}
-                                                    >
-                                                        {row.whatsapp_sent ? <Check size={14} /> : <MessageCircle size={14} />}
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); if (row.telefono) handleWhatsAppClick(row); }}
+                                                    disabled={!row.telefono}
+                                                    className={cn(
+                                                        "p-2 rounded-lg transition-colors border",
+                                                        !row.telefono ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed" :
+                                                            "bg-green-50 text-green-600 hover:bg-green-100 border-green-100"
+                                                    )}
+                                                    title={!row.telefono ? "Nessun telefono" : "Apri WhatsApp"}
+                                                >
+                                                    <MessageCircle size={14} />
+                                                </button>
                                                 <button
                                                     onClick={() => handleDuplicate(row)}
                                                     className="p-2 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors border border-slate-200"

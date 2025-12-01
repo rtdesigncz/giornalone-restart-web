@@ -105,6 +105,9 @@ export default function EntryDrawer({
                         assente: false,
                         comeback: false,
                         contattato: false,
+                        // Reset WhatsApp status
+                        whatsapp_sent: false,
+                        whatsapp_sent_date: null
                     });
                 } else {
                     setFormData({ ...entry });
@@ -228,6 +231,8 @@ export default function EntryDrawer({
                     assente: false,
                     comeback: false,
                     contattato: false,
+                    whatsapp_sent: false,
+                    whatsapp_sent_date: null
                 } : { ...entry }) : undefined}
             />
         );

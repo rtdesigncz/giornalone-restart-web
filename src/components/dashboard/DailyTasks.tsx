@@ -4,9 +4,10 @@ import Link from "next/link";
 
 interface DailyTasksProps {
     entries: any[];
+    onClick: () => void;
 }
 
-export default function DailyTasks({ entries }: DailyTasksProps) {
+export default function DailyTasks({ entries, onClick }: DailyTasksProps) {
     // Filter for appointments that typically need reminders
     // Excluding 'TOUR SPONTANEI' as they are walk-ins and don't need reminders.
     const reminderEntries = entries.filter(e => {
@@ -84,15 +85,9 @@ export default function DailyTasks({ entries }: DailyTasksProps) {
                 I will keep the button but maybe disable it or make it "Vedi Agenda" always.
             */}
             <div className="h-[34px]">
-                {pending > 0 ? (
-                    <Link href="/agenda" className="btn btn-outline border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 w-full justify-center text-xs h-full">
-                        Vai all'Agenda
-                    </Link>
-                ) : (
-                    <Link href="/agenda" className="btn btn-outline border-slate-200 text-slate-400 hover:bg-slate-50 w-full justify-center text-xs h-full">
-                        Vai all'Agenda
-                    </Link>
-                )}
+                <button onClick={onClick} className="btn btn-outline border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 w-full justify-center text-xs h-full">
+                    Vedi Lista
+                </button>
             </div>
         </div>
     );

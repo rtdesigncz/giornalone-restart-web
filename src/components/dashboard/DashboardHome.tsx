@@ -25,6 +25,7 @@ import PassDeliveryTask from "./PassDeliveryTask";
 import MotivationalQuote from "./MotivationalQuote";
 import AbsentTask from "./AbsentTask";
 import AbsentListPopup from "./AbsentListPopup";
+import ConfirmationListPopup from "./ConfirmationListPopup";
 
 // Helper
 export default function DashboardHome() {
@@ -60,6 +61,34 @@ export default function DashboardHome() {
     const [absentListOpen, setAbsentListOpen] = useState(false);
     const [absentRescheduleDrawerOpen, setAbsentRescheduleDrawerOpen] = useState(false);
     const [absentRescheduleEntry, setAbsentRescheduleEntry] = useState<any | null>(null);
+
+    // Confirmation Popup State
+    const [confirmationPopupOpen, setConfirmationPopupOpen] = useState(false);
+
+    // Filter for appointments that typically need reminders (Same logic as DailyTasks)
+    const dailyTaskEntries = todayEntries.filter(e => {
+        if (e.section === "TOUR SPONTANEI") return false;
+        if (e.section === "APPUNTAMENTI TELEFONICI") return false;
+
+        // Logic: Show reminder ONLY if created BEFORE 06:30 of the appointment date.
+        const cutoff = new Date(`${e.entry_date}T06:30:00`);
+        const created = new Date(e.created_at);
+
+        return created < cutoff;
+    });
+
+    const handleConfirmSent = async (entry: any) => {
+        const link = getWhatsAppLink(entry);
+        if (!link) return alert("Numero non valido.");
+        window.open(link, "_blank");
+
+        if (!entry.whatsapp_sent) {
+            const success = await markWhatsAppSent(entry.id);
+            if (success) {
+                setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, whatsapp_sent: true } : e));
+            }
+        }
+    };
 
     const fetchDashboardData = async () => {
         const today = getLocalDateISO();
@@ -323,16 +352,10 @@ export default function DashboardHome() {
         .sort((a, b) => (b.entry_time || "").localeCompare(a.entry_time || "")); // Recent first
 
     const handleWhatsApp = async (entry: any) => {
-        const link = getWhatsAppLink(entry);
+        const link = getWhatsAppLink(entry, true); // Use empty message
         if (!link) return alert("Numero non valido.");
         window.open(link, "_blank");
-
-        if (!entry.whatsapp_sent) {
-            const success = await markWhatsAppSent(entry.id);
-            if (success) {
-                setTodayEntries(prev => prev.map(e => e.id === entry.id ? { ...e, whatsapp_sent: true } : e));
-            }
-        }
+        // Generic button does NOT mark as sent anymore
     };
 
     // Load subscription types for SalePopup
@@ -467,6 +490,7 @@ export default function DashboardHome() {
                     passDeliveryCount={passDeliveryCount}
                     absentEntries={absentEntries}
                     setAbsentListOpen={setAbsentListOpen}
+                    handleConfirmSent={handleConfirmSent}
                 />
             </div>
 
@@ -546,7 +570,7 @@ export default function DashboardHome() {
 
                 {/* PRIORITY TASKS ROW */}
                 <div className={`grid ${gridColsClass} gap-6`}>
-                    {showDailyTasks && <DailyTasks entries={todayEntries} />}
+                    {showDailyTasks && <DailyTasks entries={todayEntries} onClick={() => setConfirmationPopupOpen(true)} />}
 
                     {showPassDelivery && (
                         <PassDeliveryTask count={passDeliveryCount} />
@@ -639,7 +663,15 @@ export default function DashboardHome() {
 
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <h4 className="font-bold text-slate-900 truncate text-lg">{entry.nome} {entry.cognome}</h4>
+                                                        <h4 className="font-bold text-slate-900 text-lg leading-tight">
+                                                            {entry.nome} {entry.cognome}
+                                                            {entry.whatsapp_sent && (
+                                                                <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
+                                                                    <MessageCircle size={10} className="fill-emerald-600" />
+                                                                    CONFERMA INVIATA
+                                                                </div>
+                                                            )}
+                                                        </h4>
                                                         <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wide border border-slate-200">
                                                             {getSectionLabel(entry.section)}
                                                         </span>
@@ -656,13 +688,11 @@ export default function DashboardHome() {
                                                             onClick={(e) => { e.stopPropagation(); handleWhatsApp(entry); }}
                                                             className={cn(
                                                                 "p-2.5 rounded-xl transition-all border",
-                                                                entry.whatsapp_sent
-                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                                                    : "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white hover:shadow-md hover:shadow-green-200"
+                                                                "bg-green-50 text-green-600 border-green-100 hover:bg-green-500 hover:text-white hover:shadow-md hover:shadow-green-200"
                                                             )}
-                                                            title={entry.whatsapp_sent ? "WhatsApp Inviato" : "Invia WhatsApp"}
+                                                            title="Apri WhatsApp"
                                                         >
-                                                            {entry.whatsapp_sent ? <Check size={18} /> : <MessageCircle size={18} />}
+                                                            <MessageCircle size={18} />
                                                         </button>
                                                     )}
 
@@ -707,7 +737,7 @@ export default function DashboardHome() {
                                             <div key={entry.id} className="group flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-100 opacity-75 hover:opacity-100 transition-opacity">
                                                 <div className={cn(
                                                     "w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm",
-                                                    entry.venduto ? "bg-emerald-500" : entry.negativo ? "bg-amber-500" : entry.miss ? "bg-rose-500" : entry.assente ? "bg-yellow-400" : "bg-blue-500"
+                                                    entry.venduto ? "bg-emerald-700" : entry.negativo ? "bg-red-600" : entry.miss ? "bg-orange-500" : entry.assente ? "bg-yellow-400" : "bg-emerald-500"
                                                 )}>
                                                     {entry.venduto ? <Euro size={16} /> : entry.negativo ? <ThumbsDown size={16} /> : entry.miss ? <CalendarX size={16} /> : entry.assente ? <Ghost size={16} /> : <Check size={16} />}
                                                 </div>
@@ -802,6 +832,12 @@ export default function DashboardHome() {
                 onClose={() => setAbsentPopup({ open: false, entry: null })}
                 entry={absentPopup.entry}
                 onConfirm={confirmAbsent}
+            />
+            <ConfirmationListPopup
+                isOpen={confirmationPopupOpen}
+                onClose={() => setConfirmationPopupOpen(false)}
+                entries={dailyTaskEntries}
+                onConfirm={handleConfirmSent}
             />
 
             {/* Call Reminder Popup */}

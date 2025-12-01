@@ -23,12 +23,16 @@ export const cleanPhone = (raw?: string | null) => {
 
 export const toHHMM = (t: string | null) => t?.slice(0, 5) || "";
 
-export const getWhatsAppLink = (row: WhatsAppEntry) => {
+export const getWhatsAppLink = (row: WhatsAppEntry, emptyMessage: boolean = false) => {
     const tel = cleanPhone(row.telefono);
     if (!tel) return "";
 
     // Logic for 'TOUR SPONTANEI' and 'APPUNTAMENTI TELEFONICI' - just open chat
     if (row.section === "TOUR SPONTANEI") {
+        return `https://wa.me/${tel}`;
+    }
+
+    if (emptyMessage) {
         return `https://wa.me/${tel}`;
     }
 

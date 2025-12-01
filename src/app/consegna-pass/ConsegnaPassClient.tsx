@@ -736,12 +736,27 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                                             {/* Details Grid */}
                                             <div className="grid grid-cols-2 gap-3 text-sm">
                                                 <div className="bg-slate-50 p-2 rounded-lg">
-                                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Consegna</div>
-                                                    <div className="font-medium text-slate-700">{formatDate(r.data_consegna) || "—"}</div>
+                                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Consegna</div>
+                                                    {isEditing ? (
+                                                        <input type="date" className="input-sm w-full text-xs bg-white" value={r.data_consegna || ""} onChange={e => { const v = e.target.value; setItems(it => it.map(x => x.id === r.id ? { ...x, data_consegna: v } : x)); }} />
+                                                    ) : (
+                                                        <div className="font-medium text-slate-700">{formatDate(r.data_consegna) || "—"}</div>
+                                                    )}
                                                 </div>
                                                 <div className="bg-slate-50 p-2 rounded-lg">
-                                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Referral</div>
-                                                    <div className="font-medium text-slate-700">{r.referral_nome} {r.referral_cognome || "—"}</div>
+                                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Referral</div>
+                                                    {isEditing ? (
+                                                        <div className="space-y-1">
+                                                            <input className="input-sm w-full text-xs bg-white" placeholder="Nome" value={r.referral_nome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_nome: e.target.value } : x))} />
+                                                            <input className="input-sm w-full text-xs bg-white" placeholder="Cognome" value={r.referral_cognome || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_cognome: e.target.value } : x))} />
+                                                            <input className="input-sm w-full text-xs bg-white font-mono" placeholder="Telefono" value={r.referral_telefono || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, referral_telefono: e.target.value } : x))} />
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="font-medium text-slate-700">{r.referral_nome} {r.referral_cognome || "—"}</div>
+                                                            <div className="text-xs text-slate-500 font-mono">{r.referral_telefono}</div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 

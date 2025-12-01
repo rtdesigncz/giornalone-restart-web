@@ -105,31 +105,31 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200">
+                                        <div className="grid grid-cols-3 gap-2 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 md:flex md:items-center">
                                             {hasPhone && (
                                                 <button
                                                     onClick={() => onWhatsApp(entry)}
-                                                    className="flex-1 md:flex-none p-3 md:p-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 hover:bg-green-500 hover:text-white transition-all hover:shadow-md hover:shadow-green-200 flex md:inline-flex justify-center items-center"
+                                                    className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 hover:bg-green-500 hover:text-white transition-all hover:shadow-md hover:shadow-green-200 flex justify-center items-center"
                                                     title="Invia WhatsApp"
                                                 >
                                                     <MessageCircle size={20} className="md:w-[18px] md:h-[18px]" />
-                                                    <span className="md:hidden ml-2 font-bold text-sm">WhatsApp</span>
                                                 </button>
                                             )}
                                             <button
                                                 onClick={() => onNegative(entry)}
-                                                className="flex-1 md:flex-none p-3 md:p-2.5 rounded-xl bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white transition-all hover:shadow-md hover:shadow-red-200 flex md:inline-flex justify-center items-center"
+                                                className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white transition-all hover:shadow-md hover:shadow-red-200 flex justify-center items-center"
                                                 title="Negativo"
                                             >
                                                 <ThumbsDown size={20} className="md:w-[18px] md:h-[18px]" />
-                                                <span className="md:hidden ml-2 font-bold text-sm">Negativo</span>
                                             </button>
                                             <button
                                                 onClick={() => onReschedule(entry)}
-                                                className="flex-[2] md:flex-none px-4 py-3 md:py-2 rounded-xl bg-yellow-500 text-white font-medium text-sm hover:bg-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-200 flex md:inline-flex items-center justify-center gap-2"
+                                                className="col-span-1 md:col-auto px-4 py-3 md:py-2 rounded-xl bg-yellow-500 text-white font-medium text-sm hover:bg-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-200 flex items-center justify-center gap-2"
+                                                title="Riprogramma"
                                             >
                                                 <Calendar size={18} className="md:w-[16px] md:h-[16px]" />
-                                                Riprogramma
+                                                <span className="hidden md:inline">Riprogramma</span>
+                                                <span className="md:hidden">Ripr.</span>
                                             </button>
                                         </div>
                                     </div>
