@@ -12,7 +12,7 @@ export default function MedicalVisitsView() {
         <div className="space-y-6 animate-in-up">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Visite Mediche</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Visite Mediche</h1>
                     <p className="text-slate-500 mt-1 text-sm md:text-base">Gestisci appuntamenti con il medico e lista d'attesa.</p>
                 </div>
 

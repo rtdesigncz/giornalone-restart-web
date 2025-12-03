@@ -6,7 +6,7 @@ import { FileDown } from "lucide-react";
 
 export default function ExportReportButton() {
   const sp = useSearchParams();
-  const query = sp.toString();
+  const query = sp?.toString() ?? "";
   const href = `/api/report?${query}`;
 
   return (

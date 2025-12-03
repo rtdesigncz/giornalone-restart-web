@@ -17,7 +17,7 @@ export default function PaginationBar({
   const last = Math.max(1, Math.ceil(total / limit));
 
   const go = (p: number) => {
-    const params = new URLSearchParams(sp.toString());
+    const params = new URLSearchParams(sp?.toString() ?? "");
     params.set("page", String(p));
     router.push(`${pathname}?${params.toString()}`);
   };

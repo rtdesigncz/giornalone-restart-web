@@ -215,15 +215,19 @@ export default function DashboardHome() {
                 tipo_abbonamento:tipi_abbonamento(name)
             `)
             .eq("assente", true)
-            .not("negativo", "eq", true);
+            .not("negativo", "eq", true)
+            .not("miss", "eq", true);
 
         if (absentError) {
             console.error("Error fetching absent entries:", absentError);
             return;
         }
 
-        // Filter client-side for entries before today 06:30
+        // Filter client-side for entries before today 06:30 AND exclude those marked as (NON PRESENTATO)
         const filteredAbsent = (currentAbsent || []).filter((e: any) => {
+            // Exclude if note contains (NON PRESENTATO)
+            if (e.note && e.note.includes("(NON PRESENTATO)")) return false;
+
             // For PAST dates: include ALL absents regardless of when created
             if (e.entry_date < today) {
                 return true;
@@ -426,21 +430,22 @@ export default function DashboardHome() {
     };
 
     const handleAbsentNegative = async (entry: any) => {
-        if (!confirm("Sei sicuro che questo cliente non verrà?")) {
+        if (!confirm("Confermi che l'utente non si è presentato e vuoi rimuoverlo dalla lista recuperi?")) {
             return;
         }
 
-        // Update entry to set both assente AND negativo
+        const newNote = (entry.note ? entry.note + " " : "") + "(NON PRESENTATO)";
+
+        // Update entry: keep assente=true, do NOT set negativo=true, just update notes
         const { error } = await supabase
             .from("entries")
             .update({
-                assente: true,
-                negativo: true
+                note: newNote
             })
             .eq("id", entry.id);
 
         if (error) {
-            console.error("Error updating entry to negative:", error);
+            console.error("Error updating entry note:", error);
             alert("Errore durante l'aggiornamento.");
             return;
         }
@@ -672,13 +677,15 @@ export default function DashboardHome() {
                                                                 </div>
                                                             )}
                                                         </h4>
-                                                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wide border border-slate-200">
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wide border border-slate-200 w-fit">
                                                             {getSectionLabel(entry.section)}
                                                         </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                        <span className="flex items-center gap-1"><Users size={14} /> {entry.consulente_name || "N/D"}</span>
-                                                        {entry.telefono && <span className="flex items-center gap-1"><Phone size={14} /> {entry.telefono}</span>}
+                                                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                                                            <span className="flex items-center gap-1"><Users size={14} /> {entry.consulente_name || "N/D"}</span>
+                                                            {entry.telefono && <span className="flex items-center gap-1"><Phone size={14} /> {entry.telefono}</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
 

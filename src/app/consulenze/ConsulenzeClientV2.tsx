@@ -685,7 +685,7 @@ export default function ConsulenzeClientV2() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center justify-between sm:justify-start gap-4">
                                 <div className="flex items-center gap-2">
-                                    <h1 className="text-xl font-bold text-slate-800 hidden sm:block">Consulenze</h1>
+                                    <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">Consulenze</h1>
                                 </div>
 
                                 <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>

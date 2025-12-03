@@ -156,7 +156,59 @@ export async function GET(req: Request) {
       // Mappo anche i nomi piatti per compatibilità se servono altrove, ma il client usa .consulente.name
       consulente_name: r.consulenti?.name,
       tipo_abbonamento_name: r.tipi_abbonamento?.name,
+      conversion: null as any // Placeholder for conversion data
     }));
+
+    // --- LOOKAHEAD LOGIC ---
+    // Find entries that are NOT Sold but might have a future sale
+    const potentialConversions = normalized.filter(r => !r.venduto && r.telefono && r.telefono.length > 5);
+    const phonesToCheck = [...new Set(potentialConversions.map(r => r.telefono))];
+
+    console.log("DEBUG: Phones to check for conversion:", phonesToCheck);
+
+    if (phonesToCheck.length > 0) {
+      // Fetch ALL sales for these phones
+      // We don't filter by date here to keep it simple, we filter in memory
+      const { data: futureSales, error: salesError } = await supabase
+        .from("entries")
+        .select("telefono, entry_date, tipi_abbonamento(name)")
+        .eq("venduto", true)
+        .in("telefono", phonesToCheck);
+
+      if (salesError) console.error("DEBUG: Error fetching future sales:", salesError);
+      console.log("DEBUG: Future sales found:", futureSales);
+
+      if (futureSales && futureSales.length > 0) {
+        // Map sales by phone for faster lookup
+        // We want the EARLIEST sale that is AFTER the entry date
+        const salesByPhone: Record<string, any[]> = {};
+        futureSales.forEach((sale: any) => {
+          if (!salesByPhone[sale.telefono]) salesByPhone[sale.telefono] = [];
+          salesByPhone[sale.telefono].push(sale);
+        });
+
+        // Attach conversion info
+        normalized.forEach(row => {
+          if (row.venduto) return; // Already sold
+          if (!row.telefono || !salesByPhone[row.telefono]) return;
+
+          const sales = salesByPhone[row.telefono];
+          // Find a sale that is strictly AFTER this entry's date
+          // OR same date but created later? Let's stick to date >= row.entry_date
+          // But if it's same date, it might be the same event if we didn't filter !venduto.
+          // Since row is !venduto, any sale on >= date is a conversion.
+          const validSale = sales.find((s: any) => s.entry_date >= row.entry_date);
+
+          if (validSale) {
+            console.log(`DEBUG: Match found for ${row.telefono} on date ${row.entry_date} -> Sold on ${validSale.entry_date}`);
+            row.conversion = {
+              date: validSale.entry_date,
+              type: validSale.tipi_abbonamento?.name
+            };
+          }
+        });
+      }
+    }
 
     // 4) JSON (per la pagina Reportistica)
     if (format === "json") {

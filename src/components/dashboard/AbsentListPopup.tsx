@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { X, MessageCircle, Calendar, Phone, Clock, Users as UsersIcon, ThumbsDown } from "lucide-react";
+import { X, MessageCircle, Calendar, Phone, Clock, Users as UsersIcon, ThumbsDown, Ghost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSectionLabel } from "@/lib/sections";
 import { cleanPhone } from "@/lib/whatsapp";
@@ -72,7 +72,7 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                         className="group flex flex-col md:flex-row md:items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-yellow-300 hover:bg-yellow-50/50 transition-all animate-in-up"
                                         style={{ animationDelay: `${i * 50}ms` }}
                                     >
-                                        <div className="flex items-center gap-4 w-full md:w-auto">
+                                        <div className="flex items-center gap-4 w-full md:flex-1 min-w-0">
                                             {/* Time Badge */}
                                             <div className="w-14 h-14 rounded-xl bg-yellow-100 border border-yellow-200 flex flex-col items-center justify-center flex-shrink-0 shadow-sm">
                                                 <span className="text-[10px] font-bold uppercase text-yellow-600 leading-none mb-0.5">
@@ -105,11 +105,11 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="grid grid-cols-3 gap-2 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 md:flex md:items-center">
+                                        <div className="grid grid-cols-3 gap-2 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 md:flex md:items-center md:h-full">
                                             {hasPhone && (
                                                 <button
                                                     onClick={() => onWhatsApp(entry)}
-                                                    className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 hover:bg-green-500 hover:text-white transition-all hover:shadow-md hover:shadow-green-200 flex justify-center items-center"
+                                                    className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 hover:bg-green-500 hover:text-white transition-all hover:shadow-md hover:shadow-green-200 flex justify-center items-center h-12 md:h-10 w-full md:w-10"
                                                     title="Invia WhatsApp"
                                                 >
                                                     <MessageCircle size={20} className="md:w-[18px] md:h-[18px]" />
@@ -117,14 +117,14 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                             )}
                                             <button
                                                 onClick={() => onNegative(entry)}
-                                                className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-red-50 text-red-500 border border-red-100 hover:bg-red-500 hover:text-white transition-all hover:shadow-md hover:shadow-red-200 flex justify-center items-center"
-                                                title="Negativo"
+                                                className="col-span-1 md:col-auto p-3 md:p-2.5 rounded-xl bg-yellow-50 text-yellow-600 border border-yellow-100 hover:bg-yellow-500 hover:text-white transition-all hover:shadow-md hover:shadow-yellow-200 flex justify-center items-center h-12 md:h-10 w-full md:w-10"
+                                                title="Conferma Assenza"
                                             >
-                                                <ThumbsDown size={20} className="md:w-[18px] md:h-[18px]" />
+                                                <Ghost size={20} className="md:w-[18px] md:h-[18px]" />
                                             </button>
                                             <button
                                                 onClick={() => onReschedule(entry)}
-                                                className="col-span-1 md:col-auto px-4 py-3 md:py-2 rounded-xl bg-yellow-500 text-white font-medium text-sm hover:bg-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-200 flex items-center justify-center gap-2"
+                                                className="col-span-1 md:col-auto px-4 py-3 md:py-2 rounded-xl bg-yellow-500 text-white font-medium text-sm hover:bg-yellow-600 transition-all hover:shadow-lg hover:shadow-yellow-200 flex items-center justify-center gap-2 h-12 md:h-10 w-full md:w-auto"
                                                 title="Riprogramma"
                                             >
                                                 <Calendar size={18} className="md:w-[16px] md:h-[16px]" />

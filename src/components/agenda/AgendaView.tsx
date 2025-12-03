@@ -30,7 +30,7 @@ export default function AgendaView() {
         <div className="space-y-6 flex flex-col animate-in-up">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Agenda</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Agenda</h1>
                     <p className="text-slate-500 mt-1">Gestisci appuntamenti e attività.</p>
                 </div>
 
@@ -50,30 +50,56 @@ export default function AgendaView() {
                             <ChevronLeft size={20} />
                         </button>
 
-                        <div className="relative flex-1 flex flex-col items-center justify-center bg-white h-11 px-4 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mb-0.5">
-                                {viewMode === "calendar" ? "Settimana" : new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
-                            </span>
-                            <span className="text-sm font-bold text-slate-800 leading-none">
-                                {viewMode === "calendar" ? (() => {
-                                    const d = new Date(dateParam);
-                                    const day = d.getDay();
-                                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-                                    const start = new Date(d);
-                                    start.setDate(diff);
-                                    const end = new Date(start);
-                                    end.setDate(start.getDate() + 6);
-                                    return `${start.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`;
-                                })() : new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
-                            </span>
+                        <div className="relative flex-1 bg-white h-11 rounded-xl border border-slate-200 shadow-sm overflow-hidden group min-w-[360px]">
+                            {/* Grid Layout for Perfect Centering (Visual Layer) */}
+                            <div className="absolute inset-0 grid grid-cols-3 items-center px-2 pointer-events-none z-0">
+                                {/* Left: Empty Spacer */}
+                                <div></div>
 
-                            {/* Invisible Full-Cover Input */}
+                                {/* Center: Date Text */}
+                                <div className="flex flex-col items-center justify-center">
+                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mb-0.5 whitespace-nowrap">
+                                        {viewMode === "calendar" ? "Settimana" : new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
+                                    </span>
+                                    <span className="text-sm font-bold text-slate-800 leading-none whitespace-nowrap">
+                                        {viewMode === "calendar" ? (() => {
+                                            const d = new Date(dateParam);
+                                            const day = d.getDay();
+                                            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                                            const start = new Date(d);
+                                            start.setDate(diff);
+                                            const end = new Date(start);
+                                            end.setDate(start.getDate() + 6);
+                                            return `${start.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`;
+                                        })() : new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
+                                    </span>
+                                </div>
+
+                                {/* Right: Empty Spacer (reserves space for button) */}
+                                <div></div>
+                            </div>
+
+                            {/* Invisible Full-Cover Input (Interactive Layer) */}
                             <input
                                 type="date"
                                 value={dateParam}
                                 onChange={(e) => router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${e.target.value}`)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 appearance-none bg-transparent [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0"
                             />
+
+                            {/* "Back to Today" Button (Top Layer) */}
+                            {dateParam !== getLocalDateISO() && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent opening date picker
+                                        router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${getLocalDateISO()}`);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-brand/10 text-brand rounded-lg hover:bg-brand/20 transition-colors z-20 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+                                    title="Torna ad oggi"
+                                >
+                                    Torna ad oggi
+                                </button>
+                            )}
                         </div>
 
                         <button
@@ -88,16 +114,6 @@ export default function AgendaView() {
                             <ChevronRight size={20} />
                         </button>
                     </div>
-
-                    {/* "Today" Button */}
-                    {dateParam !== getLocalDateISO() && (
-                        <button
-                            onClick={() => router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${getLocalDateISO()}`)}
-                            className="w-full md:w-auto px-4 py-2 bg-brand/10 text-brand text-xs font-bold uppercase tracking-wide rounded-xl hover:bg-brand/20 transition-colors"
-                        >
-                            Torna ad oggi
-                        </button>
-                    )}
 
                     {/* View Mode Selector */}
                     <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full md:w-auto">

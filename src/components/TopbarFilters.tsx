@@ -15,15 +15,15 @@ export default function TopbarFilters() {
   const pathname = usePathname();
 
   // URL params
-  const scope = sp.get("scope") ?? "day";
-  const date = sp.get("date") ?? new Date().toISOString().slice(0, 10);
-  const from = sp.get("from") ?? date;
-  const to = sp.get("to") ?? date;
-  const q = sp.get("q") ?? "";
-  const consulente = sp.get("consulente") ?? "";
-  const tipo = sp.get("tipo") ?? "";
-  const miss = sp.get("miss") === "1";
-  const venduto = sp.get("venduto") === "1";
+  const scope = sp?.get("scope") ?? "day";
+  const date = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
+  const from = sp?.get("from") ?? date;
+  const to = sp?.get("to") ?? date;
+  const q = sp?.get("q") ?? "";
+  const consulente = sp?.get("consulente") ?? "";
+  const tipo = sp?.get("tipo") ?? "";
+  const miss = sp?.get("miss") === "1";
+  const venduto = sp?.get("venduto") === "1";
 
   // dati per select (ordinati per sort_order)
   const [consulenti, setConsulenti] = useState<Opt[]>([]);
@@ -60,7 +60,7 @@ export default function TopbarFilters() {
   }, []);
 
   function apply(params: Record<string, string | undefined>) {
-    const next = new URLSearchParams(sp.toString());
+    const next = new URLSearchParams(sp?.toString() ?? "");
     Object.entries(params).forEach(([k, v]) => {
       if (v === undefined || v === "") next.delete(k);
       else next.set(k, v);
@@ -69,7 +69,7 @@ export default function TopbarFilters() {
   }
 
   function resetAll() {
-    router.push(pathname);
+    router.push(pathname || "/");
     setQLocal("");
   }
 

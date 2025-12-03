@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.11",
+    "@types/pdfmake": "^0.2.12",
     "@types/react": "^18.3.3",
     "autoprefixer": "^10.4.20",
     "dotenv": "^17.2.3",

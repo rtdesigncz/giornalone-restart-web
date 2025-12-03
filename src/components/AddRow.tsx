@@ -10,8 +10,8 @@ export default function AddRow({ section }: { section: string }) {
   const sp = useSearchParams();
   const router = useRouter();
 
-  const scope = sp.get("scope") ?? "day";
-  const selectedDate = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+  const scope = sp?.get("scope") ?? "day";
+  const selectedDate = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
   const isDay = scope === "day";
 
   // --- Hooks: DEVONO venire prima di qualunque return ---

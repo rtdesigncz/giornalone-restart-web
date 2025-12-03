@@ -12,28 +12,28 @@ export async function GET() {
         const results = [];
 
         // 1. APPUNTAMENTI (Pianificazione) -> APPUNTAMENTI
-        const { error: err1, count: count1 } = await supabase
+        const { data: data1, error: err1 } = await supabase
             .from("entries")
             .update({ section: "APPUNTAMENTI" })
             .eq("section", "APPUNTAMENTI (Pianificazione)")
-            .select("id", { count: "exact" });
-        results.push({ from: "APPUNTAMENTI (Pianificazione)", to: "APPUNTAMENTI", count: count1, error: err1 });
+            .select("id");
+        results.push({ from: "APPUNTAMENTI (Pianificazione)", to: "APPUNTAMENTI", count: data1?.length ?? 0, error: err1 });
 
         // 2. APPUNTAMENTI VERIFICHE DEL BISOGNO -> VERIFICHE DEL BISOGNO
-        const { error: err2, count: count2 } = await supabase
+        const { data: data2, error: err2 } = await supabase
             .from("entries")
             .update({ section: "VERIFICHE DEL BISOGNO" })
             .eq("section", "APPUNTAMENTI VERIFICHE DEL BISOGNO")
-            .select("id", { count: "exact" });
-        results.push({ from: "APPUNTAMENTI VERIFICHE DEL BISOGNO", to: "VERIFICHE DEL BISOGNO", count: count2, error: err2 });
+            .select("id");
+        results.push({ from: "APPUNTAMENTI VERIFICHE DEL BISOGNO", to: "VERIFICHE DEL BISOGNO", count: data2?.length ?? 0, error: err2 });
 
         // 3. APPUNTAMENTI RINNOVI E INTEGRAZIONI -> RINNOVI/INTEGRAZIONI
-        const { error: err3, count: count3 } = await supabase
+        const { data: data3, error: err3 } = await supabase
             .from("entries")
             .update({ section: "RINNOVI/INTEGRAZIONI" })
             .eq("section", "APPUNTAMENTI RINNOVI E INTEGRAZIONI")
-            .select("id", { count: "exact" });
-        results.push({ from: "APPUNTAMENTI RINNOVI E INTEGRAZIONI", to: "RINNOVI/INTEGRAZIONI", count: count3, error: err3 });
+            .select("id");
+        results.push({ from: "APPUNTAMENTI RINNOVI E INTEGRAZIONI", to: "RINNOVI/INTEGRAZIONI", count: data3?.length ?? 0, error: err3 });
 
         return NextResponse.json({ success: true, results });
     } catch (e: any) {

@@ -95,7 +95,7 @@ export default function OutcomeButtons({
                         }}
                         className={cn(
                             btnBase,
-                            layout === 'grid' ? "w-full aspect-square" : sizeClasses,
+                            layout === 'grid' ? (size === 'sm' ? "w-full h-9 p-1" : "w-full aspect-square") : sizeClasses,
                             btn.isActive ? btn.activeClass : btn.inactiveClass
                         )}
                         title={btn.label}

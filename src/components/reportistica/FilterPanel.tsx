@@ -14,20 +14,20 @@ export default function FiltersBar() {
   const [consulenti, setConsulenti] = useState<Option[]>([]);
   const [tipi, setTipi] = useState<Option[]>([]);
 
-  const scope = sp.get("scope") ?? "day";
+  const scope = sp?.get("scope") ?? "day";
   const today = new Date().toISOString().slice(0, 10);
 
   const [form, setForm] = useState({
     scope,
-    date: sp.get("date") ?? today,
-    month: (sp.get("date") ?? today).slice(0, 7),
-    year: (sp.get("date") ?? today).slice(0, 4),
-    from: sp.get("from") ?? today,
-    to: sp.get("to") ?? today,
-    q: sp.get("q") ?? "",
-    consulente: sp.get("consulente") ?? "",
-    tipo: sp.get("tipo") ?? "",
-    miss: sp.get("miss") === "1",
+    date: sp?.get("date") ?? today,
+    month: (sp?.get("date") ?? today).slice(0, 7),
+    year: (sp?.get("date") ?? today).slice(0, 4),
+    from: sp?.get("from") ?? today,
+    to: sp?.get("to") ?? today,
+    q: sp?.get("q") ?? "",
+    consulente: sp?.get("consulente") ?? "",
+    tipo: sp?.get("tipo") ?? "",
+    miss: sp?.get("miss") === "1",
   });
 
   useEffect(() => {

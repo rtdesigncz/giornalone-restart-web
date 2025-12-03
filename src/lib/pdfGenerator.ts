@@ -143,7 +143,8 @@ export const generateDailyReport = async (date: string) => {
                     didParseCell: (data) => {
                         if (data.section === 'body') {
                             const row = data.row;
-                            const status = row.raw[row.raw.length - 1]; // Last column is always Status/Esito
+                            const raw = row.raw as string[];
+                            const status = raw[raw.length - 1]; // Last column is always Status/Esito
 
                             if (status === "VENDUTO") {
                                 data.cell.styles.fillColor = [209, 250, 229]; // emerald-100

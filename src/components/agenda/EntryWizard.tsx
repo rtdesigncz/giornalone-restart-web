@@ -11,7 +11,7 @@ import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 interface EntryWizardProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (savedEntry?: any) => void;
     initialData?: any;
     section?: string;
     date?: string;

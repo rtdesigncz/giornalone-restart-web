@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Save, Trash2, Copy, MessageCircle, Phone } from "lucide-react";
+import { X, Save, Trash2, Copy, MessageCircle, Phone, ChevronDown, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,14 @@ type Entry = AnyObj & { id: string };
 interface EntryDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    entry: Entry | null; // If null, it's a new entry
-    section: string;
-    date: string; // Default date for new entries
-    onSave: () => void;
-    onDelete: (id: string) => void;
+    entry?: Entry | null; // If null, it's a new entry
+    section?: string;
+    date?: string; // Default date for new entries
+    onSave?: (savedEntry?: any) => void;
+    onDelete?: (id: string) => void;
     isDuplicate?: boolean;
     allowSectionChange?: boolean;
+    initialData?: Partial<Entry>;
 }
 
 export default function EntryDrawer({
@@ -36,19 +37,23 @@ export default function EntryDrawer({
     onDelete,
     isDuplicate = false,
     allowSectionChange = false,
+    initialData
 }: EntryDrawerProps) {
     const [formData, setFormData] = useState<AnyObj>({});
     const [loading, setLoading] = useState(false);
     const [consulenti, setConsulenti] = useState<AnyObj[]>([]);
     const [tipi, setTipi] = useState<AnyObj[]>([]);
-    const [targetSection, setTargetSection] = useState(section);
+    const [targetSection, setTargetSection] = useState(section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
 
     const isNew = !entry || isDuplicate || entry.id === "new";
-    const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : section;
+    const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
     const isTelefonici = effectiveSection === "APPUNTAMENTI TELEFONICI";
 
     const [isMobile, setIsMobile] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [isSectionDropdownOpen, setIsSectionDropdownOpen] = useState(false);
+    const [isConsulenteDropdownOpen, setIsConsulenteDropdownOpen] = useState(false);
+    const [isTipoDropdownOpen, setIsTipoDropdownOpen] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -67,8 +72,19 @@ export default function EntryDrawer({
                     fetch("/api/settings/tipo/list")
                 ]);
 
-                const c = await resConsulenti.json();
-                const t = await resTipi.json();
+                const parseRes = async (res: Response) => {
+                    if (!res.ok) throw new Error(`Status: ${res.status}`);
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error("JSON Parse Error:", e, "Response text:", text);
+                        return { items: [] };
+                    }
+                };
+
+                const c = await parseRes(resConsulenti);
+                const t = await parseRes(resTipi);
 
                 setConsulenti(Array.isArray(c.items) ? c.items : []);
                 setTipi(Array.isArray(t.items) ? t.items : []);
@@ -82,22 +98,21 @@ export default function EntryDrawer({
     // Reset form when entry changes
     useEffect(() => {
         if (isOpen) {
-            setTargetSection(section);
+            setTargetSection(section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
             if (entry) {
                 if (isDuplicate) {
                     // Clean copy: only take visual fields, treat as new
                     setFormData({
                         section: targetSection,
-                        entry_date: date, // Use the passed date (usually today)
-                        entry_time: "", // Reset time for new appointment
+                        entry_date: date || new Date().toISOString().split('T')[0],
+                        entry_time: "",
                         nome: entry.nome,
                         cognome: entry.cognome,
                         telefono: entry.telefono,
-                        consulente_id: entry.consulente_id || "", // Ensure empty string if null for inputs
+                        consulente_id: entry.consulente_id || "",
                         tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
                         fonte: entry.fonte,
                         note: entry.note,
-                        // Reset all outcomes
                         miss: false,
                         venduto: false,
                         presentato: false,
@@ -105,38 +120,41 @@ export default function EntryDrawer({
                         assente: false,
                         comeback: false,
                         contattato: false,
-                        // Reset WhatsApp status
                         whatsapp_sent: false,
                         whatsapp_sent_date: null
                     });
                 } else {
+                    // Edit existing
                     setFormData({ ...entry });
                 }
-            } else {
+            } else if (initialData) {
+                // Pre-fill from initialData
                 setFormData({
-                    section,
-                    entry_date: date,
-                    entry_time: section === "TOUR SPONTANEI"
-                        ? new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
-                        : "",
-                    nome: "",
-                    cognome: "",
-                    telefono: "",
-                    consulente_id: "",
-                    tipo_abbonamento_id: "",
-                    fonte: "",
-                    note: "",
-                    miss: false,
-                    venduto: false,
-                    presentato: false,
-                    negativo: false,
-                    assente: false,
-                    comeback: false,
-                    contattato: false,
+                    section: initialData.section || section || "APPUNTAMENTI (Pianificazione)",
+                    entry_date: initialData.entry_date || date || new Date().toISOString().split('T')[0],
+                    entry_time: initialData.entry_time || "",
+                    nome: initialData.nome || "",
+                    cognome: initialData.cognome || "",
+                    telefono: initialData.telefono || "",
+                    consulente_id: initialData.consulente_id || "",
+                    tipo_abbonamento_id: initialData.tipo_abbonamento_id || "",
+                    fonte: initialData.fonte || "",
+                    note: initialData.note || "",
+                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
+                });
+            } else {
+                // New empty entry
+                setFormData({
+                    section: section || "APPUNTAMENTI (Pianificazione)",
+                    entry_date: date || new Date().toISOString().split('T')[0],
+                    entry_time: "",
+                    nome: "", cognome: "", telefono: "", consulente_id: "", tipo_abbonamento_id: "", fonte: "", note: "",
+                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
                 });
             }
         }
-    }, [isOpen, entry, section, date, isDuplicate]);
+    }, [isOpen, entry, section, date, isDuplicate, initialData]);
+
 
     const handleChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -194,7 +212,7 @@ export default function EntryDrawer({
                 const { error } = await supabase.from("entries").update(payload).eq("id", entry.id);
                 if (error) throw error;
             }
-            onSave();
+            if (onSave) onSave(payload);
             onClose();
         } catch (e: any) {
             alert("Errore salvataggio: " + e.message);
@@ -210,7 +228,7 @@ export default function EntryDrawer({
             <EntryWizard
                 isOpen={isOpen}
                 onClose={onClose}
-                onSave={onSave}
+                onSave={handleSave}
                 section={effectiveSection}
                 date={date}
                 initialData={entry ? (isDuplicate ? {
@@ -233,7 +251,7 @@ export default function EntryDrawer({
                     contattato: false,
                     whatsapp_sent: false,
                     whatsapp_sent_date: null
-                } : { ...entry }) : undefined}
+                } : { ...entry }) : initialData}
             />
         );
     }
@@ -257,45 +275,73 @@ export default function EntryDrawer({
                     isOpen ? "translate-x-0" : "translate-x-full invisible"
                 )}
             >
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-800">
-                            {isDuplicate ? "Duplica Scheda" : isNew ? (entry?.id === "new" ? "Aggiungi in agenda" : "Nuovo Inserimento") : "Modifica Scheda"}
-                        </h2>
+                {/* Header (Ultra Compact) */}
+                <div className="px-4 pt-6 pb-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+                    <div className="flex items-center gap-3 w-full">
+                        <div className="shrink-0">
+                            <h2 className="text-sm font-bold text-slate-800 leading-tight">
+                                {isDuplicate ? "Duplica" : isNew ? "Nuovo" : "Modifica"}
+                            </h2>
+                        </div>
+
+                        {/* Section Selector (Compact) */}
                         {isDuplicate || allowSectionChange ? (
-                            <div className="mt-1 flex items-center gap-2">
-                                <label className="text-xs text-slate-500 font-semibold uppercase">
-                                    {isDuplicate ? "Destinazione:" : "Sezione:"}
-                                </label>
-                                <select
-                                    className="text-sm font-bold text-brand bg-transparent border-none focus:ring-0 p-0 cursor-pointer"
-                                    value={targetSection}
-                                    onChange={e => setTargetSection(e.target.value)}
+                            <div className="relative flex-1 min-w-0">
+                                <button
+                                    onClick={() => setIsSectionDropdownOpen(!isSectionDropdownOpen)}
+                                    className="flex items-center gap-2 px-3 py-2 bg-white border border-brand rounded-lg shadow-sm hover:bg-brand/5 transition-all group w-full justify-between h-11"
                                 >
-                                    {DB_SECTIONS.map(s => <option key={s} value={s}>{getSectionLabel(s)}</option>)}
-                                </select>
+                                    <span className="text-sm font-black text-brand truncate">
+                                        {getSectionLabel(targetSection)}
+                                    </span>
+                                    <ChevronDown size={16} className="text-brand/60 group-hover:text-brand transition-colors shrink-0" />
+                                </button>
+
+                                {isSectionDropdownOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsSectionDropdownOpen(false)} />
+                                        <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-xl shadow-xl border border-brand/20 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[300px] overflow-y-auto">
+                                            {DB_SECTIONS.map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => {
+                                                        setTargetSection(s);
+                                                        setIsSectionDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-between border-b border-slate-50 last:border-0",
+                                                        targetSection === s ? "bg-brand/10 text-brand" : "text-slate-700"
+                                                    )}
+                                                >
+                                                    {getSectionLabel(s)}
+                                                    {targetSection === s && <Check size={14} className="text-brand" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
-                            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mt-0.5">
-                                {getSectionLabel(section)}
+                            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold truncate flex-1">
+                                {getSectionLabel(section || "")}
                             </p>
                         )}
+
+                        <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full transition-colors shrink-0">
+                            <X size={18} className="text-slate-500" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                        <X size={20} className="text-slate-500" />
-                    </button>
                 </div>
 
-                {/* Body (Compact) */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {/* Time & Date & Personal Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Body (Balanced Compact) */}
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+                    {/* Row 1: Date & Time */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="label">Data <span className="text-red-500">*</span></label>
                             <input
                                 type="date"
-                                className={cn("input w-full py-1.5", !formData.entry_date && "border-red-500 focus:border-red-500 bg-red-50")}
+                                className={cn("input w-full py-1 text-sm h-9", !formData.entry_date && "border-red-500 focus:border-red-500 bg-red-50")}
                                 value={formData.entry_date || ""}
                                 onChange={(e) => handleChange("entry_date", e.target.value)}
                             />
@@ -304,65 +350,114 @@ export default function EntryDrawer({
                             <label className="label">Ora <span className="text-red-500">*</span></label>
                             <input
                                 type="time"
-                                className={cn("input w-full py-1.5", !formData.entry_time && "border-red-500 focus:border-red-500 bg-red-50")}
+                                className={cn("input w-full py-1 text-sm h-9", !formData.entry_time && "border-red-500 focus:border-red-500 bg-red-50")}
                                 value={formData.entry_time?.slice(0, 5) || ""}
                                 onChange={(e) => handleChange("entry_time", e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label className="label">Nome</label>
-                                <input
-                                    className="input w-full py-1.5"
-                                    placeholder="Mario"
-                                    value={formData.nome || ""}
-                                    onChange={(e) => handleChange("nome", e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="label">Cognome</label>
-                                <input
-                                    className="input w-full py-1.5"
-                                    placeholder="Rossi"
-                                    value={formData.cognome || ""}
-                                    onChange={(e) => handleChange("cognome", e.target.value)}
-                                />
-                            </div>
+                    {/* Row 2: Name & Surname */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">Nome</label>
+                            <input
+                                className="input w-full py-1 text-sm h-9"
+                                placeholder="Mario"
+                                value={formData.nome || ""}
+                                onChange={(e) => handleChange("nome", e.target.value)}
+                            />
                         </div>
+                        <div>
+                            <label className="label">Cognome</label>
+                            <input
+                                className="input w-full py-1 text-sm h-9"
+                                placeholder="Rossi"
+                                value={formData.cognome || ""}
+                                onChange={(e) => handleChange("cognome", e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Row 3: Phone & Comeback */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="label">Telefono</label>
                             <input
-                                className="input w-full py-1.5"
+                                className="input w-full py-1 text-sm h-9"
                                 placeholder="+39..."
                                 value={formData.telefono || ""}
                                 onChange={(e) => handleChange("telefono", e.target.value)}
                             />
                         </div>
+                        <div className="flex items-end pb-2">
+                            <label className="flex items-center gap-2 cursor-pointer select-none h-9 px-2 rounded-lg border border-transparent hover:bg-slate-50 transition-colors w-full">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 text-brand rounded border-slate-300 focus:ring-brand"
+                                    checked={!!formData.comeback}
+                                    onChange={(e) => handleChange("comeback", e.target.checked)}
+                                />
+                                <span className="text-sm font-medium text-slate-700">Comeback</span>
+                            </label>
+                        </div>
                     </div>
 
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Row 4: Consultant & Source */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="label">Consulente</label>
-                            <select
-                                className="input w-full py-1.5"
-                                value={formData.consulente_id || ""}
-                                onChange={(e) => handleChange("consulente_id", e.target.value)}
-                            >
-                                <option value="">-- Seleziona --</option>
-                                {consulenti.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsConsulenteDropdownOpen(!isConsulenteDropdownOpen)}
+                                    className="input w-full py-1 text-left flex items-center justify-between text-sm h-9"
+                                >
+                                    <span className={cn("truncate", !formData.consulente_id && "text-slate-400")}>
+                                        {formData.consulente_id
+                                            ? consulenti.find(c => c.id === formData.consulente_id)?.name || "Seleziona"
+                                            : "-- Seleziona --"}
+                                    </span>
+                                    <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                                </button>
+                                {isConsulenteDropdownOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsConsulenteDropdownOpen(false)} />
+                                        <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-20 max-h-40 overflow-y-auto">
+                                            <button
+                                                onClick={() => {
+                                                    handleChange("consulente_id", "");
+                                                    setIsConsulenteDropdownOpen(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 text-slate-500"
+                                            >
+                                                -- Seleziona --
+                                            </button>
+                                            {consulenti.map((c) => (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => {
+                                                        handleChange("consulente_id", c.id);
+                                                        setIsConsulenteDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between",
+                                                        formData.consulente_id === c.id ? "bg-brand/5 text-brand font-medium" : "text-slate-700"
+                                                    )}
+                                                >
+                                                    {c.name}
+                                                    {formData.consulente_id === c.id && <Check size={14} className="text-brand" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         {!isTelefonici && (
                             <div>
                                 <label className="label">Fonte</label>
                                 <input
-                                    className="input w-full py-1.5"
+                                    className="input w-full py-1 text-sm h-9"
                                     value={formData.fonte || ""}
                                     onChange={(e) => handleChange("fonte", e.target.value)}
                                 />
@@ -370,49 +465,73 @@ export default function EntryDrawer({
                         )}
                     </div>
 
+                    {/* Row 5: Subscription Type (Full Width) */}
                     {!isTelefonici && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label className="label">Tipo Abbonamento</label>
-                                <select
-                                    className="input w-full py-1.5"
-                                    value={formData.tipo_abbonamento_id || ""}
-                                    onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
+                        <div>
+                            <label className="label">Tipo Abbonamento</label>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsTipoDropdownOpen(!isTipoDropdownOpen)}
+                                    className="input w-full py-1 text-left flex items-center justify-between text-sm h-9"
                                 >
-                                    <option value="">-- Seleziona --</option>
-                                    {tipi.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex items-end pb-1">
-                                <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input
-                                        type="checkbox"
-                                        className="w-4 h-4 text-brand rounded border-slate-300 focus:ring-brand"
-                                        checked={!!formData.comeback}
-                                        onChange={(e) => handleChange("comeback", e.target.checked)}
-                                    />
-                                    <span className="text-sm font-medium text-slate-700">Comeback</span>
-                                </label>
+                                    <span className={cn("truncate", !formData.tipo_abbonamento_id && "text-slate-400")}>
+                                        {formData.tipo_abbonamento_id
+                                            ? tipi.find(t => t.id === formData.tipo_abbonamento_id)?.name || "Seleziona"
+                                            : "-- Seleziona --"}
+                                    </span>
+                                    <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                                </button>
+                                {isTipoDropdownOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsTipoDropdownOpen(false)} />
+                                        <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-20 max-h-40 overflow-y-auto">
+                                            <button
+                                                onClick={() => {
+                                                    handleChange("tipo_abbonamento_id", "");
+                                                    setIsTipoDropdownOpen(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 text-slate-500"
+                                            >
+                                                -- Seleziona --
+                                            </button>
+                                            {tipi.map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => {
+                                                        handleChange("tipo_abbonamento_id", t.id);
+                                                        setIsTipoDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between",
+                                                        formData.tipo_abbonamento_id === t.id ? "bg-brand/5 text-brand font-medium" : "text-slate-700"
+                                                    )}
+                                                >
+                                                    {t.name}
+                                                    {formData.tipo_abbonamento_id === t.id && <Check size={14} className="text-brand" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/* Notes */}
+                    {/* Row 6: Notes */}
                     <div>
                         <label className="label">Note</label>
                         <textarea
-                            className="input w-full min-h-[60px] resize-none py-1.5"
+                            className="input w-full min-h-[40px] resize-none py-1 text-sm"
                             placeholder="Scrivi qui..."
                             value={formData.note || ""}
                             onChange={(e) => handleChange("note", e.target.value)}
+                            rows={2}
                         />
                     </div>
 
-                    {/* Status Toggles */}
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Esito</h3>
+                    {/* Row 7: Status Toggles */}
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Esito</h3>
                         {isTelefonici ? (
                             <label className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors bg-white">
                                 <input
@@ -444,35 +563,35 @@ export default function EntryDrawer({
                                     });
                                 }}
                                 layout="grid"
-                                size="md"
+                                size="sm"
                                 section={effectiveSection}
                             />
                         )}
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
-                    {!isNew && (
+                {/* Footer (Compact) */}
+                <div className="px-4 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4 shrink-0 h-[50px]">
+                    {!isNew && onDelete && (
                         <button
-                            onClick={() => onDelete(entry.id)}
-                            className="btn bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 hover:border-rose-200"
+                            onClick={() => onDelete(entry!.id)}
+                            className="btn btn-sm bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 hover:border-rose-200 h-8 w-8 p-0 flex items-center justify-center"
                         >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                         </button>
                     )}
-                    <div className="flex items-center gap-3 ml-auto">
-                        <button onClick={onClose} className="btn btn-ghost">
+                    <div className="flex items-center gap-2 ml-auto">
+                        <button onClick={onClose} className="btn btn-ghost btn-sm h-8">
                             Annulla
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="btn btn-brand text-white hover:bg-brand-ink shadow-lg shadow-brand/20 border-transparent min-w-[120px]"
+                            className="btn btn-brand btn-sm text-white hover:bg-brand-ink shadow-lg shadow-brand/20 border-transparent min-w-[100px] h-8"
                         >
-                            {loading ? "Salvataggio..." : (
+                            {loading ? "..." : (
                                 <>
-                                    <Save size={18} className="mr-2" />
+                                    <Save size={16} className="mr-2" />
                                     Salva
                                 </>
                             )}
@@ -483,7 +602,7 @@ export default function EntryDrawer({
 
             <style jsx>{`
         .label {
-          @apply block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5;
+          @apply block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-0.5;
         }
       `}</style>
         </>,

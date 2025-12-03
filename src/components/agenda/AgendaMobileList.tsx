@@ -66,10 +66,20 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
     const [subscriptionTypes, setSubscriptionTypes] = useState<string[]>([]);
     useEffect(() => {
         fetch("/api/settings/tipo/list")
-            .then(res => res.json())
+            .then(async res => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error("JSON Parse Error:", e, "Response text:", text);
+                    return { items: [] };
+                }
+            })
             .then(data => {
                 if (data.items) setSubscriptionTypes(data.items.map((t: any) => t.name));
-            });
+            })
+            .catch(err => console.error("Fetch Error:", err));
     }, []);
 
     const filteredRows = rows.filter(r => {

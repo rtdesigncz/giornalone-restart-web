@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 
@@ -17,8 +17,8 @@ function fmtISO(d: Date) {
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-function formatHeaderDate(sp: URLSearchParams) {
-  const scope = sp.get("scope") ?? "day";
+function formatHeaderDate(sp: URLSearchParams | ReadonlyURLSearchParams | null) {
+  const scope = sp?.get("scope") ?? "day";
   const fmtFull = new Intl.DateTimeFormat("it-IT", {
     weekday: "long",
     day: "numeric",
@@ -32,21 +32,21 @@ function formatHeaderDate(sp: URLSearchParams) {
   });
 
   if (scope === "day") {
-    const d = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+    const d = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
     return fmtFull.format(parseISO(d));
   }
   if (scope === "month") {
-    const d = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+    const d = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
     const dd = parseISO(d);
     const month = new Intl.DateTimeFormat("it-IT", { month: "long" }).format(dd);
     return `${month} ${dd.getUTCFullYear()}`;
   }
   if (scope === "year") {
-    const d = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+    const d = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
     return `Anno ${parseISO(d).getUTCFullYear()}`;
   }
-  const from = sp.get("from") ?? new Date().toISOString().slice(0, 10);
-  const to = sp.get("to") ?? new Date().toISOString().slice(0, 10);
+  const from = sp?.get("from") ?? new Date().toISOString().slice(0, 10);
+  const to = sp?.get("to") ?? new Date().toISOString().slice(0, 10);
   return `Dal ${fmtShort.format(parseISO(from))} al ${fmtShort.format(parseISO(to))}`;
 }
 
@@ -57,8 +57,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpenDesktop, setMenuOpenDesktop] = useState(false);
   const [menuOpenMobile, setMenuOpenMobile] = useState(false);
 
-  const scope = sp.get("scope") ?? "day";
-  const currentDate = sp.get("date") ?? new Date().toISOString().slice(0, 10);
+  const scope = sp?.get("scope") ?? "day";
+  const currentDate = sp?.get("date") ?? new Date().toISOString().slice(0, 10);
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const isToday = scope === "day" && currentDate === todayISO;
 
@@ -66,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const humanChip = humanDate.charAt(0).toUpperCase() + humanDate.slice(1);
 
   function apply(params: Record<string, string | undefined>) {
-    const next = new URLSearchParams(sp.toString());
+    const next = new URLSearchParams(sp?.toString() ?? "");
     Object.entries(params).forEach(([k, v]) => {
       if (!v) next.delete(k);
       else next.set(k, v);
