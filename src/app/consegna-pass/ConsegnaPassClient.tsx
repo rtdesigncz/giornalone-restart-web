@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@supabase/supabase-js";
 import { Trash2, Plus, Search, MessageCircle, UserPlus, Users, ArrowRight, Calendar, ChevronDown, Edit2, Check, X, MoreVertical, ArrowUp, ArrowDown } from "lucide-react";
 // ... imports
@@ -421,19 +422,20 @@ export default function ConsegnaPassClient() {
 
         const updates: any = {};
         const date = payload.entry_date;
-        // Simple logic: if created, it's pending unless specified otherwise.
-        // Usually EntryDrawer creates it. Here we just track the date in the pass item.
-        // We might want to link the appointment ID too, but for now just date.
+        const entryId = payload.id; // Get the ID from the payload
 
         if (selectedAppointmentStep === 1) {
             updates.data_app_1 = date;
             updates.esito_app_1 = 'pending';
+            updates.id_app_1 = entryId; // Save the ID
         } else if (selectedAppointmentStep === 2) {
             updates.data_app_2 = date;
             updates.esito_app_2 = 'pending';
+            updates.id_app_2 = entryId; // Save the ID
         } else if (selectedAppointmentStep === 3) {
             updates.data_app_3 = date;
             updates.esito_app_3 = 'pending';
+            updates.id_app_3 = entryId; // Save the ID
         }
 
         await updatePassItem(selectedReferralForApp.id, updates);
@@ -441,6 +443,90 @@ export default function ConsegnaPassClient() {
         setSelectedReferralForApp(null);
         setSelectedAppointmentStep(null);
     };
+
+    // --- APPOINTMENT ACTIONS (Edit/Delete) ---
+    const [activeSlotMenu, setActiveSlotMenu] = useState<{ itemId: string, step: number, position?: { top: number, left: number } } | null>(null);
+
+    const findAppointmentEntry = async (item: PassItem, step: number) => {
+        const idKey = `id_app_${step}` as keyof PassItem;
+        const dateKey = `data_app_${step}` as keyof PassItem;
+
+        const appointmentId = item[idKey] as string | null;
+        const date = item[dateKey] as string | null;
+
+        if (appointmentId) {
+            // Best case: we have the ID
+            const { data, error } = await supabase
+                .from("entries")
+                .select("*")
+                .eq("id", appointmentId)
+                .maybeSingle();
+
+            if (error) console.error("Error finding appointment by ID:", error);
+            return data;
+        } else if (date) {
+            // Fallback: search by Name + Surname + Date (Legacy)
+            const { data, error } = await supabase
+                .from("entries")
+                .select("*")
+                .eq("nome", item.referral_nome)
+                .eq("cognome", item.referral_cognome)
+                .eq("entry_date", date)
+                .limit(1)
+                .maybeSingle();
+
+            if (error) console.error("Error finding appointment by Date:", error);
+            return data;
+        }
+        return null;
+    };
+
+    const handleEditAppointmentSlot = async (item: PassItem, step: number) => {
+        setActiveSlotMenu(null);
+
+        const entry = await findAppointmentEntry(item, step);
+
+        if (entry) {
+            setSelectedReferralForApp(item);
+            setSelectedAppointmentStep(step);
+            setEntryDrawerOpen(true);
+            setEditingAppointmentEntry(entry);
+        } else {
+            alert("Appuntamento non trovato in agenda (potrebbe essere stato cancellato).");
+            if (confirm("Vuoi pulire questo slot nel Pass?")) {
+                await clearPassSlot(item.id, step);
+            }
+        }
+    };
+
+    const [editingAppointmentEntry, setEditingAppointmentEntry] = useState<any | null>(null);
+
+    const handleDeleteAppointmentSlot = async (item: PassItem, step: number) => {
+        setActiveSlotMenu(null);
+        if (!confirm("Sei sicuro di voler eliminare questo appuntamento? Verrà rimosso anche dall'agenda.")) return;
+
+        const entry = await findAppointmentEntry(item, step);
+
+        if (entry) {
+            const { error } = await supabase.from("entries").delete().eq("id", entry.id);
+            if (error) {
+                alert("Errore eliminazione appuntamento: " + error.message);
+                return;
+            }
+        }
+
+        await clearPassSlot(item.id, step);
+    };
+
+    const clearPassSlot = async (itemId: string, step: number) => {
+        const updates: any = {};
+        updates[`data_app_${step}`] = null;
+        updates[`esito_app_${step}`] = null;
+        updates[`id_app_${step}`] = null; // Clear ID too
+        await updatePassItem(itemId, updates);
+    };
+
+
 
     const getWhatsAppLink = (phone: string, message: string) => {
         return `https://wa.me/${cleanPhone(phone)}?text=${encodeURIComponent(message)}`;
@@ -1027,9 +1113,21 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                                                                     return (
                                                                         <button
                                                                             key={step}
-                                                                            onClick={() => handleOpenAppointmentDrawer(item, step)}
+                                                                            onClick={(e) => {
+                                                                                if (date) {
+                                                                                    e.stopPropagation();
+                                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                                    setActiveSlotMenu(activeSlotMenu?.itemId === item.id && activeSlotMenu?.step === step ? null : {
+                                                                                        itemId: item.id,
+                                                                                        step,
+                                                                                        position: { top: rect.bottom, left: rect.left + rect.width / 2 }
+                                                                                    });
+                                                                                } else {
+                                                                                    handleOpenAppointmentDrawer(item, step);
+                                                                                }
+                                                                            }}
                                                                             className={cn(
-                                                                                "h-auto min-h-[2rem] px-2 py-1 rounded-lg border flex items-center justify-center transition-all relative overflow-hidden group/slot min-w-[3.5rem]",
+                                                                                "h-auto min-h-[2rem] px-2 py-1 rounded-lg border flex items-center justify-center transition-all min-w-[3.5rem]",
                                                                                 date
                                                                                     ? outcome === 'show'
                                                                                         ? "bg-green-50 border-green-200 text-green-700"
@@ -1131,10 +1229,15 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
 
             <EntryDrawer
                 isOpen={entryDrawerOpen}
-                onClose={() => setEntryDrawerOpen(false)}
+                onClose={() => {
+                    setEntryDrawerOpen(false);
+                    setEditingAppointmentEntry(null);
+                    setSelectedReferralForApp(null);
+                }}
                 onSave={handleAppointmentCreated}
                 allowSectionChange={true}
-                initialData={selectedReferralForApp ? {
+                entry={editingAppointmentEntry} // Pass entry for editing
+                initialData={!editingAppointmentEntry && selectedReferralForApp ? {
                     nome: selectedReferralForApp.referral_nome,
                     cognome: selectedReferralForApp.referral_cognome,
                     telefono: selectedReferralForApp.referral_telefono,
@@ -1142,6 +1245,43 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                     note: `Referral di ${selectedReferralForApp.cliente_nome} ${selectedReferralForApp.cliente_cognome} - ${selectedAppointmentStep}° Incontro - ${gestioni.find(g => g.id === selectedGestioneId)?.nome || ""}`
                 } : undefined}
             />
+            {/* Action Menu - Rendered via Portal to escape all layout constraints */}
+            {/* Action Menu - Rendered via Portal to escape all layout constraints */}
+            {activeSlotMenu && activeSlotMenu.position && createPortal(
+                <>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setActiveSlotMenu(null)} />
+                    <div
+                        className="absolute z-[9999] bg-white rounded-lg shadow-xl border border-slate-100 overflow-hidden min-w-[120px] animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                            top: activeSlotMenu.position.top + window.scrollY + 4,
+                            left: activeSlotMenu.position.left + window.scrollX,
+                            transform: "translateX(-50%)"
+                        }}
+                    >
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const item = passItems.find(i => i.id === activeSlotMenu.itemId);
+                                if (item) handleEditAppointmentSlot(item, activeSlotMenu.step);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-purple-600 flex items-center gap-2"
+                        >
+                            <Edit2 size={12} /> Modifica
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const item = passItems.find(i => i.id === activeSlotMenu.itemId);
+                                if (item) handleDeleteAppointmentSlot(item, activeSlotMenu.step);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 border-t border-slate-50"
+                        >
+                            <Trash2 size={12} /> Elimina
+                        </button>
+                    </div>
+                </>,
+                document.body
+            )}
         </div >
     );
 }

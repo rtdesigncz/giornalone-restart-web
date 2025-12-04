@@ -414,7 +414,7 @@ export default function NotesWidget() {
 
                                 <button
                                     onClick={() => handleDelete(note.id)}
-                                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all"
                                     title="Elimina nota"
                                 >
                                     <Trash2 size={14} />
@@ -433,7 +433,7 @@ export default function NotesWidget() {
                                             <p className="text-slate-600">{reply.content}</p>
                                             <button
                                                 onClick={() => handleDelete(reply.id)}
-                                                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-rose-500 opacity-0 group-hover/reply:opacity-100 transition-all"
+                                                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-rose-500 opacity-100 md:opacity-0 md:group-hover/reply:opacity-100 transition-all"
                                             >
                                                 <Trash2 size={12} />
                                             </button>

@@ -2,7 +2,7 @@ import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcome
 import { useOutcomeManager } from "@/hooks/useOutcomeManager";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
@@ -26,7 +26,10 @@ export default function AgendaTable({ section }: { section: string }) {
 
     const isTelefonici = section === "APPUNTAMENTI TELEFONICI";
 
+    const lastRequestRef = useRef(0);
+
     const fetchRows = async () => {
+        const requestId = ++lastRequestRef.current;
         setLoading(true);
         let q = supabase
             .from("entries")
@@ -36,9 +39,13 @@ export default function AgendaTable({ section }: { section: string }) {
             .order("entry_time", { ascending: true });
 
         const { data, error } = await q;
-        if (error) console.error(error);
-        else setRows(data || []);
-        setLoading(false);
+
+        // Only update if this is the latest request
+        if (requestId === lastRequestRef.current) {
+            if (error) console.error(error);
+            else setRows(data || []);
+            setLoading(false);
+        }
     };
 
     useEffect(() => {

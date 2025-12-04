@@ -17,7 +17,12 @@ export default function AgendaView() {
     const sectionParam = searchParams?.get("section");
     const dateParam = searchParams?.get("date") ?? getLocalDateISO();
 
-    const [activeTab, setActiveTab] = useState(DB_SECTIONS[0]);
+    const [activeTab, setActiveTab] = useState(() => {
+        if (sectionParam && DB_SECTIONS.includes(sectionParam)) {
+            return sectionParam;
+        }
+        return DB_SECTIONS[0];
+    });
     const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
     useEffect(() => {
@@ -50,7 +55,7 @@ export default function AgendaView() {
                             <ChevronLeft size={20} />
                         </button>
 
-                        <div className="relative flex-1 bg-white h-11 rounded-xl border border-slate-200 shadow-sm overflow-hidden group min-w-[360px]">
+                        <div className="relative flex-1 bg-white h-11 rounded-xl border border-slate-200 shadow-sm overflow-hidden group min-w-0 md:min-w-[360px]">
                             {/* Grid Layout for Perfect Centering (Visual Layer) */}
                             <div className="absolute inset-0 grid grid-cols-3 items-center px-2 pointer-events-none z-0">
                                 {/* Left: Empty Spacer */}
