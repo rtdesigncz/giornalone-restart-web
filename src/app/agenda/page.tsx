@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import AgendaView from "@/components/agenda/AgendaView";
 import { Suspense } from "react";
 
