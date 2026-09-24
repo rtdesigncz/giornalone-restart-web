@@ -43,7 +43,7 @@ export default function EntryDrawer({
     const [loading, setLoading] = useState(false);
     const [consulenti, setConsulenti] = useState<AnyObj[]>([]);
     const [tipi, setTipi] = useState<AnyObj[]>([]);
-    const [targetSection, setTargetSection] = useState(section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
+    const [targetSection, setTargetSection] = useState(isDuplicate ? "" : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)"));
 
     const isNew = !entry || isDuplicate || entry.id === "new";
     const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
@@ -94,7 +94,7 @@ export default function EntryDrawer({
     // Reset form when entry changes
     useEffect(() => {
         if (isOpen) {
-            setTargetSection(section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
+            setTargetSection(isDuplicate ? "" : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)"));
             if (entry) {
                 if (isDuplicate) {
                     setFormData({
@@ -145,6 +145,12 @@ export default function EntryDrawer({
         setLoading(true);
 
         const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : section;
+        
+        if (isDuplicate && !effectiveSection) {
+            alert("Seleziona obbligatoriamente la sezione in cui duplicare l'appuntamento.");
+            setLoading(false);
+            return;
+        }
 
         if (effectiveSection !== "TOUR SPONTANEI" && !formData.entry_time) {
             alert("L'orario è obbligatorio per questa sezione.");
@@ -266,6 +272,19 @@ export default function EntryDrawer({
 
                 {/* Form Main Body */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar">
+                    
+                    {isDuplicate && (
+                        <div className="bg-cyan-50/50 p-4 rounded-xl border border-cyan-100 mb-4">
+                            <label className="block text-xs font-bold text-cyan-800 mb-2 uppercase tracking-wide">Sezione di destinazione *</label>
+                            <CustomSelect 
+                                options={DB_SECTIONS.map(s => ({ value: s, label: getSectionLabel(s) }))}
+                                value={targetSection}
+                                onChange={(val) => setTargetSection(val)}
+                                placeholder="-- Scegli dove duplicare --"
+                            />
+                        </div>
+                    )}
+
 
                     {/* RIGA 1: Nome, Cognome e Telefono SULLA STESSA RIGA */}
                     <div className="grid grid-cols-3 gap-3">
