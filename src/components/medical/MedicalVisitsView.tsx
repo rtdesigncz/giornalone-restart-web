@@ -9,7 +9,7 @@ export default function MedicalVisitsView() {
     const [activeTab, setActiveTab] = useState<"appointments" | "waiting">("appointments");
 
     return (
-        <div className="space-y-6 animate-in-up">
+        <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-6 lg:p-8 animate-in-up space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Visite Mediche</h1>
@@ -69,7 +69,7 @@ export default function MedicalVisitsView() {
                 </div>
             </div>
 
-            <div className="glass-card relative border border-slate-200/60 bg-white/50 p-6">
+            <div className="flex-1 overflow-auto relative">
                 {activeTab === "appointments" ? (
                     <SessionManager />
                 ) : (
