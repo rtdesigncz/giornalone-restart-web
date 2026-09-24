@@ -159,88 +159,53 @@ export async function GET(req: Request) {
       conversion: null as any // Placeholder for conversion data
     }));
 
-    // --- LOOKAHEAD LOGIC ---
-    // Find entries that are NOT Sold but might have a future sale
-    const potentialConversions = normalized.filter(r => !r.venduto && r.telefono && r.telefono.length > 5);
-    const phonesToCheck = [...new Set(potentialConversions.map(r => r.telefono))];
-
-    console.log("DEBUG: Phones to check for conversion:", phonesToCheck);
+    // --- LOOK-BEHIND LOGIC (RECUPERATI) ---
+    // A "Recuperato" is a SOLD entry that has a previous entry (e.g. a previous Miss/Assente)
+    // We look at all VENDUTI in the current dataset, and check if their phone number existed before their entry_date
+    const venduti = normalized.filter(r => r.venduto && r.telefono && r.telefono.length > 5);
+    const phonesToCheck = [...new Set(venduti.map(r => r.telefono))];
 
     if (phonesToCheck.length > 0) {
-      // Fetch ALL sales for these phones
-      // We don't filter by date here to keep it simple, we filter in memory
-      const { data: futureSales, error: salesError } = await supabase
+      // Fetch ALL past entries for these phones
+      const { data: pastEntries, error: pastError } = await supabase
         .from("entries")
-        .select("telefono, entry_date, tipi_abbonamento(name)")
-        .eq("venduto", true)
+        .select("telefono, entry_date")
         .in("telefono", phonesToCheck);
 
-      if (salesError) console.error("DEBUG: Error fetching future sales:", salesError);
-      console.log("DEBUG: Future sales found:", futureSales);
-
-      if (futureSales && futureSales.length > 0) {
-        // Map sales by phone for faster lookup
-        // We want the EARLIEST sale that is AFTER the entry date
-        const salesByPhone: Record<string, any[]> = {};
-        futureSales.forEach((sale: any) => {
-          if (!salesByPhone[sale.telefono]) salesByPhone[sale.telefono] = [];
-          salesByPhone[sale.telefono].push(sale);
+      if (!pastError && pastEntries && pastEntries.length > 0) {
+        // Group by phone for fast lookup
+        const pastByPhone: Record<string, any[]> = {};
+        pastEntries.forEach((entry: any) => {
+          if (!pastByPhone[entry.telefono]) pastByPhone[entry.telefono] = [];
+          pastByPhone[entry.telefono].push(entry);
         });
 
-        // Attach conversion info
+        // Flag the rows
         normalized.forEach(row => {
-          if (row.venduto) return; // Already sold
-          if (!row.telefono || !salesByPhone[row.telefono]) return;
-
-          const sales = salesByPhone[row.telefono];
-          // Find a sale that is strictly AFTER this entry's date
-          // OR same date but created later? Let's stick to date >= row.entry_date
-          // But if it's same date, it might be the same event if we didn't filter !venduto.
-          // Since row is !venduto, any sale on >= date is a conversion.
-          const validSale = sales.find((s: any) => s.entry_date >= row.entry_date);
-
-          if (validSale) {
-            console.log(`DEBUG: Match found for ${row.telefono} on date ${row.entry_date} -> Sold on ${validSale.entry_date}`);
-            row.conversion = {
-              date: validSale.entry_date,
-              type: validSale.tipi_abbonamento?.name
-            };
+          if (!row.venduto || !row.telefono || !pastByPhone[row.telefono]) return;
+          
+          const past = pastByPhone[row.telefono];
+          // Check if there is any entry for this phone strictly BEFORE this row's entry_date
+          const hasPrevious = past.some((p: any) => p.entry_date < row.entry_date);
+          
+          if (hasPrevious) {
+            row.isRecuperato = true;
           }
         });
       }
     }
 
-    // 4) JSON (per la pagina Reportistica)
     if (format === "json") {
-      const kpi = {
-        totale: normalized.length,
-        presentati: await (async () => {
-          const ids = normalized.map((r) => r.id);
-          if (!ids.length) return 0;
-          const { data: pr, error: perr } = await supabase
-            .from("entries")
-            .select("id, presentato")
-            .in("id", ids as any)
-            .limit(10000); // Ensure we get all statuses
-          if (perr || !pr) return 0;
-          return pr.filter((x: any) => x.presentato).length;
-        })(),
-        venduti: normalized.filter((r) => r.venduto).length,
-        miss: normalized.filter((r) => r.miss).length,
-        assenti: normalized.filter((r) => r.assente).length,
-      };
-
-      const setSez = new Set<string>([
-        ...SECTIONS,
-        ...normalized.map((r) => r.section).filter(Boolean),
-      ]);
-      const options = {
-        sezioni: Array.from(setSez),
-        consulenti: consulentiOptions,
-        tipi_abbonamento: tipiOptions,
-      };
-
-      return NextResponse.json({ rows: normalized, meta: { options, kpi } }, { status: 200 });
+      return NextResponse.json({
+        meta: {
+          options: {
+            sezioni: SECTIONS,
+            consulenti: consulentiOptions,
+            tipi_abbonamento: tipiOptions,
+          }
+        },
+        rows: normalized
+      });
     }
 
     // 5) PDF (riusa "normalized") - Refactored to use jsPDF for consistency with Dashboard

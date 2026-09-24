@@ -122,6 +122,39 @@ function StatCard({ label, value, subLabel, colorClass, icon: Icon }: { label: s
     );
 }
 
+
+function DropdownFilter({ label, options, selected, toggle, clear, formatLabel = (x: string) => x }: any) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="relative">
+            <button onClick={() => setOpen(!open)} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors h-10", selected.length > 0 ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50")}>
+                {label} {selected.length > 0 && `(${selected.length})`}
+                <ChevronDown className="w-3 h-3 opacity-50" />
+            </button>
+            {open && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+                    <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+                            {options.map((opt: string) => (
+                                <label key={opt} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                                    <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                                    <span className="text-sm text-slate-700 truncate">{formatLabel(opt)}</span>
+                                </label>
+                            ))}
+                        </div>
+                        {selected.length > 0 && (
+                            <div className="p-2 border-t border-slate-100 bg-slate-50">
+                                <button onClick={clear} className="text-xs text-slate-500 hover:text-slate-700 w-full text-center font-medium">Deseleziona tutti</button>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
 // --- MAIN COMPONENT ---
 
 export default function ReportisticaClientV2() {
@@ -145,16 +178,11 @@ export default function ReportisticaClientV2() {
     // Let's keep it simple: Click to filter ONLY that status.
     // Actually, user might want to see "Venduti" AND "Presentati".
     // So let's use the same logic as Consulenze: Toggle ON/OFF.
-    const [fPresentato, setFPresentato] = useState(false);
-    const [fVenduto, setFVenduto] = useState(false);
-    const [fMiss, setFMiss] = useState(false);
-    const [fContattato, setFContattato] = useState(false);
-    const [fNegativo, setFNegativo] = useState(false);
-    const [fAssente, setFAssente] = useState(false);
-    const [fRecuperati, setFRecuperati] = useState(false); // New filter for recovered
+    const [selectedEsiti, setSelectedEsiti] = useState<string[]>([]);
 
     // Search
     const [searchTerm, setSearchTerm] = useState("");
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
     // --- DATA FETCHING ---
     const buildParams = () => {
@@ -165,22 +193,24 @@ export default function ReportisticaClientV2() {
             p.set("from", from);
             p.set("to", to);
         }
-        selectedSezioni.forEach((s) => p.append("section", s));
-        selectedConsulenti.forEach((c) => p.append("consulente", c));
-        selectedTipi.forEach((t) => p.append("tipo_abbonamento", t));
 
-        // API expects "true", "false" or nothing.
-        // If our UI toggles are "Show Only X", we should send true.
-        // If multiple are selected, we send multiple trues.
-        if (fPresentato) p.append("presentato", "true");
-        if (fVenduto) p.append("venduto", "true");
-        if (fMiss) p.append("miss", "true");
-        if (fContattato) p.append("contattato", "true");
-        if (fNegativo) p.append("negativo", "true");
-        if (fAssente) p.append("assente", "true");
-        // Note: API doesn't filter by "recuperati" yet, we do it client side or add it to API?
-        // Client side filtering for "recuperati" is easier for now as it's a derived property.
+        if (selectedSezioni.length > 0) p.append("section", selectedSezioni.join(","));
+        if (selectedConsulenti.length > 0) p.append("consulente", selectedConsulenti.join(","));
+        if (selectedTipi.length > 0) p.append("tipo_abbonamento", selectedTipi.join(","));
 
+        // Esiti are fetched directly without API filters for these flags in the original code,
+        // wait, the original code had:
+        // if (fPresentato) p.append("presentato", "true");
+        // We can just omit them to fetch all and filter client-side, 
+        // OR we can pass them. It's safer to fetch all and filter client-side since that's what we do.
+        // Actually the original code did:
+        if (selectedEsiti.includes("Presentati")) p.append("presentato", "true");
+        if (selectedEsiti.includes("Venduti")) p.append("venduto", "true");
+        if (selectedEsiti.includes("Miss")) p.append("miss", "true");
+        if (selectedEsiti.includes("Contattati")) p.append("contattato", "true");
+        if (selectedEsiti.includes("Negativi")) p.append("negativo", "true");
+        if (selectedEsiti.includes("Assenti")) p.append("assente", "true");
+        
         return p;
     };
 
@@ -207,7 +237,7 @@ export default function ReportisticaClientV2() {
     }, [
         modePeriodo, date, from, to,
         selectedSezioni, selectedConsulenti, selectedTipi,
-        fPresentato, fVenduto, fMiss, fContattato, fNegativo, fAssente
+        selectedEsiti
     ]);
 
     // --- FILTERED ROWS ---
@@ -225,12 +255,21 @@ export default function ReportisticaClientV2() {
             );
         }
 
-        if (fRecuperati) {
-            r = r.filter(row => !!row.conversion);
+        if (selectedEsiti.length > 0) {
+            r = r.filter(row => {
+                let match = false;
+                if (selectedEsiti.includes("Presentati") && row.presentato) match = true;
+                if (selectedEsiti.includes("Venduti") && row.venduto) match = true;
+                if (selectedEsiti.includes("Miss") && row.miss) match = true;
+                if (selectedEsiti.includes("Assenti") && row.assente) match = true;
+                if (selectedEsiti.includes("Contattati") && row.contattato) match = true;
+                if (selectedEsiti.includes("Negativi") && row.negativo) match = true;
+                return match;
+            });
         }
 
         return r;
-    }, [resp, searchTerm, fRecuperati]);
+    }, [resp, searchTerm, selectedEsiti]);
 
     // --- KPI CALCULATION ---
     const kpis = useMemo(() => {
@@ -257,13 +296,7 @@ export default function ReportisticaClientV2() {
         setSelectedSezioni([]);
         setSelectedConsulenti([]);
         setSelectedTipi([]);
-        setFPresentato(false);
-        setFVenduto(false);
-        setFMiss(false);
-        setFContattato(false);
-        setFNegativo(false);
-        setFAssente(false);
-        setFRecuperati(false);
+        setSelectedEsiti([]);
     };
 
     const pdfHref = useMemo(() => {
@@ -278,6 +311,51 @@ export default function ReportisticaClientV2() {
         return `${d}/${m}/${y}`;
     };
 
+
+    const sortedRows = useMemo(() => {
+        let sortableItems = [...filteredRows];
+        if (sortConfig !== null) {
+            sortableItems.sort((a, b) => {
+                let aValue: any = a[sortConfig.key as keyof typeof a];
+                let bValue: any = b[sortConfig.key as keyof typeof b];
+
+                if (sortConfig.key === 'consulente') {
+                    aValue = a.consulente?.name || "";
+                    bValue = b.consulente?.name || "";
+                }
+                if (sortConfig.key === 'tipo_abbonamento') {
+                    aValue = a.tipo_abbonamento?.name || "";
+                    bValue = b.tipo_abbonamento?.name || "";
+                }
+                if (sortConfig.key === 'entry_date') {
+                    aValue = new Date(`${a.entry_date}T${a.entry_time || '00:00'}`).getTime();
+                    bValue = new Date(`${b.entry_date}T${b.entry_time || '00:00'}`).getTime();
+                }
+                if (sortConfig.key === 'nome') {
+                    aValue = `${a.cognome || ''} ${a.nome || ''}`;
+                    bValue = `${b.cognome || ''} ${b.nome || ''}`;
+                }
+
+                if (aValue === null || aValue === undefined) aValue = "";
+                if (bValue === null || bValue === undefined) bValue = "";
+                
+                if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+                if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+                
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [filteredRows, sortConfig]);
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        setSortConfig({ key, direction });
+    };
+
     // --- RENDER ---
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans">
@@ -285,7 +363,7 @@ export default function ReportisticaClientV2() {
             <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
                 <div className="max-w-[1800px] mx-auto px-4 py-3">
                     <div className="flex flex-col gap-4">
-                        {/* Row 1: Title + Date + Actions */}
+                        {/* Row 1: Title + Date + PDF */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-4">
                                 <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">Reportistica</h1>
@@ -339,136 +417,138 @@ export default function ReportisticaClientV2() {
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <div className="relative group flex-1 sm:w-64">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
-                                    <input
-                                        type="text"
-                                        placeholder="Cerca..."
-                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={() => setShowFilters(!showFilters)}
-                                    className={cn(
-                                        "p-2 rounded-lg border transition-all relative",
-                                        showFilters ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                    )}
-                                >
-                                    <Filter className="w-4 h-4" />
-                                </button>
-
-                                <div className="h-8 w-px bg-slate-200 mx-1"></div>
-
+                            <div className="flex items-center gap-2">
                                 <a
                                     href={pdfHref}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm"
+                                    className="flex items-center gap-2 px-4 py-2 h-10 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm"
                                 >
                                     <Download className="w-4 h-4" />
-                                    <span className="hidden sm:inline">PDF</span>
+                                    <span className="hidden sm:inline">Scarica PDF</span>
                                 </a>
                             </div>
                         </div>
 
-                        {/* Row 2: KPI Cards */}
-                        <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-                            <StatCard label="Totale" value={kpis.totale} colorClass="text-slate-600" icon={BarChart3} />
-                            <StatCard label="Presentati" value={kpis.presentato} colorClass="text-emerald-600" icon={Check} />
-                            <StatCard label="Venduti" value={kpis.venduto} colorClass="text-emerald-700" icon={Check} />
-                            <StatCard label="Miss" value={kpis.miss} colorClass="text-orange-600" icon={AlertCircle} />
-                            <StatCard label="Assenti" value={kpis.assenti} colorClass="text-yellow-600" icon={AlertCircle} />
-                            <StatCard label="Recuperati" value={kpis.recuperati || 0} colorClass="text-cyan-600" icon={RefreshCw} />
-                            <StatCard label="Contattati" value={kpis.contattato} colorClass="text-blue-600" icon={Check} />
-                            <StatCard label="Negativi" value={kpis.negativo} colorClass="text-red-600" icon={X} />
+                        {/* Row 2: Filters */}
+                        <div className="flex flex-wrap items-center gap-2 w-full">
+                            <div className="relative group w-full sm:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
+                                <input
+                                    type="text"
+                                    placeholder="Cerca cliente..."
+                                    className="w-full pl-9 pr-8 py-2 h-10 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {searchTerm && (
+                                    <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <DropdownFilter 
+                                label="Sezioni" 
+                                options={resp?.meta.options.sezioni || DB_SECTIONS} 
+                                selected={selectedSezioni} 
+                                toggle={(v: string) => toggleSelection(selectedSezioni, setSelectedSezioni, v)} 
+                                clear={() => setSelectedSezioni([])} 
+                                formatLabel={getSectionLabel}
+                            />
+                            <DropdownFilter 
+                                label="Consulenti" 
+                                options={resp?.meta.options.consulenti || []} 
+                                selected={selectedConsulenti} 
+                                toggle={(v: string) => toggleSelection(selectedConsulenti, setSelectedConsulenti, v)} 
+                                clear={() => setSelectedConsulenti([])} 
+                            />
+                            <DropdownFilter 
+                                label="Abbonamenti" 
+                                options={resp?.meta.options.tipi_abbonamento || []} 
+                                selected={selectedTipi} 
+                                toggle={(v: string) => toggleSelection(selectedTipi, setSelectedTipi, v)} 
+                                clear={() => setSelectedTipi([])} 
+                            />
+                            <DropdownFilter 
+                                label="Esito" 
+                                options={["Presentati", "Venduti", "Miss", "Assenti", "Contattati", "Negativi"]} 
+                                selected={selectedEsiti} 
+                                toggle={(v: string) => toggleSelection(selectedEsiti, setSelectedEsiti, v)} 
+                                clear={() => setSelectedEsiti([])} 
+                            />
+
+                            {(searchTerm || selectedSezioni.length > 0 || selectedConsulenti.length > 0 || selectedTipi.length > 0 || selectedEsiti.length > 0) && (
+                                <button onClick={resetFilters} className="hidden sm:flex items-center gap-2 px-3 py-2 h-10 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors">
+                                    <Filter className="w-4 h-4" /> Reset
+                                </button>
+                            )}
                         </div>
 
-                        {/* Row 3: Filters (Collapsible) */}
-                        {showFilters && (
-                            <div className="pt-4 border-t border-slate-100 animate-in slide-in-from-top-2">
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex flex-wrap gap-2 items-center">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Stato:</span>
-                                        <FilterPill label="Presentato" active={fPresentato} onClick={() => setFPresentato(!fPresentato)} colorClass="text-emerald-600 border-emerald-200" />
-                                        <FilterPill label="Venduto" active={fVenduto} onClick={() => setFVenduto(!fVenduto)} colorClass="text-emerald-700 border-emerald-300" />
-                                        <FilterPill label="Miss" active={fMiss} onClick={() => setFMiss(!fMiss)} colorClass="text-orange-600 border-orange-200" />
-                                        <FilterPill label="Assente" active={fAssente} onClick={() => setFAssente(!fAssente)} colorClass="text-yellow-600 border-yellow-200" />
-                                        <FilterPill label="Contattato" active={fContattato} onClick={() => setFContattato(!fContattato)} colorClass="text-blue-600 border-blue-200" />
-                                        <FilterPill label="Negativo" active={fNegativo} onClick={() => setFNegativo(!fNegativo)} colorClass="text-red-600 border-red-200" />
-                                        <div className="h-6 w-px bg-slate-200 mx-2"></div>
-                                        <FilterPill label="Recuperati" active={fRecuperati} onClick={() => setFRecuperati(!fRecuperati)} colorClass="text-cyan-600 border-cyan-200" />
-
-                                        <div className="flex-1"></div>
-                                        <button onClick={resetFilters} className="text-xs text-cyan-600 hover:underline font-medium">Reset Filtri</button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sezioni</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {(resp?.meta.options.sezioni || DB_SECTIONS).map(s => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => toggleSelection(selectedSezioni, setSelectedSezioni, s)}
-                                                        className={cn(
-                                                            "px-2 py-1 rounded text-[11px] font-medium border transition-colors",
-                                                            selectedSezioni.includes(s) ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {getSectionLabel(s)}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Consulenti</label>
-                                            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto scrollbar-thin">
-                                                {resp?.meta.options.consulenti.map(c => (
-                                                    <button
-                                                        key={c}
-                                                        onClick={() => toggleSelection(selectedConsulenti, setSelectedConsulenti, c)}
-                                                        className={cn(
-                                                            "px-2 py-1 rounded text-[11px] font-medium border transition-colors",
-                                                            selectedConsulenti.includes(c) ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {c}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Abbonamenti</label>
-                                            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto scrollbar-thin">
-                                                {resp?.meta.options.tipi_abbonamento.map(t => (
-                                                    <button
-                                                        key={t}
-                                                        onClick={() => toggleSelection(selectedTipi, setSelectedTipi, t)}
-                                                        className={cn(
-                                                            "px-2 py-1 rounded text-[11px] font-medium border transition-colors",
-                                                            selectedTipi.includes(t) ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {t}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Row 3: KPI Cards (Clickable) */}
+                        <div className="flex flex-wrap items-center gap-4 pb-4">
+                            {/* Totale */}
+                            <div onClick={resetFilters} className={cn("bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group shadow-sm hover:shadow-md w-[140px] shrink-0", (selectedEsiti.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
+                                <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3><div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center"><BarChart3 className="w-3.5 h-3.5 text-slate-400" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.totale}</p>
                             </div>
-                        )}
+                            
+                            {/* Presentati */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Presentati"); }} className={cn("bg-white border border-emerald-100 rounded-xl p-5 hover:border-emerald-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Presentati") ? "ring-2 ring-emerald-500 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-emerald-600 uppercase tracking-wide group-hover:text-emerald-700">Presentati</h3><div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center"><Check className="w-3.5 h-3.5 text-emerald-500" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.presentato}</p>
+                            </div>
+
+                            {/* Venduti */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Venduti"); }} className={cn("bg-white border border-emerald-100 rounded-xl p-5 hover:border-emerald-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Venduti") ? "ring-2 ring-emerald-600 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide group-hover:text-emerald-800">Venduti</h3><div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center"><Check className="w-3.5 h-3.5 text-emerald-600" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.venduto}</p>
+                            </div>
+
+                            {/* Miss */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Miss"); }} className={cn("bg-white border border-red-100 rounded-xl p-5 hover:border-red-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Miss") ? "ring-2 ring-red-500 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-red-600 uppercase tracking-wide group-hover:text-red-700">Miss</h3><div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center"><X className="w-3.5 h-3.5 text-red-500" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.miss}</p>
+                            </div>
+
+                            {/* Assenti */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Assenti"); }} className={cn("bg-white border border-yellow-100 rounded-xl p-5 hover:border-yellow-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Assenti") ? "ring-2 ring-yellow-500 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-yellow-600 uppercase tracking-wide group-hover:text-yellow-700">Assenti</h3><div className="w-7 h-7 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center"><AlertCircle className="w-3.5 h-3.5 text-yellow-500" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.assenti}</p>
+                            </div>
+
+                            {/* Recuperati */}
+                            <div className={cn("bg-cyan-50/50 border border-cyan-100 rounded-xl p-5 transition-all group shadow-sm relative overflow-hidden w-[140px] shrink-0")}>
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-xl"></div>
+                                <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-cyan-700 uppercase tracking-wide">Recuperati</h3><div className="w-7 h-7 rounded-lg bg-cyan-100/50 border border-cyan-200 flex items-center justify-center"><RefreshCw className="w-3.5 h-3.5 text-cyan-600" /></div></div>
+                                <p className="text-3xl font-black text-cyan-900 tracking-tight">{kpis.recuperati || 0}</p>
+                            </div>
+
+                            {/* Contattati */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Contattati"); }} className={cn("bg-white border border-blue-100 rounded-xl p-5 hover:border-blue-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Contattati") ? "ring-2 ring-blue-500 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-blue-600 uppercase tracking-wide group-hover:text-blue-700">Contattati</h3><div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center"><Check className="w-3.5 h-3.5 text-blue-500" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.contattato}</p>
+                            </div>
+
+                            {/* Negativi */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Negativi"); }} className={cn("bg-white border border-red-100 rounded-xl p-5 hover:border-red-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Negativi") ? "ring-2 ring-red-500 border-transparent" : "")}>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-red-600 uppercase tracking-wide group-hover:text-red-700">Negativi</h3><div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center"><X className="w-3.5 h-3.5 text-red-600" /></div></div>
+                                <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.negativo}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* MAIN TABLE AREA */}
             <div className="flex-1 overflow-auto relative bg-slate-50 p-4">
-                <div className="max-w-[1800px] mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="max-w-[1800px] mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                     {loading && (
                         <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm">
                             <div className="flex flex-col items-center gap-3">
@@ -492,20 +572,30 @@ export default function ReportisticaClientV2() {
                     {!loading && !error && (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm border-collapse">
-                                <thead className="bg-slate-50/50 border-b border-slate-100">
+                                <thead className="bg-white border-b border-slate-200">
                                     <tr className="text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                        <th className="px-6 py-4 whitespace-nowrap">Data/Ora</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Sezione</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Cliente</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Contatti</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Dettagli</th>
+                                        <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none group" onClick={() => handleSort('entry_date')}>
+                                            Data / Ora {sortConfig?.key === 'entry_date' ? (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline-block ml-1 text-cyan-600" /> : <ChevronDown className="w-3 h-3 inline-block ml-1 text-cyan-600" />) : <ChevronDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-30" />}
+                                        </th>
+                                        <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none group" onClick={() => handleSort('section')}>
+                                            Sezione {sortConfig?.key === 'section' ? (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline-block ml-1 text-cyan-600" /> : <ChevronDown className="w-3 h-3 inline-block ml-1 text-cyan-600" />) : <ChevronDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-30" />}
+                                        </th>
+                                        <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none group" onClick={() => handleSort('nome')}>
+                                            Cliente {sortConfig?.key === 'nome' ? (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline-block ml-1 text-cyan-600" /> : <ChevronDown className="w-3 h-3 inline-block ml-1 text-cyan-600" />) : <ChevronDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-30" />}
+                                        </th>
+                                        <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none group" onClick={() => handleSort('telefono')}>
+                                            Contatti {sortConfig?.key === 'telefono' ? (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline-block ml-1 text-cyan-600" /> : <ChevronDown className="w-3 h-3 inline-block ml-1 text-cyan-600" />) : <ChevronDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-30" />}
+                                        </th>
+                                        <th className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none group" onClick={() => handleSort('consulente')}>
+                                            Dettagli {sortConfig?.key === 'consulente' ? (sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline-block ml-1 text-cyan-600" /> : <ChevronDown className="w-3 h-3 inline-block ml-1 text-cyan-600" />) : <ChevronDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-30" />}
+                                        </th>
                                         <th className="px-6 py-4 whitespace-nowrap text-center">Esito</th>
                                         <th className="px-6 py-4 whitespace-nowrap text-center bg-cyan-50/30 text-cyan-700">Conversione</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {filteredRows.length > 0 ? (
-                                        filteredRows.map((row) => (
+                                        sortedRows.map((row) => (
                                             <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
                                                 <td className="px-6 py-3 whitespace-nowrap">
                                                     <div className="flex flex-col">
@@ -519,7 +609,7 @@ export default function ReportisticaClientV2() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-3">
-                                                    <div className="font-bold text-slate-800">{row.nome} {row.cognome}</div>
+                                                    <div className="font-bold text-slate-800">{row.cognome} {row.nome}</div>
                                                 </td>
                                                 <td className="px-6 py-3">
                                                     <div className="text-slate-500 font-mono text-xs">{row.telefono}</div>
@@ -547,14 +637,11 @@ export default function ReportisticaClientV2() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-3 text-center bg-cyan-50/10 group-hover:bg-cyan-50/20 transition-colors">
-                                                    {row.conversion ? (
+                                                    {row.isRecuperato ? (
                                                         <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
-                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700 border border-cyan-200 mb-1">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700 border border-cyan-200" title="Questo venduto deriva da un contatto precedente">
                                                                 <RefreshCw className="w-3 h-3" />
-                                                                Recuperato
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-500 font-medium">
-                                                                il {formatDate(row.conversion.date)}
+                                                                RECUPERATO
                                                             </span>
                                                         </div>
                                                     ) : (

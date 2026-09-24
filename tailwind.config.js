@@ -8,8 +8,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
-        display: ["var(--font-outfit)", "ui-sans-serif", "system-ui"]
+        sans: ["var(--font-outfit)", "Outfit", "Inter", "var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
+        display: ["Outfit", "var(--font-outfit)", "system-ui", "-apple-system", "sans-serif"]
       },
       colors: {
         brand: "#21b5ba",

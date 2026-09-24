@@ -805,7 +805,7 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
@@ -835,7 +835,7 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
             </div>
 
             {/* Content Area */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                 {loading ? (
                     <div className="p-12 text-center text-slate-400">Caricamento...</div>
                 ) : filteredItems.length === 0 ? (

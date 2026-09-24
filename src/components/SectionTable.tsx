@@ -49,16 +49,16 @@ export default async function SectionTable({ section, filters }: Props) {
   const selectedDate = filters.date;
 
   return (
-    <section className="border rounded-lg overflow-hidden">
+    <section className="saas-panel overflow-hidden rounded-2xl border border-slate-200/80 shadow-md">
       {/* Header sezione brand */}
-      <div className="flex items-center justify-between px-4 lg:px-6 py-3" style={{ background: "#1AB4B8", color: "white" }}>
-        <h2 className="text-lg font-semibold">{section}</h2>
+      <div className="flex items-center justify-between px-5 lg:px-7 py-3.5 bg-gradient-to-r from-[#21b5ba] via-[#1db0b5] to-[#0f766e] text-white shadow-sm">
+        <h2 className="text-base lg:text-lg font-extrabold tracking-tight drop-shadow-sm">{section}</h2>
         <AddRowTrigger section={section} isDay={isDay} />
       </div>
 
-      <div className="bg-white">
+      <div className="bg-white/95">
         {error ? (
-          <div className="p-4 text-red-600">Errore: {error.message}</div>
+          <div className="p-4 text-rose-600 font-semibold text-sm">Errore nel caricamento: {error.message}</div>
         ) : (
           <>
             {total > filters.limit && (
@@ -68,8 +68,8 @@ export default async function SectionTable({ section, filters }: Props) {
             )}
 
             {/* Desktop table */}
-            <div className="px-2 lg:px-4 pb-4 hidden md:block">
-              <table className="w-full table-fixed table-flat">
+            <div className="px-2 lg:px-4 pb-4 hidden md:block overflow-x-auto">
+              <table className="w-full table-fixed table-flat text-xs">
                 <colgroup>
                   {showDateColumn && <col className="w-[8%]" />}
                   <col className="w-[6%]" />
@@ -89,7 +89,7 @@ export default async function SectionTable({ section, filters }: Props) {
                   <col className="w-[10%]" />
                 </colgroup>
                 <thead>
-                  <tr>
+                  <tr className="text-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200/80">
                     {showDateColumn && <th>Data</th>}
                     <th>Ora</th>
                     <th>Nome</th>

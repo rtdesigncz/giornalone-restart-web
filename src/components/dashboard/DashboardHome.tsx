@@ -598,16 +598,16 @@ export default function DashboardHome() {
                     {/* Left Column: Agenda (2/3 width) */}
                     <div className="lg:col-span-2 flex flex-col gap-6">
                         {/* PENDING APPOINTMENTS */}
-                        <div className="glass-card p-6 min-h-[300px] flex flex-col">
+                        <div className="saas-panel p-5 min-h-[300px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-sky-100 text-sky-600 rounded-lg">
+                                    <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
                                         <CalendarCheck size={20} />
                                     </div>
                                     <h2 className="text-lg font-bold text-slate-800">In Corso / Da Fare</h2>
-                                    <span className="px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-bold">{pendingAppointments.length}</span>
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-bold">{pendingAppointments.length}</span>
                                 </div>
-                                <Link href="/agenda" className="text-sm font-medium text-sky-600 hover:text-sky-700 flex items-center gap-1 hover:gap-2 transition-all">
+                                <Link href="/agenda" className="text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1 hover:gap-2 transition-all">
                                     Vedi tutti <ArrowUpRight size={16} />
                                 </Link>
                             </div>
@@ -642,12 +642,12 @@ export default function DashboardHome() {
                                                         ? "bg-emerald-50/50 border-emerald-200"
                                                         : isExpired
                                                             ? "bg-amber-50/50 border-amber-200 hover:bg-amber-50" // Yellow for expired
-                                                            : "bg-white border-slate-100 hover:border-sky-200"
+                                                            : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm"
                                                 )}
                                                 style={{ animationDelay: `${i * 50}ms` }}
                                             >
                                                 <div className={cn(
-                                                    "w-14 h-14 rounded-2xl border flex flex-col items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform",
+                                                    "w-14 h-14 rounded-xl border flex flex-col items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform",
                                                     isPresentato
                                                         ? "bg-emerald-100 border-emerald-200 text-emerald-600"
                                                         : isExpired
@@ -720,7 +720,7 @@ export default function DashboardHome() {
                         </div>
 
                         {/* COMPLETED APPOINTMENTS */}
-                        <div className="glass-card overflow-hidden">
+                        <div className="saas-panel overflow-hidden">
                             <div
                                 className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                                 onClick={() => setCompletedOpen(!completedOpen)}

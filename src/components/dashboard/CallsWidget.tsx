@@ -9,25 +9,27 @@ interface CallsWidgetProps {
 }
 
 export default function CallsWidget({ todos, loading, currentTime, onCompleteCall }: CallsWidgetProps) {
+    const pendingCount = todos.filter(t => !t.contattato).length;
+
     return (
-        <div className="glass-card p-5 flex flex-col h-full max-h-[400px]">
-            <div className="flex items-center justify-between mb-4">
+        <div className="saas-panel flex flex-col h-full max-h-[400px]">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg">
-                        <Phone size={16} />
+                    <div className="p-1.5 rounded-md bg-orange-50 text-orange-600">
+                        <Phone size={16} strokeWidth={2.5} />
                     </div>
-                    <h2 className="text-base font-bold text-slate-800">Da Chiamare</h2>
+                    <h2 className="text-[15px] font-bold text-slate-900 tracking-tight">Da Chiamare Oggi</h2>
                 </div>
-                <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{todos.filter(t => !t.contattato).length}</span>
+                <span className="text-[12px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                    {pendingCount}
+                </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                 {loading ? (
-                    <div className="text-center text-slate-400 text-xs py-4">Caricamento...</div>
+                    <div className="text-center text-slate-400 text-xs py-6">Caricamento...</div>
                 ) : todos.length === 0 ? (
-                    <div className="text-center text-slate-400 text-xs py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                        Tutto fatto! 🎉
-                    </div>
+                    <div className="text-center text-slate-500 text-xs py-8">Nessuna telefonata in sospeso.</div>
                 ) : (
                     todos.map((task) => {
                         const time = task.entry_time?.slice(0, 5) || "";
@@ -47,51 +49,32 @@ export default function CallsWidget({ todos, loading, currentTime, onCompleteCal
 
                         return (
                             <div key={task.id} className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border transition-all relative group",
-                                isCompleted ? "bg-emerald-50/50 border-emerald-100 opacity-60" :
-                                    isUrgent ? "bg-rose-50 border-rose-100 animate-pulse" :
-                                        "bg-white border-slate-100 hover:border-sky-200 hover:shadow-sm"
+                                "flex items-center gap-3 p-3 rounded-lg transition-colors group",
+                                isCompleted ? "opacity-50 grayscale" : "hover:bg-slate-50"
                             )}>
                                 <div className={cn(
-                                    "h-2 w-2 rounded-full flex-shrink-0",
-                                    isCompleted ? "bg-emerald-500" : isExpired ? "bg-rose-400" : isUrgent ? "bg-red-500" : "bg-orange-400"
+                                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                    isCompleted ? "bg-emerald-500" : isExpired ? "bg-rose-500" : isUrgent ? "bg-red-500" : "bg-orange-500"
                                 )} />
 
                                 <div className="min-w-0 flex-1">
-                                    <p className={cn("text-sm font-bold truncate", isCompleted ? "text-emerald-800 line-through" : "text-slate-800")}>
+                                    <p className={cn("text-[13px] font-bold truncate", isCompleted ? "line-through text-slate-500" : "text-slate-900")}>
                                         {task.nome} {task.cognome}
                                     </p>
-                                    {task.telefono && (
-                                        <p className="text-xs text-slate-500 font-mono mb-0.5">{task.telefono}</p>
-                                    )}
-                                    <div className="flex items-center gap-2 text-[10px]">
-                                        <span className={cn(
-                                            "flex items-center gap-1",
-                                            isCompleted ? "text-emerald-600" : isUrgent ? "text-rose-600 font-bold" : "text-slate-500"
-                                        )}>
-                                            <Clock size={10} />
-                                            {task.entry_time ? task.entry_time.slice(0, 5) : "Oggi"}
+                                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 font-medium">
+                                        <span className="flex items-center gap-1">
+                                            <Clock size={12} /> {time || "Oggi"}
                                         </span>
-                                        {task.consulente_name && (
-                                            <span className="text-slate-400 flex items-center gap-0.5">
-                                                • {task.consulente_name}
-                                            </span>
-                                        )}
-                                        {isExpired && !isCompleted && (
-                                            <span className="text-rose-500 flex items-center gap-0.5 font-bold ml-auto">
-                                                <AlertCircle size={10} /> Scaduto
-                                            </span>
-                                        )}
+                                        {task.telefono && <span>• {task.telefono}</span>}
                                     </div>
                                 </div>
 
                                 {!isCompleted ? (
                                     <button
                                         onClick={() => onCompleteCall(task.id)}
-                                        className="p-1.5 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                        title="Fatto"
+                                        className="p-1.5 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all opacity-0 group-hover:opacity-100"
                                     >
-                                        <CheckCircle size={20} />
+                                        <CheckCircle size={16} />
                                     </button>
                                 ) : (
                                     <CheckCircle size={16} className="text-emerald-500" />

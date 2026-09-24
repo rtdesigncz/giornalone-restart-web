@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ImportCsvModal from "./ImportCsvModal";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 type Gestione = { id: string; nome: string; descrizione?: string | null; csv_mapping_default?: any };
 
@@ -60,7 +61,7 @@ const cleanName = (s: string | null) => {
 
 // --- UI COMPONENTS ---
 
-const StatusBadge = ({ label, color }: { label: string, color: "emerald" | "amber" | "red" | "slate" | "blue" }) => {
+const StatusBadge = ({ label, color, className }: { label: string, color: "emerald" | "amber" | "red" | "slate" | "blue", className?: string }) => {
     const colors = {
         emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
         amber: "bg-amber-100 text-amber-700 border-amber-200",
@@ -69,7 +70,7 @@ const StatusBadge = ({ label, color }: { label: string, color: "emerald" | "ambe
         blue: "bg-blue-100 text-blue-700 border-blue-200",
     };
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${colors[color]}`}>
+        <span className={cn(`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${colors[color]}`, className)}>
             {label}
         </span>
     );
@@ -128,22 +129,22 @@ const StepIcon = ({ active, completed, icon: Icon, onClick, colorClass, disabled
 const ActionModal = ({ isOpen, title, children, onClose, onConfirm, confirmLabel = "Conferma", confirmColor = "indigo" }: any) => {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800">{title}</h3>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-slate-950/20 w-full max-w-lg overflow-hidden flex flex-col border border-slate-200/80 animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+                    <h3 className="font-display font-extrabold text-base text-slate-900 tracking-tight">{title}</h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all"><X className="w-4 h-4" /></button>
                 </div>
-                <div className="p-6">
+                <div className="p-6 font-sans">
                     {children}
                 </div>
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Annulla</button>
+                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end gap-3 font-sans">
+                    <button onClick={onClose} className="btn btn-outline text-xs">Annulla</button>
                     <button
                         onClick={onConfirm}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-all flex items-center gap-2",
-                            confirmColor === "red" ? "bg-red-600 hover:bg-red-700 shadow-red-200" : "bg-cyan-600 hover:bg-cyan-700 shadow-cyan-200"
+                            "btn btn-sm text-xs text-white shadow-md transition-all flex items-center gap-2",
+                            confirmColor === "red" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-200" : "btn-brand"
                         )}
                     >
                         {confirmLabel}
@@ -165,12 +166,17 @@ export default function ConsulenzeClientV2() {
     const [abbOptions, setAbbOptions] = useState<string[]>([]);
 
     const [q, setQ] = useState("");
+    
+
     const [fContattati, setFContattati] = useState(false);
+    const [fDaContattare, setFDaContattare] = useState(false);
     const [fAppuntamenti, setFAppuntamenti] = useState(false);
     const [fConsFatte, setFConsFatte] = useState(false);
     const [fEsiti, setFEsiti] = useState<string[]>([]);
     const [fAbb, setFAbb] = useState<string[]>([]);
     const [showImport, setShowImport] = useState(false);
+    const [showNewModal, setShowNewModal] = useState(false);
+    const [newRecord, setNewRecord] = useState({ nome: "", cognome: "", telefono: "", tipo_abbonamento_corrente: "", scadenza: "" });
     const [showFilters, setShowFilters] = useState(false);
 
     // ACTION MODAL STATES
@@ -190,7 +196,7 @@ export default function ConsulenzeClientV2() {
     const [pendingAgendaUpdate, setPendingAgendaUpdate] = useState<{ item: Item, date: string } | null>(null);
 
     const resetFiltri = () => {
-        setQ(""); setFContattati(false); setFAppuntamenti(false);
+        setQ(""); setFContattati(false); setFDaContattare(false); setFAppuntamenti(false);
         setFConsFatte(false); setFEsiti([]); setFAbb([]);
     };
 
@@ -238,21 +244,60 @@ export default function ConsulenzeClientV2() {
                 const s = `${r.nome || ""} ${r.cognome || ""} ${r.telefono || ""}`.toLowerCase();
                 if (!s.includes(qq)) return false;
             }
+            
             if (fContattati && !r.contattato) return false;
+            if (fDaContattare && r.contattato) return false;
+
             if (fAppuntamenti && !r.preso_appuntamento) return false;
             if (fConsFatte && !r.consulenza_fatta) return false;
             if (fEsiti.length && (!r.esito || !fEsiti.includes(r.esito))) return false;
             if (fAbb.length && (!r.nuovo_abbonamento_name || !fAbb.includes(r.nuovo_abbonamento_name))) return false;
             return true;
         });
-    }, [items, q, fContattati, fAppuntamenti, fConsFatte, fEsiti, fAbb]);
+    }, [items, q, fContattati, fDaContattare, fAppuntamenti, fConsFatte, fEsiti, fAbb]);
+
+// SORTING STATE
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedRows = useMemo(() => {
+        let sortableItems = [...rows];
+        if (sortConfig !== null) {
+            sortableItems.sort((a: any, b: any) => {
+                let aVal = a[sortConfig.key];
+                let bVal = b[sortConfig.key];
+                
+                if (sortConfig.key === "nome") {
+                    aVal = `${a.cognome || ""} ${a.nome || ""}`.trim().toLowerCase();
+                    bVal = `${b.cognome || ""} ${b.nome || ""}`.trim().toLowerCase();
+                } else if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                }
+                if (typeof bVal === 'string') {
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [rows, sortConfig]);
 
     const kpi = useMemo(() => {
         const totale = items.length;
         const contattati = items.filter(r => !!r.contattato).length;
-        const preso = items.filter(r => !!r.preso_appuntamento).length;
+        const preso = items.filter(r => !!r.contattato && !!r.preso_appuntamento).length;
         const fatte = items.filter(r => !!r.consulenza_fatta).length;
-        const daFare = items.filter(r => !r.consulenza_fatta).length;
+        const daFare = items.filter(r => !r.contattato).length;
         const esiti = ESITI.map(e => ({ esito: e, cnt: items.filter(r => r.esito === e).length }));
         const abbMap = new Map<string, number>();
         for (const r of items) {
@@ -450,17 +495,22 @@ export default function ConsulenzeClientV2() {
 
     const aggiungiRiga = () => {
         if (!gestioneId) { alert("Seleziona una gestione"); return; }
-        const tmp: Item = {
-            id: `tmp-${Date.now()}`,
-            gestione_id: gestioneId,
-            nome: "", cognome: "", telefono: "",
-            scadenza: "", tipo_abbonamento_corrente: "",
-            contattato: false, preso_appuntamento: false, consulenza_fatta: false,
-            data_consulenza: "", esito: null, nuovo_abbonamento_name: null, data_risposta: "",
-            note: "",
-            _isDraft: true, _editing: true,
-        };
-        setItems((it) => [tmp, ...it]);
+        setNewRecord({ nome: "", cognome: "", telefono: "", tipo_abbonamento_corrente: "", scadenza: "" });
+        setShowNewModal(true);
+    };
+
+    const confermaNuovo = async () => {
+        if (!newRecord.nome && !newRecord.cognome) {
+            alert("Inserisci almeno il nome o il cognome");
+            return;
+        }
+        const body = { gestione_id: gestioneId, ...newRecord };
+        const res = await fetch(`/api/consulenze/items`, {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        if (!res.ok) { alert("Errore creazione riga"); return; }
+        setShowNewModal(false);
+        reloadItems(gestioneId);
     };
 
     const salvaBozza = async (id: string) => {
@@ -548,6 +598,75 @@ export default function ConsulenzeClientV2() {
                 />
             )}
 
+            {/* New Record Modal */}
+            <ActionModal
+                isOpen={showNewModal}
+                title="Nuovo Cliente"
+                confirmLabel="Salva Cliente"
+                onClose={() => setShowNewModal(false)}
+                onConfirm={confermaNuovo}
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Nome</label>
+                            <input
+                                type="text"
+                                className="input w-full"
+                                placeholder="Mario"
+                                value={newRecord.nome}
+                                onChange={e => setNewRecord({ ...newRecord, nome: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Cognome</label>
+                            <input
+                                type="text"
+                                className="input w-full"
+                                placeholder="Rossi"
+                                value={newRecord.cognome}
+                                onChange={e => setNewRecord({ ...newRecord, cognome: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Telefono</label>
+                        <input
+                            type="text"
+                            className="input w-full"
+                            placeholder="333 1234567"
+                            value={newRecord.telefono}
+                            onChange={e => setNewRecord({ ...newRecord, telefono: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Tipo Abbonamento</label>
+                            <select
+                                className="input w-full"
+                                value={newRecord.tipo_abbonamento_corrente}
+                                onChange={e => setNewRecord({ ...newRecord, tipo_abbonamento_corrente: e.target.value })}
+                            >
+                                <option value="">— Seleziona —</option>
+                                {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Scadenza</label>
+                            <input
+                                type="date"
+                                className="input w-full"
+                                value={newRecord.scadenza}
+                                onChange={e => setNewRecord({ ...newRecord, scadenza: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </ActionModal>
+
+
             {/* Success Toast */}
             {successMsg && (
                 <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-in slide-in-from-bottom-5 fade-in duration-300">
@@ -626,28 +745,24 @@ export default function ConsulenzeClientV2() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2 space-y-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Esito</label>
-                                <select
-                                    className="input w-full"
+                                <label className="text-xs font-bold text-slate-700 uppercase">Esito Consulenza</label>
+                                <CustomSelect
+                                    options={ESITI.map(e => ({ value: e, label: e }))}
                                     value={tempEsito || ""}
-                                    onChange={e => setTempEsito(e.target.value as any)}
-                                >
-                                    <option value="">— Seleziona —</option>
-                                    {ESITI.map(e => <option key={e} value={e}>{e}</option>)}
-                                </select>
+                                    onChange={v => setTempEsito(v as any)}
+                                    placeholder="— Seleziona Esito —"
+                                />
                             </div>
 
                             {tempEsito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(tempEsito) && (
                                 <div className="col-span-2 space-y-1 animate-in fade-in slide-in-from-top-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Nuovo Abbonamento</label>
-                                    <select
-                                        className="input w-full"
+                                    <label className="text-xs font-bold text-slate-700 uppercase">Nuovo Abbonamento</label>
+                                    <CustomSelect
+                                        options={abbOptions.map(o => ({ value: o, label: o }))}
                                         value={tempNuovoAbb}
-                                        onChange={e => setTempNuovoAbb(e.target.value)}
-                                    >
-                                        <option value="">— Seleziona —</option>
-                                        {abbOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
+                                        onChange={v => setTempNuovoAbb(v)}
+                                        placeholder="— Seleziona Abbonamento —"
+                                    />
                                 </div>
                             )}
 
@@ -692,18 +807,13 @@ export default function ConsulenzeClientV2() {
 
                                 {/* Gestione Selector */}
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <div className="relative group flex-1 sm:flex-none">
-                                        <select
-                                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold w-full sm:w-auto sm:min-w-[180px] transition-all hover:border-cyan-300 cursor-pointer"
-                                            value={gestioneId}
-                                            onChange={(e) => setGestioneId(e.target.value)}
-                                        >
-                                            {gestioni.map(g => (
-                                                <option key={g.id} value={g.id}>{g.nome}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-cyan-500 transition-colors" />
-                                    </div>
+                                    <CustomSelect
+                                        options={gestioni.map(g => ({ value: g.id, label: g.nome }))}
+                                        value={gestioneId}
+                                        onChange={setGestioneId}
+                                        placeholder="Seleziona gestione..."
+                                        className="w-full sm:w-[220px]"
+                                    />
 
                                     <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm shrink-0">
                                         <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Nuova Gestione" onClick={creaGestione}>
@@ -726,25 +836,27 @@ export default function ConsulenzeClientV2() {
                                     <input
                                         type="text"
                                         placeholder="Cerca cliente..."
-                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                                        className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
                                         value={q}
                                         onChange={e => setQ(e.target.value)}
                                     />
+                                    {q && (
+                                        <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={() => setShowFilters(!showFilters)}
-                                        className={cn(
-                                            "p-2 rounded-lg border transition-all relative",
-                                            showFilters ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        <Filter className="w-4 h-4" />
-                                        {(fContattati || fAppuntamenti || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
-                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                                        )}
-                                    </button>
+                                    {(fDaContattare || fContattati || fAppuntamenti || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
+                                        <button 
+                                            onClick={resetFiltri}
+                                            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors"
+                                        >
+                                            <Filter className="w-4 h-4" /> Reset Filtri
+                                        </button>
+                                    )}
+                                    
                                     <button
                                         onClick={() => setShowImport(true)}
                                         className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
@@ -761,84 +873,103 @@ export default function ConsulenzeClientV2() {
                             </div>
                         </div>
 
-                        {/* Collapsible Filters Area */}
-                        {showFilters && (
-                            <div className="pt-3 border-t border-slate-100 animate-in slide-in-from-top-2">
-                                <div className="flex flex-wrap gap-4 items-center">
-                                    {/* Status Toggles */}
-                                    <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
-                                        <label className={cn("px-3 py-1.5 rounded text-xs font-bold cursor-pointer transition-all select-none flex items-center gap-1.5", fContattati ? "bg-white text-amber-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                                            <input type="checkbox" className="hidden" checked={fContattati} onChange={e => setFContattati(e.target.checked)} />
-                                            <MessageCircle className="w-3 h-3" /> Contattati
-                                        </label>
-                                        <label className={cn("px-3 py-1.5 rounded text-xs font-bold cursor-pointer transition-all select-none flex items-center gap-1.5", fAppuntamenti ? "bg-white text-teal-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                                            <input type="checkbox" className="hidden" checked={fAppuntamenti} onChange={e => setFAppuntamenti(e.target.checked)} />
-                                            <Calendar className="w-3 h-3" /> Appuntamenti
-                                        </label>
-                                        <label className={cn("px-3 py-1.5 rounded text-xs font-bold cursor-pointer transition-all select-none flex items-center gap-1.5", fConsFatte ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
-                                            <input type="checkbox" className="hidden" checked={fConsFatte} onChange={e => setFConsFatte(e.target.checked)} />
-                                            <CheckCircle2 className="w-3 h-3" /> Fatte
-                                        </label>
-                                    </div>
-
-                                    <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
-
-                                    {/* Esiti */}
-                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                                        {ESITI.map(e => (
-                                            <label key={e} className={cn(
-                                                "px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase cursor-pointer transition-all select-none whitespace-nowrap",
-                                                fEsiti.includes(e) ? "bg-cyan-50 border-cyan-200 text-cyan-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                                            )}>
-                                                <input type="checkbox" className="hidden" checked={fEsiti.includes(e)} onChange={() => toggleStrIn(fEsiti, setFEsiti, e)} />
-                                                {e}
-                                            </label>
-                                        ))}
-                                    </div>
-
-                                    <div className="flex-1"></div>
-
-                                    <button className="text-xs font-medium text-slate-400 hover:text-red-600 transition-colors" onClick={resetFiltri}>
-                                        Reset filtri
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
-            </div>                {/* KPI RIBBON */}
-            <div className="flex items-center gap-4 px-4 md:gap-8 md:px-8 py-3 bg-white border-b border-slate-200 text-sm overflow-x-auto shrink-0 shadow-sm">
-                <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-slate-100 rounded-md text-slate-500">
-                        <Users className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col leading-none">
-                        <span className="text-lg font-bold text-slate-900">{kpi.totale}</span>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Clienti Totali</span>
-                    </div>
-                </div>
-                <div className="w-px h-8 bg-slate-100"></div>
-
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        <span className="text-slate-600 font-medium">{kpi.fatte} <span className="text-slate-400 font-normal">Fatte</span></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                        <span className="text-slate-600 font-medium">{kpi.daFare} <span className="text-slate-400 font-normal">Da fare</span></span>
-                    </div>
-                </div>
-
-                <div className="w-px h-8 bg-slate-100"></div>
-
-                <div className="flex gap-2">
-                    {kpi.esiti.map(e => (
-                        <div key={e.esito} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs transition-colors hover:bg-slate-100">
-                            <span className="text-slate-500 capitalize font-medium">{e.esito.toLowerCase()}</span>
-                            <span className="bg-white px-1.5 rounded-md shadow-sm border border-slate-100 font-bold text-slate-700">{e.cnt}</span>
+            </div>                
+            {/* NEW KPI SAAS CARDS */}
+            <div className="bg-slate-50 border-b border-slate-200 py-4 px-4 sm:px-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 max-w-[1600px] mx-auto">
+                    {/* Totale */}
+                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppuntamenti && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3>
+                            <Users className="w-4 h-4 text-slate-400" />
                         </div>
-                    ))}
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.totale}</p>
+                    </div>
+                    {/* Da Contattare */}
+                    <div onClick={() => { resetFiltri(); setFDaContattare(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fDaContattare ? "ring-2 ring-amber-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Da Contattare</h3>
+                            <AlertCircle className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.daFare}</p>
+                    </div>
+
+                    {/* Contattati */}
+                    <div onClick={() => { resetFiltri(); setFContattati(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fContattati && !fAppuntamenti && !fConsFatte ? "ring-2 ring-cyan-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Contattati</h3>
+                            <MessageCircle className="w-4 h-4 text-blue-500" />
+                        </div>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.contattati}</p>
+                    </div>
+
+                    {/* Appuntamenti Fissati */}
+                    <div onClick={() => { resetFiltri(); setFAppuntamenti(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fAppuntamenti && !fConsFatte ? "ring-2 ring-teal-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Appuntamenti</h3>
+                            <Calendar className="w-4 h-4 text-teal-500" />
+                        </div>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.preso}</p>
+                    </div>
+
+                    {/* Consulenze Fatte */}
+                    <div onClick={() => { resetFiltri(); setFConsFatte(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fConsFatte ? "ring-2 ring-emerald-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Consulenze Fatte</h3>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.fatte}</p>
+                    </div>
+
+                    {/* Venduti */}
+                    <div onClick={() => { resetFiltri(); setFEsiti(["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"]); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fEsiti.includes("ISCRIZIONE") ? "ring-2 ring-indigo-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Venduti</h3>
+                            <Check className="w-4 h-4 text-indigo-500" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                            <p className="text-2xl font-extrabold text-slate-900">{kpi.esiti.filter(e => ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(e.esito)).reduce((a,b) => a+b.cnt, 0)}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Esiti & Abbonamenti Break-down */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-center mt-4 max-w-[1600px] mx-auto overflow-x-auto pb-1">
+                    {/* Esiti Breakdown */}
+                    <div className="flex gap-2 flex-wrap justify-center">
+                        {kpi.esiti.map(e => {
+                            let colorClass = "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
+                            let badgeClass = "text-slate-900";
+                            if (e.esito === "ISCRIZIONE") { colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"; badgeClass = "text-emerald-900"; }
+                            if (e.esito === "RINNOVO") { colorClass = "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"; badgeClass = "text-teal-900"; }
+                            if (e.esito === "INTEGRAZIONE") { colorClass = "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"; badgeClass = "text-cyan-900"; }
+                            if (e.esito === "IN ATTESA") { colorClass = "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"; badgeClass = "text-amber-900"; }
+                            if (e.esito === "NEGATIVO") { colorClass = "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"; badgeClass = "text-red-900"; }
+
+                            return (
+                                <div key={e.esito} onClick={() => { resetFiltri(); setFEsiti([e.esito]); }} className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold cursor-pointer transition-colors", colorClass)}>
+                                    <span>{e.esito}</span>
+                                    <span className={cn("bg-white px-1.5 rounded-md shadow-sm", badgeClass)}>{e.cnt}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    
+                    {kpi.nuoviAbb && kpi.nuoviAbb.length > 0 && (
+                        <>
+                            <div className="w-px h-5 bg-slate-200 hidden md:block"></div>
+                            <div className="flex gap-2 flex-wrap justify-center">
+                                {kpi.nuoviAbb.map(abb => (
+                                    <div key={abb.name} onClick={() => { resetFiltri(); setFAbb([abb.name]); }} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[11px] font-bold cursor-pointer hover:bg-indigo-100 transition-colors">
+                                        <span>{abb.name}</span>
+                                        <span className="bg-white px-1.5 rounded-md shadow-sm text-indigo-900">{abb.cnt}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -864,16 +995,26 @@ export default function ConsulenzeClientV2() {
                             {/* DESKTOP TABLE */}
                             <div className="hidden md:block">
                                 <table className="w-full border-separate border-spacing-y-3">
+                                    
                                     <thead>
-                                        <tr className="text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                            <th className="pb-2 pl-4 whitespace-nowrap">Cliente</th>
-                                            <th className="pb-2 text-center whitespace-nowrap">Abbonamento Attuale</th>
-                                            <th className="pb-2 text-center whitespace-nowrap">Stato Avanzamento</th>
-                                            <th className="pb-2 text-center whitespace-nowrap">Esito</th>
-                                            <th className="pb-2 whitespace-nowrap">Note</th>
-                                            <th className="pb-2 pr-4 text-right whitespace-nowrap">Azioni</th>
+                                        <tr className="text-left text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                                            <th className="pb-3 pl-4 whitespace-nowrap cursor-pointer hover:text-slate-700 transition-colors" onClick={() => handleSort('nome')}>
+                                                Cliente {sortConfig?.key === 'nome' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="pb-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-700 transition-colors" onClick={() => handleSort('scadenza')}>
+                                                Abbonamento / Scadenza {sortConfig?.key === 'scadenza' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="pb-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-700 transition-colors" onClick={() => handleSort('data_consulenza')}>
+                                                Stato / Data App. {sortConfig?.key === 'data_consulenza' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="pb-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-700 transition-colors" onClick={() => handleSort('esito')}>
+                                                Esito {sortConfig?.key === 'esito' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="pb-3 whitespace-nowrap">Note</th>
+                                            <th className="pb-3 pr-4 text-right whitespace-nowrap">Azioni</th>
                                         </tr>
                                     </thead>
+
                                     <tbody>
                                         {loading ? (
                                             // Skeleton Rows
@@ -915,7 +1056,7 @@ export default function ConsulenzeClientV2() {
                                                 </tr>
                                             ))
                                         ) : (
-                                            rows.length > 0 ? rows.map(r => {
+                                            sortedRows.length > 0 ? sortedRows.map(r => {
                                                 const isEditing = editable(r);
 
                                                 // Date Logic
@@ -944,7 +1085,7 @@ export default function ConsulenzeClientV2() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex flex-col">
-                                                                    <div className="font-bold text-slate-800 text-sm">{cleanName(r.nome)} {cleanName(r.cognome)}</div>
+                                                                    <div className="font-bold text-slate-800 text-sm">{cleanName(r.cognome)} {cleanName(r.nome)}</div>
                                                                     {r.telefono ? (
                                                                         <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded">
                                                                             <Phone className="w-3 h-3" />
@@ -1075,6 +1216,11 @@ export default function ConsulenzeClientV2() {
                                                                                     r.esito === "NEGATIVO" ? "red" :
                                                                                         r.esito === "IN ATTESA" ? "amber" : "emerald"
                                                                                 }
+                                                                                className={
+                                                                                    (r.esito === "IN ATTESA" && r.data_risposta && new Date(r.data_risposta) < new Date(new Date().setHours(0,0,0,0))) 
+                                                                                        ? "animate-pulse ring-2 ring-orange-500 bg-orange-100 text-orange-900 border-orange-500" 
+                                                                                        : ""
+                                                                                }
                                                                             />
 
                                                                             {r.nuovo_abbonamento_name && (
@@ -1202,7 +1348,7 @@ export default function ConsulenzeClientV2() {
                                                         </div>
                                                     ) : (
                                                         <div>
-                                                            <div className="font-bold text-slate-800 text-lg">{cleanName(r.nome)} {cleanName(r.cognome)}</div>
+                                                            <div className="font-bold text-slate-800 text-lg">{cleanName(r.cognome)} {cleanName(r.nome)}</div>
                                                             {r.telefono && (
                                                                 <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1 font-mono">
                                                                     <Phone className="w-3 h-3" />

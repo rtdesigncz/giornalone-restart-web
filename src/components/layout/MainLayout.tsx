@@ -10,7 +10,7 @@ import MobileNav from "./MobileNav";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
-    const isFullWidth = pathname?.startsWith("/consulenze") || pathname?.startsWith("/reportistica") || pathname?.startsWith("/consegna-pass");
+    const isFullWidth = pathname?.startsWith("/consulenze") || pathname?.startsWith("/reportistica") || pathname?.startsWith("/consegna-pass") || pathname?.startsWith("/agenda") || pathname?.startsWith("/visite-mediche");
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">

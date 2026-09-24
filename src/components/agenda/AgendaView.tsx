@@ -32,7 +32,7 @@ export default function AgendaView() {
     }, [sectionParam]);
 
     return (
-        <div className="space-y-6 flex flex-col animate-in-up">
+        <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-6 lg:p-8 animate-in-up space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Agenda</h1>
@@ -181,7 +181,7 @@ export default function AgendaView() {
             </div>
 
             {/* Content Area */}
-            <div className="glass-card relative border border-slate-200/60 bg-white/50">
+            <div className="flex-1 overflow-auto relative">
                 {viewMode === "list" ? (
                     <>
                         {/* Desktop View */}

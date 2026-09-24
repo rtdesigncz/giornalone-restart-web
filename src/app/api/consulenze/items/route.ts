@@ -37,11 +37,11 @@ export async function POST(req: Request) {
     if (!gestione_id) return NextResponse.json({ error: "gestione_id mancante" }, { status: 400 });
     const insert: any = {
       gestione_id,
-      nome: body?.nome ?? null,
-      cognome: body?.cognome ?? null,
-      telefono: body?.telefono ?? null,
-      scadenza: body?.scadenza ?? null,
-      tipo_abbonamento_corrente: body?.tipo_abbonamento_corrente ?? null,
+      nome: body?.nome || null,
+      cognome: body?.cognome || null,
+      telefono: body?.telefono || null,
+      scadenza: body?.scadenza || null,
+      tipo_abbonamento_corrente: body?.tipo_abbonamento_corrente || null,
     };
     const { data, error } = await supabase
       .from("gestione_items")

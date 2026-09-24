@@ -75,9 +75,9 @@ export default function AgendaCalendar({ section }: { section: string }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm min-h-[600px]">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden relative flex flex-col h-full min-h-[600px]">
             {/* Header */}
-            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80 sticky top-0 z-10">
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-white sticky top-0 z-10">
                 {weekDates.map((dateISO, index) => {
                     const d = new Date(dateISO);
                     const isToday = dateISO === getLocalDateISO();

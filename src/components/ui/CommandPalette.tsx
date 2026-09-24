@@ -54,7 +54,6 @@ export default function CommandPalette() {
 
         // Actions
         { id: "act-new", label: "Nuovo Inserimento", icon: Plus, group: "Azioni", action: () => { /* TODO: Trigger Drawer */ alert("Funzione rapida in arrivo!"); } },
-        { id: "act-ai", label: "Chiedi all'AI", icon: Command, group: "Azioni", action: () => window.dispatchEvent(new Event("open-ai-agent")) },
     ];
 
     const filteredCommands = commands.filter((command) =>

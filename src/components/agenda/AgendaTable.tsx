@@ -160,16 +160,16 @@ export default function AgendaTable({ section }: { section: string }) {
             </div>
 
             {/* Table */}
-            <div className="w-full">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden relative w-full">
                 <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-200">
+                    <thead className="bg-white sticky top-0 z-10">
                         <tr>
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Ora</th>
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Consulente</th>
-                            {!isTelefonici && <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Abbonamento</th>}
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Stato</th>
-                            <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200 w-24">Ora</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200">Cliente</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200 hidden md:table-cell">Consulente</th>
+                            {!isTelefonici && <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200 hidden lg:table-cell">Abbonamento</th>}
+                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200 text-center">Stato</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white border-b border-slate-200 text-right">Azioni</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
