@@ -170,7 +170,7 @@ export default function ConsulenzeClientV2() {
 
     const [fContattati, setFContattati] = useState(false);
     const [fDaContattare, setFDaContattare] = useState(false);
-    const [fAppuntamenti, setFAppuntamenti] = useState(false);
+    const [fAppDaFare, setFAppDaFare] = useState(false);
     const [fConsFatte, setFConsFatte] = useState(false);
     const [fEsiti, setFEsiti] = useState<string[]>([]);
     const [fAbb, setFAbb] = useState<string[]>([]);
@@ -196,7 +196,7 @@ export default function ConsulenzeClientV2() {
     const [pendingAgendaUpdate, setPendingAgendaUpdate] = useState<{ item: Item, date: string } | null>(null);
 
     const resetFiltri = () => {
-        setQ(""); setFContattati(false); setFDaContattare(false); setFAppuntamenti(false);
+        setQ(""); setFContattati(false); setFDaContattare(false); setFAppDaFare(false);
         setFConsFatte(false); setFEsiti([]); setFAbb([]);
     };
 
@@ -248,13 +248,13 @@ export default function ConsulenzeClientV2() {
             if (fContattati && !r.contattato) return false;
             if (fDaContattare && r.contattato) return false;
 
-            if (fAppuntamenti && !r.preso_appuntamento) return false;
+            if (fAppDaFare && (!r.preso_appuntamento || r.consulenza_fatta)) return false;
             if (fConsFatte && !r.consulenza_fatta) return false;
             if (fEsiti.length && (!r.esito || !fEsiti.includes(r.esito))) return false;
             if (fAbb.length && (!r.nuovo_abbonamento_name || !fAbb.includes(r.nuovo_abbonamento_name))) return false;
             return true;
         });
-    }, [items, q, fContattati, fDaContattare, fAppuntamenti, fConsFatte, fEsiti, fAbb]);
+    }, [items, q, fContattati, fDaContattare, fAppDaFare, fConsFatte, fEsiti, fAbb]);
 
 // SORTING STATE
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -295,7 +295,7 @@ export default function ConsulenzeClientV2() {
     const kpi = useMemo(() => {
         const totale = items.length;
         const contattati = items.filter(r => !!r.contattato).length;
-        const preso = items.filter(r => !!r.contattato && !!r.preso_appuntamento).length;
+        const appuntamentiDaFare = items.filter(r => !!r.preso_appuntamento && !r.consulenza_fatta).length;
         const fatte = items.filter(r => !!r.consulenza_fatta).length;
         const daFare = items.filter(r => !r.contattato).length;
         const esiti = ESITI.map(e => ({ esito: e, cnt: items.filter(r => r.esito === e).length }));
@@ -306,7 +306,7 @@ export default function ConsulenzeClientV2() {
             abbMap.set(n, (abbMap.get(n) || 0) + 1);
         }
         const nuoviAbb = Array.from(abbMap.entries()).map(([name, cnt]) => ({ name, cnt }));
-        return { totale, contattati, preso, fatte, daFare, esiti, nuoviAbb };
+        return { totale, contattati, appuntamentiDaFare, fatte, daFare, esiti, nuoviAbb };
     }, [items]);
 
     const toggleStrIn = (arr: string[], set: (v: string[]) => void, val: string) => {
@@ -848,7 +848,7 @@ export default function ConsulenzeClientV2() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {(fDaContattare || fContattati || fAppuntamenti || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
+                                    {(fDaContattare || fContattati || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
                                         <button 
                                             onClick={resetFiltri}
                                             className="hidden sm:flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors"
@@ -880,7 +880,7 @@ export default function ConsulenzeClientV2() {
             <div className="bg-slate-50 border-b border-slate-200 py-4 px-4 sm:px-6">
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-4 max-w-[1600px] mx-auto">
                     {/* Totale */}
-                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppuntamenti && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
+                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3>
                             <Users className="w-4 h-4 text-slate-400" />
@@ -897,7 +897,7 @@ export default function ConsulenzeClientV2() {
                     </div>
 
                     {/* Contattati */}
-                    <div onClick={() => { resetFiltri(); setFContattati(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fContattati && !fAppuntamenti && !fConsFatte ? "ring-2 ring-cyan-500 border-transparent" : "")}>
+                    <div onClick={() => { resetFiltri(); setFContattati(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fContattati && !fAppDaFare && !fConsFatte ? "ring-2 ring-cyan-500 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Contattati</h3>
                             <MessageCircle className="w-4 h-4 text-blue-500" />
@@ -905,13 +905,13 @@ export default function ConsulenzeClientV2() {
                         <p className="text-2xl font-extrabold text-slate-900">{kpi.contattati}</p>
                     </div>
 
-                    {/* Appuntamenti Fissati */}
-                    <div onClick={() => { resetFiltri(); setFAppuntamenti(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fAppuntamenti && !fConsFatte ? "ring-2 ring-teal-500 border-transparent" : "")}>
+                    {/* Appuntamenti Da Fare */}
+                    <div onClick={() => { resetFiltri(); setFAppDaFare(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fAppDaFare ? "ring-2 ring-teal-500 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Appuntamenti</h3>
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Appunt. Da Fare</h3>
                             <Calendar className="w-4 h-4 text-teal-500" />
                         </div>
-                        <p className="text-2xl font-extrabold text-slate-900">{kpi.preso}</p>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.appuntamentiDaFare}</p>
                     </div>
 
                     {/* Consulenze Fatte */}
@@ -1060,15 +1060,17 @@ export default function ConsulenzeClientV2() {
                                                 const isEditing = editable(r);
 
                                                 // Date Logic
-                                                let dateClass = "text-slate-500";
-                                                if (r.preso_appuntamento && !r.consulenza_fatta && r.data_consulenza) {
+                                                let dateClass = "bg-slate-100 text-slate-500";
+                                                if (r.preso_appuntamento && r.data_consulenza) {
                                                     const d = new Date(r.data_consulenza);
                                                     const today = new Date();
                                                     today.setHours(0, 0, 0, 0);
-                                                    if (d < today) {
-                                                        dateClass = "text-slate-500"; // Past = Gray
+                                                    if (d < today && !r.consulenza_fatta) {
+                                                        dateClass = "animate-pulse ring-2 ring-orange-500 bg-orange-100 text-orange-900 border-orange-500";
+                                                    } else if (d >= today && !r.consulenza_fatta) {
+                                                        dateClass = "bg-teal-50 text-teal-700 font-medium";
                                                     } else {
-                                                        dateClass = "text-teal-600 font-medium"; // Future = Teal
+                                                        dateClass = "bg-slate-100 text-slate-500";
                                                     }
                                                 }
 
@@ -1169,7 +1171,7 @@ export default function ConsulenzeClientV2() {
                                                                     {isEditing ? (
                                                                         <input type="date" className="input-sm text-xs w-32 text-center" value={r.data_consulenza || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, data_consulenza: e.target.value } : x))} />
                                                                     ) : (
-                                                                        <div className={cn("text-xs flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50", dateClass)}>
+                                                                        <div className={cn("text-xs flex items-center gap-1 px-2 py-0.5 rounded-full", dateClass)}>
                                                                             <Calendar className="w-3 h-3" />
                                                                             {formatDate(r.data_consulenza) || "Data non fissata"}
                                                                         </div>
@@ -1419,11 +1421,7 @@ export default function ConsulenzeClientV2() {
                                             {/* Appointment Date Display */}
                                             {r.preso_appuntamento && !isEditing && (
                                                 <div className="flex justify-center w-full mt-2">
-                                                    <div className={cn("text-xs flex items-center gap-1 px-3 py-1 rounded-full font-medium",
-                                                        r.data_consulenza && new Date(r.data_consulenza) >= new Date(new Date().setHours(0, 0, 0, 0))
-                                                            ? "bg-teal-50 text-teal-700"
-                                                            : "bg-slate-100 text-slate-500"
-                                                    )}>
+                                                    <div className={cn("text-xs flex items-center gap-1 px-3 py-1 rounded-full font-medium", dateClass)}>
                                                         <Calendar className="w-3 h-3" />
                                                         {formatDate(r.data_consulenza) || "Data non fissata"}
                                                     </div>
