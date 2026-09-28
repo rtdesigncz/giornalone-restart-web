@@ -282,7 +282,7 @@ export default function ReportisticaClientV2() {
             contattato: source.filter(r => r.contattato).length,
             negativo: source.filter(r => r.negativo).length,
             assenti: source.filter(r => r.assente).length,
-            recuperati: source.filter(r => r.conversion).length,
+            recuperati: source.filter(r => r.isRecuperato).length,
         };
     }, [resp]);
 
