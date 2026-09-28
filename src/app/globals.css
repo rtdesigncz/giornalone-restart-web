@@ -4,7 +4,13 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
+  /* Forza il maiuscolo su tutti gli input per pulizia visiva */
+  input[type="text"], input:not([type]), textarea {
+    text-transform: uppercase;
+  }
+
   :root {
     --brand: #21b5ba;
     --brand-dark: #0f766e;
