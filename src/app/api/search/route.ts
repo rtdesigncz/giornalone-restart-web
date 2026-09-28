@@ -19,9 +19,9 @@ export async function GET(req: Request) {
 
         const terms = q.trim().split(/\s+/).filter(t => t.length > 0);
         
-        let agendaQuery = supabase.from("entries").select("id, nome, cognome, telefono, section, entry_date");
-        let consulenzeQuery = supabase.from("gestione_items").select("id, nome, cognome, telefono, gestione_id");
-        let medicalQuery = supabase.from("medical_appointments").select("id, client_name, client_surname, client_phone, session_id");
+        let agendaQuery = supabase.from("entries").select("id, nome, cognome, telefono, section, entry_date, consulente");
+        let consulenzeQuery = supabase.from("gestione_items").select("id, nome, cognome, telefono, gestione_id, gestioni(nome)");
+        let medicalQuery = supabase.from("medical_appointments").select("id, client_name, client_surname, client_phone, session_id, medical_sessions(date)");
         let waitingQuery = supabase.from("medical_waiting_list").select("id, name, surname, phone");
 
         terms.forEach(term => {
@@ -40,13 +40,24 @@ export async function GET(req: Request) {
         const results = [];
 
         if (agenda) {
-            agenda.forEach(a => results.push({ type: "agenda", id: a.id, title: `${a.nome} ${a.cognome}`, subtitle: `${a.section} - ${a.entry_date}`, phone: a.telefono, raw: a }));
+            agenda.forEach(a => {
+            const dateStr = a.entry_date ? new Date(a.entry_date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
+            const consulenteStr = a.consulente ? ` • ${a.consulente}` : "";
+            results.push({ type: "agenda", id: a.id, title: `${a.nome} ${a.cognome}`, subtitle: `${a.section} - ${dateStr}${consulenteStr}`, phone: a.telefono, raw: a });
+        });
         }
         if (consulenze) {
-            consulenze.forEach(c => results.push({ type: "consulenze", id: c.id, title: `${c.nome} ${c.cognome}`, subtitle: `Consulenza`, phone: c.telefono, raw: c }));
+            consulenze.forEach(c => {
+            const listName = c.gestioni?.nome || "Lista Sconosciuta";
+            results.push({ type: "consulenze", id: c.id, title: `${c.nome} ${c.cognome}`, subtitle: `Consulenze: ${listName}`, phone: c.telefono, raw: c });
+        });
         }
         if (medical) {
-            medical.forEach(m => results.push({ type: "medical", id: m.id, title: `${m.client_name} ${m.client_surname}`, subtitle: `Visita Medica`, phone: m.client_phone, raw: m }));
+            medical.forEach(m => {
+            const sessionDate = m.medical_sessions?.date ? new Date(m.medical_sessions.date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
+            const dateStr = sessionDate ? ` del ${sessionDate}` : "";
+            results.push({ type: "medical", id: m.id, title: `${m.client_name} ${m.client_surname}`, subtitle: `Visita Medica${dateStr}`, phone: m.client_phone, raw: m });
+        });
         }
         if (waiting) {
             waiting.forEach(w => results.push({ type: "waiting", id: w.id, title: `${w.name} ${w.surname}`, subtitle: `Lista d'attesa Medico`, phone: w.phone, raw: w }));
