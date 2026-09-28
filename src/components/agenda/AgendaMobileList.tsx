@@ -34,7 +34,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
                     setFlashId(highlightId);
                     setTimeout(() => setFlashId(null), 3000);
                 }
-            }, 300);
+            }, 600);
         }
     }, [highlightId, rows]);
     const [loading, setLoading] = useState(false);

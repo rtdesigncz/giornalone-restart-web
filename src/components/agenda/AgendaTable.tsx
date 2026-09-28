@@ -36,7 +36,7 @@ export default function AgendaTable({ section }: { section: string }) {
                     setFlashId(highlightId);
                     setTimeout(() => setFlashId(null), 3000);
                 }
-            }, 300);
+            }, 600);
         }
     }, [highlightId, rows]);
 
@@ -208,10 +208,7 @@ export default function AgendaTable({ section }: { section: string }) {
                         ) : (
                             filteredRows.map((row, i) => {
                                 return (
-                                    <tr
-                                        key={row.id}
-                                        onClick={() => handleRowClick(row)}
-                                        className="hover:bg-sky-50/50 cursor-pointer transition-colors group animate-in-up"
+                                    <tr key={row.id} id={`row-${row.id}`} onClick={() => handleRowClick(row)} className={cn("cursor-pointer transition-all duration-700 group animate-in-up", flashId === String(row.id) ? "bg-amber-100 ring-inset ring-2 ring-amber-400" : "hover:bg-sky-50/50")}
                                         style={{ animationDelay: `${i * 30}ms` }}
                                     >
                                         <td className="py-4 px-6 font-mono text-sm text-slate-600 group-hover:text-brand font-medium border-l-4 border-transparent group-hover:border-brand transition-all">

@@ -29,7 +29,7 @@ export default function AppointmentTable({ sessionId, onUpdate }: AppointmentTab
                     setFlashId(highlightId);
                     setTimeout(() => setFlashId(null), 3000);
                 }
-            }, 300);
+            }, 600);
         }
     }, [highlightId, appointments]);
 

@@ -64,7 +64,7 @@ export default function CommandPalette() {
                             
                             if (r.type === 'agenda') {
                                 icon = Calendar;
-                                action = () => router.push(`/agenda?date=${r.raw.entry_date}&highlight=${r.id}`);
+                                action = () => router.push(`/agenda?section=${encodeURIComponent(r.raw.section)}&date=${r.raw.entry_date}&highlight=${r.id}`);
                             } else if (r.type === 'consulenze') {
                                 icon = Users;
                                 action = () => router.push(`/consulenze?gestione=${r.raw.gestione_id}&highlight=${r.id}`);

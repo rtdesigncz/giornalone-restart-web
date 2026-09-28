@@ -13,6 +13,10 @@ export default function SessionManager() {
     const urlSession = sp?.get("session");
     const [sessions, setSessions] = useState<any[]>([]);
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+    useEffect(() => {
+        if (urlSession) setSelectedSessionId(urlSession);
+    }, [urlSession]);
+
     const [loading, setLoading] = useState(false);
     const [newDate, setNewDate] = useState("");
     const [startTime, setStartTime] = useState("15:00");

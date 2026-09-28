@@ -21,7 +21,7 @@ export default function WaitingList() {
                     setFlashId(highlightId);
                     setTimeout(() => setFlashId(null), 3000);
                 }
-            }, 300);
+            }, 600);
         }
     }, [highlightId, items]);
     const [loading, setLoading] = useState(false);

@@ -166,6 +166,10 @@ export default function ConsulenzeClientV2() {
     // --- STATE MANAGEMENT ---
     const [gestioni, setGestioni] = useState<Gestione[]>([]);
     const [gestioneId, setGestioneId] = useState<string>("");
+    useEffect(() => {
+        if (urlGestioneId) setGestioneId(urlGestioneId);
+    }, [urlGestioneId]);
+
     const [items, setItems] = useState<Item[]>([]);
     useEffect(() => {
         if (highlightId && items.length > 0) {
@@ -176,7 +180,7 @@ export default function ConsulenzeClientV2() {
                     setFlashId(highlightId);
                     setTimeout(() => setFlashId(null), 3000);
                 }
-            }, 300);
+            }, 600);
         }
     }, [highlightId, items]);
     const [loading, setLoading] = useState(false);
