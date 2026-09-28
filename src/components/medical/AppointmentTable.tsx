@@ -16,6 +16,23 @@ interface AppointmentTableProps {
 
 export default function AppointmentTable({ sessionId, onUpdate }: AppointmentTableProps) {
     const [appointments, setAppointments] = useState<Record<string, any>>({}); // Map slot -> appointment
+    const sp = useSearchParams();
+    const highlightId = sp?.get("highlight");
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightId && Object.keys(appointments).length > 0) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${highlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setFlashId(highlightId);
+                    setTimeout(() => setFlashId(null), 3000);
+                }
+            }, 300);
+        }
+    }, [highlightId, appointments]);
+
     const [loading, setLoading] = useState(false);
     const [sessionData, setSessionData] = useState<any>(null);
     const [slots, setSlots] = useState<string[]>([]);

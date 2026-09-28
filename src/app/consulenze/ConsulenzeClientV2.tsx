@@ -163,6 +163,10 @@ export default function ConsulenzeClientV2() {
 
     const [flashId, setFlashId] = useState<string | null>(null);
 
+    // --- STATE MANAGEMENT ---
+    const [gestioni, setGestioni] = useState<Gestione[]>([]);
+    const [gestioneId, setGestioneId] = useState<string>("");
+    const [items, setItems] = useState<Item[]>([]);
     useEffect(() => {
         if (highlightId && items.length > 0) {
             setTimeout(() => {
@@ -175,10 +179,6 @@ export default function ConsulenzeClientV2() {
             }, 300);
         }
     }, [highlightId, items]);
-    // --- STATE MANAGEMENT ---
-    const [gestioni, setGestioni] = useState<Gestione[]>([]);
-    const [gestioneId, setGestioneId] = useState<string>("");
-    const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string>("");
 

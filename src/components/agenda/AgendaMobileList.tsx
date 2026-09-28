@@ -22,6 +22,9 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
     const highlightId = sp?.get("highlight");
     const [flashId, setFlashId] = useState<string | null>(null);
 
+
+
+    const [rows, setRows] = useState<any[]>([]);
     useEffect(() => {
         if (highlightId && rows.length > 0) {
             setTimeout(() => {
@@ -34,9 +37,6 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
             }, 300);
         }
     }, [highlightId, rows]);
-
-
-    const [rows, setRows] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
 

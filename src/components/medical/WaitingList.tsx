@@ -11,8 +11,9 @@ export default function WaitingList() {
     const highlightId = sp?.get("highlight");
     const [flashId, setFlashId] = useState<string | null>(null);
 
+    const [items, setItems] = useState<any[]>([]);
     useEffect(() => {
-        if (highlightId && waitingList.length > 0) {
+        if (highlightId && items.length > 0) {
             setTimeout(() => {
                 const el = document.getElementById(`row-${highlightId}`);
                 if (el) {
@@ -22,8 +23,7 @@ export default function WaitingList() {
                 }
             }, 300);
         }
-    }, [highlightId, waitingList]);
-    const [items, setItems] = useState<any[]>([]);
+    }, [highlightId, items]);
     const [loading, setLoading] = useState(false);
 
     // Form State
