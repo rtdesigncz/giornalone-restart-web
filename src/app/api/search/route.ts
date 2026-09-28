@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
         const terms = q.trim().split(/\s+/).filter(t => t.length > 0);
         
-        let agendaQuery = supabase.from("entries").select("id, nome, cognome, telefono, section, entry_date, consulente");
+        let agendaQuery = supabase.from("entries").select("id, nome, cognome, telefono, section, entry_date, consulenti(name)");
         let consulenzeQuery = supabase.from("gestione_items").select("id, nome, cognome, telefono, gestione_id, gestioni(nome)");
         let medicalQuery = supabase.from("medical_appointments").select("id, client_name, client_surname, client_phone, session_id, medical_sessions(date)");
         let waitingQuery = supabase.from("medical_waiting_list").select("id, name, surname, phone");
