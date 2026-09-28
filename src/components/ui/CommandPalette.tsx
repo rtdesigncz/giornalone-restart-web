@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-    Search, Calendar, Users, BarChart3, Settings, Plus, Ticket, Home, ArrowRight, Activity, Phone, MapPin, Clock, Tag, User
+    Search, Calendar, Loader2, Users, BarChart3, Settings, Plus, Ticket, Home, ArrowRight, Activity, Phone, MapPin, Clock, Tag, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +48,7 @@ export default function CommandPalette() {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [dbResults, setDbResults] = useState<CommandItem[]>([]);
     const [isPending, startTransition] = useTransition();
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
         const down = (e: KeyboardEvent) => {
@@ -66,8 +67,11 @@ export default function CommandPalette() {
     useEffect(() => {
         if (!query || query.length < 2) {
             setDbResults([]);
+            setIsSearching(false);
             return;
         }
+        
+        setIsSearching(true);
 
         const timer = setTimeout(() => {
             startTransition(async () => {
@@ -126,6 +130,8 @@ export default function CommandPalette() {
                     }
                 } catch (e) {
                     console.error("Search failed", e);
+                } finally {
+                    setIsSearching(false);
                 }
             });
         }, 300);
@@ -189,6 +195,12 @@ export default function CommandPalette() {
                             <Search className="w-10 h-10 text-slate-200 mb-3" />
                             <p className="text-slate-500 text-base font-medium">Cerca nel Giornalone...</p>
                             <p className="text-slate-400 text-sm mt-1">Digita nome, cognome o numero di telefono</p>
+                        </div>
+                    ) : isSearching ? (
+                        <div className="py-12 text-center flex flex-col items-center">
+                            <Loader2 className="w-10 h-10 text-cyan-500 mb-3 animate-spin" />
+                            <p className="text-slate-500 text-base font-medium animate-pulse">Ricerca in corso...</p>
+                            <p className="text-slate-400 text-sm mt-1">Sto setacciando l'intero database</p>
                         </div>
                     ) : displayCommands.length === 0 ? (
                         <div className="py-12 text-center flex flex-col items-center">
