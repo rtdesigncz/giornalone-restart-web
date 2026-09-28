@@ -19,22 +19,7 @@ type CommandItem = {
     colorTheme?: string;
 };
 
-export default function CommandPalette() {
-    const router = useRouter();
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState("");
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [dbResults, setDbResults] = useState<CommandItem[]>([]);
-    const [isPending, startTransition] = useTransition();
 
-    useEffect(() => {
-        const down = (e: KeyboardEvent) => {
-            if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                setOpen((open) => !open);
-            }
-        };
-        document.addEventListener("keydown", down);
         
     const getThemeClasses = (type: string, isSelected: boolean) => {
         if (type === 'agenda') return isSelected ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-emerald-600/20" : "bg-emerald-50 text-emerald-950 hover:bg-emerald-100 hover:border-emerald-300 border-emerald-200 shadow-sm";
@@ -56,8 +41,24 @@ export default function CommandPalette() {
         if (type === 'medical' || type === 'waiting') return "bg-purple-200/60 text-purple-800";
         return "bg-slate-100 text-slate-500";
     };
+export default function CommandPalette() {
+    const router = useRouter();
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [dbResults, setDbResults] = useState<CommandItem[]>([]);
+    const [isPending, startTransition] = useTransition();
 
-    return () => document.removeEventListener("keydown", down);
+    useEffect(() => {
+        const down = (e: KeyboardEvent) => {
+            if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setOpen((open) => !open);
+            }
+        };
+        document.addEventListener("keydown", down);
+
+        return () => document.removeEventListener("keydown", down);
     }, []);
 
     
