@@ -170,6 +170,7 @@ export default function ConsulenzeClientV2() {
 
     const [fContattati, setFContattati] = useState(false);
     const [fDaContattare, setFDaContattare] = useState(false);
+    const [fAppDaFissare, setFAppDaFissare] = useState(false);
     const [fAppDaFare, setFAppDaFare] = useState(false);
     const [fConsFatte, setFConsFatte] = useState(false);
     const [fEsiti, setFEsiti] = useState<string[]>([]);
@@ -196,7 +197,7 @@ export default function ConsulenzeClientV2() {
     const [pendingAgendaUpdate, setPendingAgendaUpdate] = useState<{ item: Item, date: string } | null>(null);
 
     const resetFiltri = () => {
-        setQ(""); setFContattati(false); setFDaContattare(false); setFAppDaFare(false);
+        setQ(""); setFContattati(false); setFDaContattare(false); setFAppDaFissare(false); setFAppDaFare(false);
         setFConsFatte(false); setFEsiti([]); setFAbb([]);
     };
 
@@ -248,13 +249,14 @@ export default function ConsulenzeClientV2() {
             if (fContattati && !r.contattato) return false;
             if (fDaContattare && r.contattato) return false;
 
+            if (fAppDaFissare && (!r.contattato || r.preso_appuntamento)) return false;
             if (fAppDaFare && (!r.preso_appuntamento || r.consulenza_fatta)) return false;
             if (fConsFatte && !r.consulenza_fatta) return false;
             if (fEsiti.length && (!r.esito || !fEsiti.includes(r.esito))) return false;
             if (fAbb.length && (!r.nuovo_abbonamento_name || !fAbb.includes(r.nuovo_abbonamento_name))) return false;
             return true;
         });
-    }, [items, q, fContattati, fDaContattare, fAppDaFare, fConsFatte, fEsiti, fAbb]);
+    }, [items, q, fContattati, fDaContattare, fAppDaFissare, fAppDaFare, fConsFatte, fEsiti, fAbb]);
 
 // SORTING STATE
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -295,6 +297,7 @@ export default function ConsulenzeClientV2() {
     const kpi = useMemo(() => {
         const totale = items.length;
         const contattati = items.filter(r => !!r.contattato).length;
+        const appuntamentiDaFissare = items.filter(r => !!r.contattato && !r.preso_appuntamento).length;
         const appuntamentiDaFare = items.filter(r => !!r.preso_appuntamento && !r.consulenza_fatta).length;
         const fatte = items.filter(r => !!r.consulenza_fatta).length;
         const daFare = items.filter(r => !r.contattato).length;
@@ -306,7 +309,7 @@ export default function ConsulenzeClientV2() {
             abbMap.set(n, (abbMap.get(n) || 0) + 1);
         }
         const nuoviAbb = Array.from(abbMap.entries()).map(([name, cnt]) => ({ name, cnt }));
-        return { totale, contattati, appuntamentiDaFare, fatte, daFare, esiti, nuoviAbb };
+        return { totale, contattati, appuntamentiDaFissare, appuntamentiDaFare, fatte, daFare, esiti, nuoviAbb };
     }, [items]);
 
     const toggleStrIn = (arr: string[], set: (v: string[]) => void, val: string) => {
@@ -848,7 +851,7 @@ export default function ConsulenzeClientV2() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {(fDaContattare || fContattati || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
+                                    {(fDaContattare || fContattati || fAppDaFissare || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
                                         <button 
                                             onClick={resetFiltri}
                                             className="hidden sm:flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors"
@@ -878,9 +881,9 @@ export default function ConsulenzeClientV2() {
             </div>                
             {/* NEW KPI SAAS CARDS */}
             <div className="bg-slate-50 border-b border-slate-200 py-4 px-4 sm:px-6">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 max-w-[1600px] mx-auto">
+                <div className="grid grid-cols-2 md:grid-cols-7 gap-4 max-w-[1600px] mx-auto">
                     {/* Totale */}
-                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
+                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFissare && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3>
                             <Users className="w-4 h-4 text-slate-400" />
@@ -897,7 +900,7 @@ export default function ConsulenzeClientV2() {
                     </div>
 
                     {/* Contattati */}
-                    <div onClick={() => { resetFiltri(); setFContattati(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fContattati && !fAppDaFare && !fConsFatte ? "ring-2 ring-cyan-500 border-transparent" : "")}>
+                    <div onClick={() => { resetFiltri(); setFContattati(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fContattati && !fAppDaFissare && !fAppDaFare && !fConsFatte ? "ring-2 ring-cyan-500 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Contattati</h3>
                             <MessageCircle className="w-4 h-4 text-blue-500" />
@@ -905,10 +908,19 @@ export default function ConsulenzeClientV2() {
                         <p className="text-2xl font-extrabold text-slate-900">{kpi.contattati}</p>
                     </div>
 
-                    {/* Appuntamenti Da Fare */}
+                    {/* Da Fissare */}
+                    <div onClick={() => { resetFiltri(); setFAppDaFissare(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fAppDaFissare ? "ring-2 ring-orange-500 border-transparent" : "")}>
+                        <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Da Fissare</h3>
+                            <Phone className="w-4 h-4 text-orange-500" />
+                        </div>
+                        <p className="text-2xl font-extrabold text-slate-900">{kpi.appuntamentiDaFissare}</p>
+                    </div>
+
+                    {/* Fissati (Da Svolgere) */}
                     <div onClick={() => { resetFiltri(); setFAppDaFare(true); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", fAppDaFare ? "ring-2 ring-teal-500 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Appunt. Da Fare</h3>
+                            <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Fissati</h3>
                             <Calendar className="w-4 h-4 text-teal-500" />
                         </div>
                         <p className="text-2xl font-extrabold text-slate-900">{kpi.appuntamentiDaFare}</p>
