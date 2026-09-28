@@ -16,6 +16,7 @@ type CommandItem = {
     group: string;
     tags?: { label: string, icon?: any }[];
     phone?: string;
+    colorTheme?: string;
 };
 
 export default function CommandPalette() {
@@ -34,18 +35,32 @@ export default function CommandPalette() {
             }
         };
         document.addEventListener("keydown", down);
-        return () => document.removeEventListener("keydown", down);
+        
+    const getThemeClasses = (type: string, isSelected: boolean) => {
+        if (type === 'agenda') return isSelected ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20 border-emerald-600/20" : "bg-emerald-50 text-emerald-950 hover:bg-emerald-100 hover:border-emerald-300 border-emerald-200 shadow-sm";
+        if (type === 'consulenze') return isSelected ? "bg-blue-500 text-white shadow-md shadow-blue-500/20 border-blue-600/20" : "bg-blue-50 text-blue-950 hover:bg-blue-100 hover:border-blue-300 border-blue-200 shadow-sm";
+        if (type === 'medical' || type === 'waiting') return isSelected ? "bg-purple-500 text-white shadow-md shadow-purple-500/20 border-purple-600/20" : "bg-purple-50 text-purple-950 hover:bg-purple-100 hover:border-purple-300 border-purple-200 shadow-sm";
+        return isSelected ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20 border-cyan-600/20" : "bg-white text-slate-600 hover:bg-slate-100 hover:border-slate-200 border-slate-100 shadow-sm";
+    };
+    const getIconBoxClasses = (type: string, isSelected: boolean) => {
+        if (isSelected) return "bg-white/20 text-white";
+        if (type === 'agenda') return "bg-emerald-100 text-emerald-600";
+        if (type === 'consulenze') return "bg-blue-100 text-blue-600";
+        if (type === 'medical' || type === 'waiting') return "bg-purple-100 text-purple-600";
+        return "bg-slate-100 text-slate-500";
+    };
+    const getBadgeClasses = (type: string, isSelected: boolean) => {
+        if (isSelected) return "bg-white/20 text-white";
+        if (type === 'agenda') return "bg-emerald-200/60 text-emerald-800";
+        if (type === 'consulenze') return "bg-blue-200/60 text-blue-800";
+        if (type === 'medical' || type === 'waiting') return "bg-purple-200/60 text-purple-800";
+        return "bg-slate-100 text-slate-500";
+    };
+
+    return () => document.removeEventListener("keydown", down);
     }, []);
 
-    const navCommands: CommandItem[] = [
-        { id: "nav-home", label: "Vai alla Dashboard", icon: Home, group: "Navigazione", action: () => router.push("/") },
-        { id: "nav-agenda", label: "Vai all'Agenda", icon: Calendar, group: "Navigazione", action: () => router.push("/agenda") },
-        { id: "nav-consulenze", label: "Vai a Consulenze", icon: Users, group: "Navigazione", action: () => router.push("/consulenze") },
-        { id: "nav-medical", label: "Vai a Visite Mediche", icon: Activity, group: "Navigazione", action: () => router.push("/visite-mediche") },
-        { id: "nav-pass", label: "Vai a Consegna Pass", icon: Ticket, group: "Navigazione", action: () => router.push("/consegna-pass") },
-        { id: "nav-report", label: "Vai a Reportistica", icon: BarChart3, group: "Navigazione", action: () => router.push("/reportistica") },
-        { id: "nav-settings", label: "Impostazioni", icon: Settings, group: "Navigazione", action: () => router.push("/settings") },
-    ];
+    
 
     useEffect(() => {
         if (!query || query.length < 2) {
@@ -101,6 +116,7 @@ export default function CommandPalette() {
                                 phone: r.phone,
                                 icon,
                                 group: "Risultati Ricerca",
+                                colorTheme: r.type,
                                 action,
                                 tags
                             };
@@ -116,9 +132,7 @@ export default function CommandPalette() {
         return () => clearTimeout(timer);
     }, [query, router]);
 
-    const displayCommands = query.length < 2 
-        ? navCommands 
-        : dbResults;
+    const displayCommands = dbResults;
 
     useEffect(() => {
         setSelectedIndex(0);
@@ -169,11 +183,16 @@ export default function CommandPalette() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3 custom-scrollbar bg-slate-50/50">
-                    {displayCommands.length === 0 ? (
+                    {query.trim() === "" ? (
+                        <div className="py-12 text-center flex flex-col items-center">
+                            <Search className="w-10 h-10 text-slate-200 mb-3" />
+                            <p className="text-slate-500 text-base font-medium">Cerca nel Giornalone...</p>
+                            <p className="text-slate-400 text-sm mt-1">Digita nome, cognome o numero di telefono</p>
+                        </div>
+                    ) : displayCommands.length === 0 ? (
                         <div className="py-12 text-center flex flex-col items-center">
                             <Search className="w-10 h-10 text-slate-200 mb-3" />
                             <p className="text-slate-500 text-base font-medium">Nessun risultato trovato per "{query}"</p>
-                            <p className="text-slate-400 text-sm mt-1">Prova a cercare per nome, cognome o telefono.</p>
                         </div>
                     ) : (
                         <div className="space-y-1.5">
@@ -186,26 +205,24 @@ export default function CommandPalette() {
                                         onMouseEnter={() => setSelectedIndex(index)}
                                         className={cn(
                                             "w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition-all border border-transparent",
-                                            isSelected
-                                                ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20 border-cyan-600/20"
-                                                : "bg-white text-slate-600 hover:bg-slate-100 hover:border-slate-200 border-slate-100 shadow-sm"
+                                            getThemeClasses(command.colorTheme || "", isSelected)
                                         )}
                                     >
-                                        <div className={cn("p-2 rounded-lg", isSelected ? "bg-white/20" : "bg-slate-100")}>
-                                            <command.icon size={20} className={cn(isSelected ? "text-white" : "text-slate-500")} />
+                                        <div className={cn("p-2 rounded-lg", getIconBoxClasses(command.colorTheme || "", isSelected))}>
+                                            <command.icon size={20} />
                                         </div>
                                         <div className="flex-1 flex flex-col">
-                                            <span className={cn("font-bold text-base", isSelected ? "text-white" : "text-slate-800")}>{command.label}</span>
+                                            <span className={cn("font-bold text-base", isSelected ? "text-white" : "")}>{command.label}</span>
                                             {/* TAGS UI */}
                                             {(command.tags || command.phone) && (
                                                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                                     {command.phone && (
-                                                        <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide", isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500")}>
+                                                        <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide", getBadgeClasses(command.colorTheme || "", isSelected))}>
                                                             <Phone size={10} /> {command.phone}
                                                         </span>
                                                     )}
                                                     {command.tags?.map((t, i) => (
-                                                        <span key={i} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide", isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500")}>
+                                                        <span key={i} className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide", getBadgeClasses(command.colorTheme || "", isSelected))}>
                                                             {t.icon && <t.icon size={10} />} {t.label}
                                                         </span>
                                                     ))}
