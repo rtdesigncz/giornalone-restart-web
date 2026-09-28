@@ -95,6 +95,7 @@ export function useOutcomeManager(onUpdate: () => void) {
             setRescheduleEntryData({
                 ...reschedulePopup.entry,
                 id: "new", // Treat as new entry
+                section: "MISS CON APPUNTAMENTO",
                 // Reset outcomes for the new copy
                 miss: false,
                 venduto: false,

@@ -146,8 +146,8 @@ export default function EntryDrawer({
 
         const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : section;
         
-        if (isDuplicate && !effectiveSection) {
-            alert("Seleziona obbligatoriamente la sezione in cui duplicare l'appuntamento.");
+        if ((isDuplicate || allowSectionChange) && !effectiveSection) {
+            alert("Seleziona obbligatoriamente la sezione di destinazione.");
             setLoading(false);
             return;
         }
@@ -253,7 +253,7 @@ export default function EntryDrawer({
                         </div>
                         <div>
                             <h2 className="text-base font-extrabold text-slate-900 tracking-tight leading-none">
-                                {isDuplicate ? "Duplica Appuntamento" : isNew ? "Nuovo Inserimento" : "Modifica Appuntamento"}
+                                {isDuplicate ? "Duplica Appuntamento" : (allowSectionChange && isNew) ? "Riprogramma Appuntamento" : isNew ? "Nuovo Inserimento" : "Modifica Appuntamento"}
                             </h2>
                             <p className="text-xs font-semibold text-[#0f766e] mt-0.5">
                                 {getSectionLabel(effectiveSection)}
@@ -273,7 +273,7 @@ export default function EntryDrawer({
                 {/* Form Main Body */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar">
                     
-                    {isDuplicate && (
+                    {(isDuplicate || allowSectionChange) && (
                         <div className="bg-cyan-50/50 p-4 rounded-xl border border-cyan-100 mb-4">
                             <label className="block text-xs font-bold text-cyan-800 mb-2 uppercase tracking-wide">Sezione di destinazione *</label>
                             <CustomSelect 
