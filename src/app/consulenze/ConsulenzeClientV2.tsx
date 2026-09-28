@@ -1335,8 +1335,21 @@ export default function ConsulenzeClientV2() {
 
                             {/* MOBILE CARDS */}
                             <div className="grid grid-cols-1 gap-4 md:hidden">
-                                {rows.map(r => {
+                                {sortedRows.map(r => {
                                     const isEditing = editable(r);
+                                    let dateClass = "bg-slate-100 text-slate-500";
+                                    if (r.preso_appuntamento && r.data_consulenza) {
+                                        const d = new Date(r.data_consulenza);
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        if (d < today && !r.consulenza_fatta) {
+                                            dateClass = "animate-pulse ring-2 ring-orange-500 bg-orange-100 text-orange-900 border-orange-500";
+                                        } else if (d >= today && !r.consulenza_fatta) {
+                                            dateClass = "bg-teal-50 text-teal-700 font-medium";
+                                        } else {
+                                            dateClass = "bg-slate-100 text-slate-500";
+                                        }
+                                    }
                                     return (
                                         <div key={r.id} className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-4">
                                             {/* Header: Name & Actions */}
