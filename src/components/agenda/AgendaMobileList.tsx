@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { SalePopup, ReschedulePopup, VerifyPopup, AbsentPopup } from "../outcomes/OutcomePopups";
 import { useOutcomeManager } from "@/hooks/useOutcomeManager";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,9 +15,26 @@ import AgendaMobileBar from "./AgendaMobileBar";
 // ... existing imports ...
 
 export default function AgendaMobileList({ section, onSectionChange }: { section: string, onSectionChange: (s: string) => void }) {
-    const router = useRouter();
+        const router = useRouter();
     const sp = useSearchParams();
     const dateParam = sp?.get("date") ?? getLocalDateISO();
+    
+    const highlightId = sp?.get("highlight");
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightId && rows.length > 0) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${highlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setFlashId(highlightId);
+                    setTimeout(() => setFlashId(null), 3000);
+                }
+            }, 300);
+        }
+    }, [highlightId, rows]);
+
 
     const [rows, setRows] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -166,8 +184,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
                     </div>
                 ) : (
                     filteredRows.map((row) => (
-                        <EntryCard
-                            key={row.id}
+                        <div key={row.id} id={`row-${row.id}`} className={cn("transition-all duration-700 rounded-2xl", flashId === String(row.id) ? "ring-4 ring-amber-400 scale-[1.02]" : "")}><EntryCard
                             row={row}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
@@ -177,6 +194,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
                             onToggleContattato={handlePhoneToggle}
                             onDuplicate={handleDuplicate}
                         />
+                        </div>
                     ))
                 )}
             </div>
