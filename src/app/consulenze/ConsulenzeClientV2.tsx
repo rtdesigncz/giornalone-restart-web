@@ -1106,7 +1106,7 @@ export default function ConsulenzeClientV2() {
                                                 }
 
                                                 return (
-                                                    <tr key={r.id} id={`row-${r.id}`} className={cn("group shadow-sm hover:shadow-md transition-all duration-700 rounded-xl border", flashId === r.id ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.01]" : "bg-white border-transparent hover:border-cyan-100")}>
+                                                    <tr key={r.id} id={`row-${r.id}`} className={cn("group shadow-sm hover:shadow-md transition-all duration-700 rounded-xl border", flashId === String(r.id) ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.01]" : "bg-white border-transparent hover:border-cyan-100")}>
 
                                                         {/* CLIENTE */}
                                                         <td className="py-4 pl-4 rounded-l-xl align-top max-w-[250px]">
@@ -1382,7 +1382,7 @@ export default function ConsulenzeClientV2() {
                                         }
                                     }
                                     return (
-                                        <div key={r.id} id={`row-${r.id}`} className={cn("rounded-xl shadow-sm border p-4 space-y-4 transition-all duration-700", flashId === r.id ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.02]" : "bg-white border-slate-100")}>
+                                        <div key={r.id} id={`row-${r.id}`} className={cn("rounded-xl shadow-sm border p-4 space-y-4 transition-all duration-700", flashId === String(r.id) ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.02]" : "bg-white border-slate-100")}>
                                             {/* Header: Name & Actions */}
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1">

@@ -358,31 +358,22 @@ function quickParseForPreview(text: string): { headers: string[]; rows: string[]
 }
 
 function splitCsvLine(line: string, delim: string): string[] {
-  const out: string[] = [];
+  // Simple regex-based split that respects quotes (basic version)
+  // Or just a simple split for the preview to avoid Next.js block scope bugs
+  let out = [];
   let cur = "";
-  let i = 0;
   let inQuotes = false;
-  while (i < line.length) {
+  for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        cur += '"';
-        i += 2;
-        continue;
-      }
       inQuotes = !inQuotes;
-      i++;
-      continue;
-    }
-    if (!inQuotes && ch === delim) {
+    } else if (ch === delim && !inQuotes) {
       out.push(cur);
       cur = "";
-      i++;
-      continue;
+    } else {
+      cur += ch;
     }
-    cur += ch;
-    i++;
   }
   out.push(cur);
-  return out.map((s) => s.trim());
+  return out.map(s => s.trim().replace(/^"|"$/g, ''));
 }
