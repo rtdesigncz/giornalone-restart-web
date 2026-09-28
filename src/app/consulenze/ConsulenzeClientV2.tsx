@@ -452,6 +452,12 @@ export default function ConsulenzeClientV2() {
             updated.preso_appuntamento = true;
             updated.data_consulenza = tempDate || null;
         } else if (type === 'SET_ESITO') {
+            if (tempEsito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(tempEsito)) {
+                if (!tempNuovoAbb) {
+                    alert("ATTENZIONE: Devi obbligatoriamente selezionare il Nuovo Abbonamento per salvare un esito positivo.");
+                    return;
+                }
+            }
             updated.contattato = true;
             updated.preso_appuntamento = true;
             updated.consulenza_fatta = true;
@@ -576,6 +582,13 @@ export default function ConsulenzeClientV2() {
     const salvaModifica = async (id: string) => {
         const r = items.find(x => x.id === id);
         if (!r) return;
+        
+        if (r.esito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(r.esito)) {
+            if (!r.nuovo_abbonamento_name) {
+                alert("ATTENZIONE: Devi obbligatoriamente selezionare il Nuovo Abbonamento per salvare un esito positivo.");
+                return;
+            }
+        }
         try {
             await persistFullRow(r);
             setItems(it => it.map(x => x.id === id ? { ...x, _editing: false, _backup: undefined } : x));
@@ -782,12 +795,12 @@ export default function ConsulenzeClientV2() {
 
                             {tempEsito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(tempEsito) && (
                                 <div className="col-span-2 space-y-1 animate-in fade-in slide-in-from-top-1">
-                                    <label className="text-xs font-bold text-slate-700 uppercase">Nuovo Abbonamento</label>
+                                    <label className="text-xs font-bold text-slate-700 uppercase">Nuovo Abbonamento <span className="text-red-500">*</span></label>
                                     <CustomSelect
                                         options={abbOptions.map(o => ({ value: o, label: o }))}
                                         value={tempNuovoAbb}
                                         onChange={v => setTempNuovoAbb(v)}
-                                        placeholder="— Seleziona Abbonamento —"
+                                        placeholder="— Seleziona Abbonamento (Obbligatorio) —"
                                     />
                                 </div>
                             )}
@@ -1233,8 +1246,8 @@ export default function ConsulenzeClientV2() {
                                                                     </select>
 
                                                                     {r.esito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(r.esito) && (
-                                                                        <select className="input-sm w-full text-xs" value={r.nuovo_abbonamento_name || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nuovo_abbonamento_name: e.target.value } : x))}>
-                                                                            <option value="">— Nuovo Abb —</option>
+                                                                        <select className={cn("input-sm w-full text-xs", !r.nuovo_abbonamento_name && "border-red-400 bg-red-50")} value={r.nuovo_abbonamento_name || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nuovo_abbonamento_name: e.target.value } : x))}>
+                                                                            <option value="">— Nuovo Abb (Obbligatorio) —</option>
                                                                             {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
                                                                         </select>
                                                                     )}
