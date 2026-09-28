@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Save, Trash2, MessageCircle, Edit2, X, Check, Loader2, Euro, FileDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";

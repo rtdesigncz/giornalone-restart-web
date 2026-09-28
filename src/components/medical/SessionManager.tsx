@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Plus, Calendar as CalendarIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,8 @@ import { getLocalDateISO } from "@/lib/dateUtils";
 import AppointmentTable from "./AppointmentTable";
 
 export default function SessionManager() {
+    const sp = useSearchParams();
+    const urlSession = sp?.get("session");
     const [sessions, setSessions] = useState<any[]>([]);
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -31,8 +34,7 @@ export default function SessionManager() {
             setSessions(data || []);
             // Select the first future session or the last one if available
             if (data && data.length > 0 && !selectedSessionId) {
-                // Logic to select nearest future date could go here, for now just pick first
-                setSelectedSessionId(data[0].id);
+                setSelectedSessionId(urlSession || data[0].id);
             }
 
             // Fetch pending counts for all sessions

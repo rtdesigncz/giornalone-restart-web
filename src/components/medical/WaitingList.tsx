@@ -1,11 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Plus, Trash2, CheckCircle, Circle, Phone, Loader2, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function WaitingList() {
+    const sp = useSearchParams();
+    const highlightId = sp?.get("highlight");
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightId && waitingList.length > 0) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${highlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setFlashId(highlightId);
+                    setTimeout(() => setFlashId(null), 3000);
+                }
+            }, 300);
+        }
+    }, [highlightId, waitingList]);
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 

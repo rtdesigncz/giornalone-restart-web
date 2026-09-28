@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     MessageCircle, Pencil, Check, X, Trash2, Upload,
     Search, Filter, Plus, ChevronDown,
@@ -156,6 +157,24 @@ const ActionModal = ({ isOpen, title, children, onClose, onConfirm, confirmLabel
 };
 
 export default function ConsulenzeClientV2() {
+    const searchParams = useSearchParams();
+    const highlightId = searchParams?.get("highlight");
+    const urlGestioneId = searchParams?.get("gestione");
+
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightId && items.length > 0) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${highlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setFlashId(highlightId);
+                    setTimeout(() => setFlashId(null), 3000);
+                }
+            }, 300);
+        }
+    }, [highlightId, items]);
     // --- STATE MANAGEMENT ---
     const [gestioni, setGestioni] = useState<Gestione[]>([]);
     const [gestioneId, setGestioneId] = useState<string>("");
@@ -206,7 +225,7 @@ export default function ConsulenzeClientV2() {
             const res = await fetch("/api/consulenze/gestioni");
             const j = await res.json();
             setGestioni(j.rows || []);
-            if (!gestioneId && j.rows?.[0]?.id) setGestioneId(j.rows[0].id);
+            if (!gestioneId && j.rows?.[0]?.id) setGestioneId(urlGestioneId || j.rows[0].id);
         })().catch(() => { });
     }, []);
 
@@ -1087,7 +1106,7 @@ export default function ConsulenzeClientV2() {
                                                 }
 
                                                 return (
-                                                    <tr key={r.id} className="group bg-white shadow-sm hover:shadow-md transition-all duration-200 rounded-xl border border-transparent hover:border-cyan-100">
+                                                    <tr key={r.id} id={`row-${r.id}`} className={cn("group shadow-sm hover:shadow-md transition-all duration-700 rounded-xl border", flashId === r.id ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.01]" : "bg-white border-transparent hover:border-cyan-100")}>
 
                                                         {/* CLIENTE */}
                                                         <td className="py-4 pl-4 rounded-l-xl align-top max-w-[250px]">
@@ -1363,7 +1382,7 @@ export default function ConsulenzeClientV2() {
                                         }
                                     }
                                     return (
-                                        <div key={r.id} className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-4">
+                                        <div key={r.id} id={`row-${r.id}`} className={cn("rounded-xl shadow-sm border p-4 space-y-4 transition-all duration-700", flashId === r.id ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 scale-[1.02]" : "bg-white border-slate-100")}>
                                             {/* Header: Name & Actions */}
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1">

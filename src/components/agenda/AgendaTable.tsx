@@ -24,6 +24,22 @@ export default function AgendaTable({ section }: { section: string }) {
     const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
     const [isDuplicateMode, setIsDuplicateMode] = useState(false);
 
+        const highlightId = sp?.get("highlight");
+    const [flashId, setFlashId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (highlightId && rows.length > 0) {
+            setTimeout(() => {
+                const el = document.getElementById(`row-${highlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    setFlashId(highlightId);
+                    setTimeout(() => setFlashId(null), 3000);
+                }
+            }, 300);
+        }
+    }, [highlightId, rows]);
+
     const isTelefonici = section === "APPUNTAMENTI TELEFONICI";
 
     const lastRequestRef = useRef(0);
