@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { X, MessageCircle, Calendar, Phone, Clock, Users as UsersIcon, ThumbsDown, Ghost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSectionLabel } from "@/lib/sections";
+import { useRouter } from "next/navigation";
 import { cleanPhone } from "@/lib/whatsapp";
 
 interface AbsentListPopupProps {
@@ -16,6 +17,7 @@ interface AbsentListPopupProps {
 }
 
 export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, onReschedule, onNegative }: AbsentListPopupProps) {
+    const router = useRouter();
     if (!isOpen) return null;
 
     return createPortal(
