@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { X, MessageCircle, Calendar, Phone, Clock, Users as UsersIcon, ThumbsDown, Ghost } from "lucide-react";
+import { X, MessageCircle, Calendar, Phone, Clock, Users as UsersIcon, ThumbsDown, Ghost, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSectionLabel } from "@/lib/sections";
 import { useRouter } from "next/navigation";
