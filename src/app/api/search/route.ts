@@ -37,7 +37,7 @@ export async function GET(req: Request) {
         const { data: medical } = await medicalQuery.limit(5);
         const { data: waiting } = await waitingQuery.limit(5);
 
-        const results = [];
+        const results: any[] = [];
 
         // 1. Process and Sort Agenda: most recent first (by entry_date then entry_time)
         if (agenda) {
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
             agenda.forEach(a => {
                 const dateStr = a.entry_date ? new Date(a.entry_date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
-                const consulenteStr = a.consulenti?.name ? ` • ${a.consulenti.name}` : "";
+                const consulenteStr = (a.consulenti as any)?.name ? ` • ${a.consulenti.name}` : "";
                 results.push({ type: "agenda", id: a.id, title: `${a.nome} ${a.cognome}`, subtitle: `${a.section} - ${dateStr}${consulenteStr}`, phone: a.telefono, raw: a });
             });
         }
@@ -61,20 +61,20 @@ export async function GET(req: Request) {
         // 2. Process and Sort Consulenze: by parent list (gestione) creation date, newest first
         if (consulenze) {
             consulenze.sort((a, b) => {
-                const dateA = a.gestioni?.created_at || "1970-01-01T00:00:00Z";
-                const dateB = b.gestioni?.created_at || "1970-01-01T00:00:00Z";
+                const dateA = (a.gestioni as any)?.created_at || "1970-01-01T00:00:00Z";
+                const dateB = (b.gestioni as any)?.created_at || "1970-01-01T00:00:00Z";
                 return dateB.localeCompare(dateA);
             });
 
             consulenze.forEach(c => {
-                const listName = c.gestioni?.nome || "Lista Sconosciuta";
+                const listName = (c.gestioni as any)?.nome || "Lista Sconosciuta";
                 results.push({ type: "consulenze", id: c.id, title: `${c.nome} ${c.cognome}`, subtitle: `Consulenze: ${listName}`, phone: c.telefono, raw: c });
             });
         }
 
         if (medical) {
             medical.forEach(m => {
-                const sessionDate = m.medical_sessions?.date ? new Date(m.medical_sessions.date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
+                const sessionDate = (m.medical_sessions as any)?.date ? new Date(m.medical_sessions.date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
                 const dateStr = sessionDate ? ` del ${sessionDate}` : "";
                 results.push({ type: "medical", id: m.id, title: `${m.client_name} ${m.client_surname}`, subtitle: `Visita Medica${dateStr}`, phone: m.client_phone, raw: m });
             });

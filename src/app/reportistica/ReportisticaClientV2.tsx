@@ -282,7 +282,7 @@ export default function ReportisticaClientV2() {
             contattato: source.filter(r => r.contattato).length,
             negativo: source.filter(r => r.negativo).length,
             assenti: source.filter(r => r.assente).length,
-            recuperati: source.filter(r => r.isRecuperato).length,
+            recuperati: source.filter(r => (r as any).isRecuperato).length,
         };
     }, [resp]);
 
@@ -637,7 +637,7 @@ export default function ReportisticaClientV2() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-3 text-center bg-cyan-50/10 group-hover:bg-cyan-50/20 transition-colors">
-                                                    {row.isRecuperato ? (
+                                                    {(row as any).isRecuperato ? (
                                                         <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
                                                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700 border border-cyan-200" title="Questo venduto deriva da un contatto precedente">
                                                                 <RefreshCw className="w-3 h-3" />

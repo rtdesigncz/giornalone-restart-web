@@ -352,7 +352,7 @@ export default function EntryDrawer({
                                 value={formData.consulente_id || ""}
                                 onChange={(val) => handleChange("consulente_id", val)}
                                 placeholder="-- Seleziona Consulente --"
-                                size="sm"
+                                
                             />
                         </div>
 
@@ -364,7 +364,7 @@ export default function EntryDrawer({
                                     value={formData.tipo_abbonamento_id || ""}
                                     onChange={(val) => handleChange("tipo_abbonamento_id", val)}
                                     placeholder="-- Seleziona Abbonamento --"
-                                    size="sm"
+                                    
                                 />
                             </div>
                         ) : (
@@ -431,7 +431,7 @@ export default function EntryDrawer({
                                     });
                                 }}
                                 layout="grid"
-                                size="sm"
+                                
                                 section={effectiveSection}
                             />
                         )}

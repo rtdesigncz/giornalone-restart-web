@@ -12,9 +12,7 @@ const nextConfig = {
 
   // 💡 Evita che il build su Vercel fallisca per lint/TS.
   // (Localmente continuerai a vedere gli errori nell'editor/dev server)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
