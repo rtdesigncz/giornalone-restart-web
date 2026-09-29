@@ -66,7 +66,7 @@ export default function AgendaView() {
                                 {/* Center: Date Text */}
                                 <div className="flex flex-col items-center justify-center">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider leading-none mb-0.5 whitespace-nowrap">
-                                        {viewMode === "calendar" ? "Settimana" : new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" })}
+                                        {viewMode === "calendar" ? "Settimana" : (isNaN(new Date(dateParam).getTime()) ? "Data Invalida" : new Date(dateParam).toLocaleDateString("it-IT", { weekday: "long" }))}
                                     </span>
                                     <span className="text-sm font-bold text-slate-800 leading-none whitespace-nowrap">
                                         {viewMode === "calendar" ? (() => {
@@ -79,7 +79,7 @@ export default function AgendaView() {
                                             const end = new Date(start);
                                             end.setDate(start.getDate() + 6);
                                             return `${start.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`;
-                                        })() : new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
+                                        })() : (isNaN(new Date(dateParam).getTime()) ? "Data Invalida" : new Date(dateParam).toLocaleDateString("it-IT", { day: "numeric", month: "long" }))}
                                     </span>
                                 </div>
 
