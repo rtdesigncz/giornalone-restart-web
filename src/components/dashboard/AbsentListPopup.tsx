@@ -86,9 +86,16 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="font-bold text-slate-900 truncate text-lg md:text-base">
+                                                    <button 
+                                                        onClick={() => {
+                                                            onClose();
+                                                            router.push(`/agenda?section=${encodeURIComponent(entry.section)}&date=${entry.entry_date}&highlight=${entry.id}`);
+                                                        }}
+                                                        className="font-bold text-slate-900 truncate text-lg md:text-base hover:text-brand hover:underline flex items-center gap-1.5 transition-colors text-left"
+                                                    >
                                                         {entry.nome} {entry.cognome}
-                                                    </h4>
+                                                        <ExternalLink size={14} className="text-slate-400" />
+                                                    </button>
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
                                                     <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wide">
