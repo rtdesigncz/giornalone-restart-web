@@ -4,10 +4,11 @@ import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users } from "lucide-react";
+import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users, ArrowRightLeft } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
+import MoveSectionModal from "./MoveSectionModal";
 import EntryDrawer from "./EntryDrawer";
 
 export default function AgendaTable({ section }: { section: string }) {
@@ -23,6 +24,7 @@ export default function AgendaTable({ section }: { section: string }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
     const [isDuplicateMode, setIsDuplicateMode] = useState(false);
+    const [moveEntry, setMoveEntry] = useState<any | null>(null);
 
         const highlightId = sp?.get("highlight");
     const [flashId, setFlashId] = useState<string | null>(null);
@@ -286,6 +288,13 @@ export default function AgendaTable({ section }: { section: string }) {
                                                     <MessageCircle size={14} />
                                                 </button>
                                                 <button
+                                                    onClick={() => setMoveEntry(row)}
+                                                    className="p-2 rounded-lg bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors border border-slate-200"
+                                                    title="Sposta Sezione"
+                                                >
+                                                    <ArrowRightLeft size={14} />
+                                                </button>
+                                                <button
                                                     onClick={() => handleDuplicate(row)}
                                                     className="p-2 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors border border-slate-200"
                                                     title="Duplica"
@@ -312,6 +321,13 @@ export default function AgendaTable({ section }: { section: string }) {
                 onSave={fetchRows}
                 onDelete={handleDelete}
                 isDuplicate={isDuplicateMode}
+            />
+
+            <MoveSectionModal 
+                isOpen={!!moveEntry} 
+                onClose={() => setMoveEntry(null)} 
+                entry={moveEntry} 
+                onMoved={() => { setMoveEntry(null); fetchRows(); }} 
             />
 
             {/* Reschedule Drawer */}
