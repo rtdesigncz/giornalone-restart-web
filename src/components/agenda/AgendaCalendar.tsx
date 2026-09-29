@@ -25,6 +25,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
     // Calculate Week Range
     const getWeekRange = (dateStr: string) => {
         const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return [];
         const day = d.getDay(); // 0=Sun, 1=Mon
         const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
         const monday = new Date(d);

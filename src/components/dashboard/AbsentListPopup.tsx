@@ -91,7 +91,7 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                                     <button 
                                                         onClick={() => {
                                                             onClose();
-                                                            router.push(`/agenda?section=${encodeURIComponent(entry.section)}&date=${entry.entry_date}&highlight=${entry.id}`);
+                                                            router.push(`/agenda?section=${encodeURIComponent(entry.section || 'TOUR SPONTANEI')}&date=${entry.entry_date || new Date().toISOString().split('T')[0]}&highlight=${entry.id}`);
                                                         }}
                                                         className="font-bold text-slate-900 truncate text-lg md:text-base hover:text-brand hover:underline flex items-center gap-1.5 transition-colors text-left"
                                                     >
