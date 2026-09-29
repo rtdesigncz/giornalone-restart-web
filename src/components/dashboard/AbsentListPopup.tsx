@@ -78,10 +78,10 @@ export default function AbsentListPopup({ isOpen, onClose, entries, onWhatsApp, 
                                             {/* Time Badge */}
                                             <div className="w-14 h-14 rounded-xl bg-yellow-100 border border-yellow-200 flex flex-col items-center justify-center flex-shrink-0 shadow-sm">
                                                 <span className="text-[10px] font-bold uppercase text-yellow-600 leading-none mb-0.5">
-                                                    {new Date(entry.entry_date).toLocaleDateString('it-IT', { month: 'short' }).replace('.', '')}
+                                                    {entry.entry_date && !isNaN(new Date(entry.entry_date).getTime()) ? new Date(entry.entry_date).toLocaleDateString('it-IT', { month: 'short' }).replace('.', '') : 'N/D'}
                                                 </span>
                                                 <span className="text-lg font-bold text-yellow-700 leading-none">
-                                                    {new Date(entry.entry_date).getDate()}
+                                                    {entry.entry_date && !isNaN(new Date(entry.entry_date).getTime()) ? new Date(entry.entry_date).getDate() : '?'}
                                                 </span>
                                             </div>
 
