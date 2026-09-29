@@ -46,9 +46,11 @@ export default function AgendaView() {
                         <button
                             onClick={() => {
                                 const d = new Date(dateParam);
-                                d.setDate(d.getDate() - (viewMode === "calendar" ? 7 : 1));
-                                const newDate = d.toISOString().slice(0, 10);
-                                router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                if (!isNaN(d.getTime())) {
+                                    d.setDate(d.getDate() - (viewMode === "calendar" ? 7 : 1));
+                                    const newDate = d.toISOString().slice(0, 10);
+                                    router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                }
                             }}
                             className="h-11 w-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm flex-shrink-0"
                         >
@@ -69,6 +71,7 @@ export default function AgendaView() {
                                     <span className="text-sm font-bold text-slate-800 leading-none whitespace-nowrap">
                                         {viewMode === "calendar" ? (() => {
                                             const d = new Date(dateParam);
+                                            if (isNaN(d.getTime())) return dateParam;
                                             const day = d.getDay();
                                             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
                                             const start = new Date(d);
@@ -110,9 +113,11 @@ export default function AgendaView() {
                         <button
                             onClick={() => {
                                 const d = new Date(dateParam);
-                                d.setDate(d.getDate() + (viewMode === "calendar" ? 7 : 1));
-                                const newDate = d.toISOString().slice(0, 10);
-                                router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                if (!isNaN(d.getTime())) {
+                                    d.setDate(d.getDate() + (viewMode === "calendar" ? 7 : 1));
+                                    const newDate = d.toISOString().slice(0, 10);
+                                    router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                }
                             }}
                             className="h-11 w-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm flex-shrink-0"
                         >
