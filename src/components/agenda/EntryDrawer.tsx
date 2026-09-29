@@ -280,7 +280,7 @@ export default function EntryDrawer({
                                 options={DB_SECTIONS.map(s => ({ value: s, label: getSectionLabel(s) }))}
                                 value={targetSection}
                                 onChange={(val) => setTargetSection(val)}
-                                placeholder="-- Scegli dove duplicare --"
+                                placeholder={isDuplicate ? "-- Scegli dove duplicare --" : "-- Scegli nuova sezione --"}
                             />
                         </div>
                     )}

@@ -7,7 +7,6 @@ import { Search, Plus, Filter } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
-import MoveSectionModal from "./MoveSectionModal";
 import EntryDrawer from "./EntryDrawer";
 import EntryCard from "../EntryCard";
 
@@ -45,7 +44,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
     const [isDuplicateMode, setIsDuplicateMode] = useState(false);
-    const [moveEntry, setMoveEntry] = useState<any | null>(null);
+    const [isMoveMode, setIsMoveMode] = useState(false);
 
     const fetchRows = async () => {
         setLoading(true);
