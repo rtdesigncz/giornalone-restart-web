@@ -159,20 +159,40 @@ export async function GET(req: Request) {
       conversion: null as any // Placeholder for conversion data
     }));
 
-    // --- LOOK-BEHIND LOGIC (RECUPERATI) ---
-    // A "Recuperato" is a SOLD entry that has a previous entry (e.g. a previous Miss/Assente)
-    // We look at all VENDUTI in the current dataset, and check if their phone number existed before their entry_date
-    const venduti = normalized.filter(r => r.venduto && r.telefono && r.telefono.length > 5);
-    const phonesToCheck = [...new Set(venduti.map(r => r.telefono))];
+    // --- LOOK-AHEAD LOGIC (RECUPERATI) ---
+    // A "Recuperato" badge is placed on the *original* unsold appointment (e.g. Tour Spontaneo)
+    // if the same person (by phone) subsequently bought in a later appointment.
+    const unsoldPhones = [...new Set(normalized.filter(r => !r.venduto && r.telefono && r.telefono.length > 5).map(r => r.telefono))];
 
-    if (phonesToCheck.length > 0) {
-      // Fetch ALL past entries for these phones
-      // Nuova logica Recuperati: Venduto == true && Section == "MISS CON APPUNTAMENTO"
-      normalized.forEach(row => {
-        if (row.venduto && row.section === "MISS CON APPUNTAMENTO") {
-          row.isRecuperato = true;
-        }
-      });
+    if (unsoldPhones.length > 0) {
+      // Fetch any sold entry for these phones
+      const { data: futureSoldEntries, error: futureError } = await supabase
+        .from("entries")
+        .select("telefono, entry_date")
+        .in("telefono", unsoldPhones)
+        .eq("venduto", true);
+
+      if (!futureError && futureSoldEntries && futureSoldEntries.length > 0) {
+        // Map phone -> array of sold dates
+        const soldDatesByPhone: Record<string, string[]> = {};
+        futureSoldEntries.forEach((entry: any) => {
+          if (!soldDatesByPhone[entry.telefono]) soldDatesByPhone[entry.telefono] = [];
+          soldDatesByPhone[entry.telefono].push(entry.entry_date);
+        });
+
+        // Tag the original unsold rows
+        normalized.forEach(row => {
+          if (row.venduto || !row.telefono || !soldDatesByPhone[row.telefono]) return;
+          
+          const soldDates = soldDatesByPhone[row.telefono];
+          // Check if there is a sold appointment ON OR AFTER this row's date
+          const hasFutureSale = soldDates.some(soldDate => soldDate >= row.entry_date);
+          
+          if (hasFutureSale) {
+            row.isRecuperato = true;
+          }
+        });
+      }
     }
 
     if (format === "json") {
