@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Pencil, Check, X, Trash2, Upload } from "lucide-react";
 import ImportCsvModal from "./ImportCsvModal";
+import ConsulenzeReportModal from "./ConsulenzeReportModal";
+import { PieChart } from "lucide-react";
 
 type Gestione = { id: string; nome: string; descrizione?: string | null; csv_mapping_default?: any };
 
@@ -48,6 +50,7 @@ export default function ConsulenzeClient() {
   const [err, setErr] = useState<string>("");
 
   const [abbOptions, setAbbOptions] = useState<string[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const [q, setQ] = useState("");
   const [fContattati, setFContattati] = useState(false);
@@ -432,6 +435,14 @@ export default function ConsulenzeClient() {
       <div className="flex justify-between">
         <div className="text-slate-500 text-sm">{rows.length} risultati</div>
         <div className="flex gap-2">
+          <button 
+            className="btn btn-brand bg-[#21b5ba] text-white hover:bg-[#1da1a6] border-none shadow-md" 
+            onClick={() => setReportOpen(true)}
+            disabled={!gestioneId || items.length === 0}
+            title="Apri Report di questa Lista"
+          >
+            <PieChart className="w-4 h-4 mr-2" /> Report Lista
+          </button>
           <button className="btn" onClick={aggiungiRiga}>+ Aggiungi</button>
           <button className="btn" onClick={()=>setShowImport(true)}>
             <Upload className="w-4 h-4 mr-2" /> Importa CSV

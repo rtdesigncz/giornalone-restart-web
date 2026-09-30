@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ImportCsvModal from "./ImportCsvModal";
+import ConsulenzeReportModal from "./ConsulenzeReportModal";
+import { PieChart } from "lucide-react";
 import CustomSelect from "@/components/ui/CustomSelect";
 
 type Gestione = { id: string; nome: string; descrizione?: string | null; csv_mapping_default?: any };
@@ -187,6 +189,7 @@ export default function ConsulenzeClientV2() {
     const [err, setErr] = useState<string>("");
 
     const [abbOptions, setAbbOptions] = useState<string[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
 
     const [q, setQ] = useState("");
     
@@ -715,6 +718,12 @@ export default function ConsulenzeClientV2() {
             )}
 
             {/* ACTION MODALS */}
+            <ConsulenzeReportModal 
+                isOpen={reportOpen} 
+                onClose={() => setReportOpen(false)} 
+                items={items} 
+                listName={gestioni.find(g => g.id === gestioneId)?.nome || ""} 
+            />
             {actionModal.type === 'CONFIRM_RESET' && (
                 <ActionModal
                     isOpen={true}
@@ -901,6 +910,15 @@ export default function ConsulenzeClientV2() {
                                         className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                                     >
                                         <Upload className="w-4 h-4" /> Importa
+                                    </button>
+                                    <button 
+                                        className="btn btn-outline gap-2 bg-white text-[#21b5ba] border-[#21b5ba] hover:bg-[#21b5ba] hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
+                                        onClick={() => setReportOpen(true)}
+                                        disabled={!gestioneId || items.length === 0}
+                                        title="Vedi Report Lista"
+                                    >
+                                        <PieChart className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Report</span>
                                     </button>
                                     <button
                                         onClick={aggiungiRiga}
