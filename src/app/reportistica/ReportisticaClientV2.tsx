@@ -278,7 +278,7 @@ export default function ReportisticaClientV2() {
             totale: source.length,
             presentato: source.filter(r => r.presentato).length,
             venduto: source.filter(r => r.venduto).length,
-            miss: source.filter(r => r.miss).length,
+            miss: source.filter(r => r.miss && !(r as any).isRecuperato).length,
             contattato: source.filter(r => r.contattato).length,
             negativo: source.filter(r => r.negativo).length,
             assenti: source.filter(r => r.assente).length,
@@ -524,7 +524,7 @@ export default function ReportisticaClientV2() {
                             {/* Recuperati */}
                             <div className={cn("bg-cyan-50/50 border border-cyan-100 rounded-xl p-5 transition-all group shadow-sm relative overflow-hidden w-[140px] shrink-0")}>
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-xl"></div>
-                                <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-cyan-700 uppercase tracking-wide">Recuperati</h3><div className="w-7 h-7 rounded-lg bg-cyan-100/50 border border-cyan-200 flex items-center justify-center"><RefreshCw className="w-3.5 h-3.5 text-cyan-600" /></div></div>
+                                <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-cyan-700 uppercase tracking-wide">Miss Recuperati</h3><div className="w-7 h-7 rounded-lg bg-cyan-100/50 border border-cyan-200 flex items-center justify-center"><RefreshCw className="w-3.5 h-3.5 text-cyan-600" /></div></div>
                                 <p className="text-3xl font-black text-cyan-900 tracking-tight">{kpis.recuperati || 0}</p>
                             </div>
 
@@ -639,9 +639,9 @@ export default function ReportisticaClientV2() {
                                                 <td className="px-6 py-3 text-center bg-cyan-50/10 group-hover:bg-cyan-50/20 transition-colors">
                                                     {(row as any).isRecuperato ? (
                                                         <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
-                                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700 border border-cyan-200" title="Questo venduto deriva da un contatto precedente">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700 border border-cyan-200" title="Questo contatto ha acquistato in un appuntamento successivo">
                                                                 <RefreshCw className="w-3 h-3" />
-                                                                RECUPERATO
+                                                                MISS RECUPERATO
                                                             </span>
                                                         </div>
                                                     ) : (

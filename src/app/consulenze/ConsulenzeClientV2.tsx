@@ -721,7 +721,7 @@ export default function ConsulenzeClientV2() {
             <ConsulenzeReportModal 
                 isOpen={reportOpen} 
                 onClose={() => setReportOpen(false)} 
-                items={items} 
+                items={rows} 
                 listName={gestioni.find(g => g.id === gestioneId)?.nome || ""} 
             />
             {actionModal.type === 'CONFIRM_RESET' && (
