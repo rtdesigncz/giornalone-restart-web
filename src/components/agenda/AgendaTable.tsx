@@ -4,7 +4,8 @@ import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users, ArrowRightLeft } from "lucide-react";
+import ClientTimelineDrawer from "@/components/ui/ClientTimelineDrawer";
+import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users, ArrowRightLeft, Clock } from "lucide-react";
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
@@ -18,6 +19,9 @@ export default function AgendaTable({ section }: { section: string }) {
     const [rows, setRows] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelinePhone, setTimelinePhone] = useState<string | null>(null);
+    const [timelineName, setTimelineName] = useState<string | null>(null);
 
     // Drawer State
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -216,7 +220,14 @@ export default function AgendaTable({ section }: { section: string }) {
                                             {toHHMM(row.entry_time)}
                                         </td>
                                         <td className="py-4 px-6">
-                                            <div className="font-bold text-slate-800 text-sm group-hover:text-brand transition-colors">{row.nome} {row.cognome}</div>
+                                            <div className="flex items-center gap-2 group/timeline">
+                                                <div className="font-bold text-slate-800 text-sm group-hover/timeline:text-brand transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }}>
+                                                    {row.nome} {row.cognome}
+                                                </div>
+                                                <button onClick={(e) => { e.stopPropagation(); setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }} className="opacity-0 group-hover/timeline:opacity-100 transition-opacity p-1 bg-brand/10 text-brand rounded-full hover:bg-brand hover:text-white" title="Vedi Storico">
+                                                    <Clock className="w-3 h-3" />
+                                                </button>
+                                            </div>
                                             {row.whatsapp_sent && (
                                                 <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
                                                     <MessageCircle size={10} className="fill-emerald-600" />
@@ -362,6 +373,14 @@ export default function AgendaTable({ section }: { section: string }) {
                 onClose={() => setAbsentPopup({ open: false, entry: null })}
                 entry={absentPopup.entry}
                 onConfirm={confirmAbsent}
+            />
+            
+            {/* TIMELINE MODAL */}
+            <ClientTimelineDrawer 
+                isOpen={timelineOpen} 
+                onClose={() => setTimelineOpen(false)} 
+                phone={timelinePhone} 
+                name={timelineName} 
             />
         </div>
     );

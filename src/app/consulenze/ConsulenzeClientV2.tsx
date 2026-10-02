@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/dateUtils";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ImportCsvModal from "./ImportCsvModal";
 import ConsulenzeReportModal from "./ConsulenzeReportModal";
+import ClientTimelineDrawer from "@/components/ui/ClientTimelineDrawer";
 import { PieChart } from "lucide-react";
 import CustomSelect from "@/components/ui/CustomSelect";
 
@@ -190,6 +191,9 @@ export default function ConsulenzeClientV2() {
 
     const [abbOptions, setAbbOptions] = useState<string[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelinePhone, setTimelinePhone] = useState<string | null>(null);
+    const [timelineName, setTimelineName] = useState<string | null>(null);
 
     const [q, setQ] = useState("");
     
@@ -718,6 +722,12 @@ export default function ConsulenzeClientV2() {
             )}
 
             {/* ACTION MODALS */}
+            <ClientTimelineDrawer 
+                isOpen={timelineOpen} 
+                onClose={() => setTimelineOpen(false)} 
+                phone={timelinePhone} 
+                name={timelineName} 
+            />
             <ConsulenzeReportModal 
                 isOpen={reportOpen} 
                 onClose={() => setReportOpen(false)} 
@@ -1153,7 +1163,14 @@ export default function ConsulenzeClientV2() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex flex-col">
-                                                                    <div className="font-bold text-slate-800 text-sm">{cleanName(r.cognome)} {cleanName(r.nome)}</div>
+                                                                    <div className="flex items-center gap-2 group/timeline">
+                                                                        <div className="font-bold text-slate-800 text-sm group-hover/timeline:text-brand transition-colors cursor-pointer" onClick={() => { setTimelinePhone(r.telefono); setTimelineName(`${cleanName(r.cognome)} ${cleanName(r.nome)}`); setTimelineOpen(true); }}>
+                                                                            {cleanName(r.cognome)} {cleanName(r.nome)}
+                                                                        </div>
+                                                                        <button onClick={() => { setTimelinePhone(r.telefono); setTimelineName(`${cleanName(r.cognome)} ${cleanName(r.nome)}`); setTimelineOpen(true); }} className="opacity-0 group-hover/timeline:opacity-100 transition-opacity p-1 bg-brand/10 text-brand rounded-full hover:bg-brand hover:text-white" title="Vedi Storico">
+                                                                            <Clock className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
                                                                     {r.telefono ? (
                                                                         <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded">
                                                                             <Phone className="w-3 h-3" />

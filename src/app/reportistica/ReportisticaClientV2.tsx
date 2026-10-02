@@ -17,6 +17,8 @@ import {
     RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ClientTimelineDrawer from "@/components/ui/ClientTimelineDrawer";
+import { Clock } from "lucide-react";
 import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
 import { getLocalDateISO } from "@/lib/dateUtils";
 
@@ -118,6 +120,7 @@ function StatCard({ label, value, subLabel, colorClass, icon: Icon }: { label: s
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">{label}</div>
                 {subLabel && <div className="text-[10px] text-slate-400">{subLabel}</div>}
             </div>
+
         </div>
     );
 }
@@ -160,6 +163,9 @@ function DropdownFilter({ label, options, selected, toggle, clear, formatLabel =
 export default function ReportisticaClientV2() {
     // --- STATE ---
     const [loading, setLoading] = useState(false);
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelinePhone, setTimelinePhone] = useState<string | null>(null);
+    const [timelineName, setTimelineName] = useState<string | null>(null);
     const [resp, setResp] = useState<ReportResponse | null>(null);
     const [error, setError] = useState("");
     const [showFilters, setShowFilters] = useState(false);
@@ -609,7 +615,14 @@ export default function ReportisticaClientV2() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-3">
-                                                    <div className="font-bold text-slate-800">{row.cognome} {row.nome}</div>
+                                                    <div className="flex items-center gap-2 group/timeline">
+                                                        <div className="font-bold text-slate-800 group-hover/timeline:text-brand transition-colors cursor-pointer" onClick={() => { setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }}>
+                                                            {row.cognome} {row.nome}
+                                                        </div>
+                                                        <button onClick={() => { setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }} className="opacity-0 group-hover/timeline:opacity-100 transition-opacity p-1 bg-brand/10 text-brand rounded-full hover:bg-brand hover:text-white" title="Vedi Storico">
+                                                            <Clock className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-3">
                                                     <div className="text-slate-500 font-mono text-xs">{row.telefono}</div>
@@ -676,6 +689,13 @@ export default function ReportisticaClientV2() {
                     </div>
                 </div>
             </div>
+            {/* TIMELINE MODAL */}
+            <ClientTimelineDrawer 
+                isOpen={timelineOpen} 
+                onClose={() => setTimelineOpen(false)} 
+                phone={timelinePhone} 
+                name={timelineName} 
+            />
         </div>
     );
 }
