@@ -10,7 +10,13 @@ export default function middleware(req: NextRequest) {
     pathname === "/login" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname === "/favicon.ico"
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".json") ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/favicon")
   ) {
     return NextResponse.next();
   }

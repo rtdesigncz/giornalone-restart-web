@@ -12,6 +12,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const pathname = usePathname();
     const isFullWidth = pathname?.startsWith("/consulenze") || pathname?.startsWith("/reportistica") || pathname?.startsWith("/consegna-pass") || pathname?.startsWith("/agenda") || pathname?.startsWith("/visite-mediche");
 
+    const isLogin = pathname === "/login";
+
+    if (isLogin) {
+        return <div className="min-h-screen bg-slate-50">{children}</div>;
+    }
+
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
             <CommandPalette />
