@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +42,10 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm bg-white border rounded-xl p-5 space-y-4"
       >
-        <h1 className="text-xl font-semibold text-center">Accedi</h1>
+        <div className="flex justify-center mb-6 mt-2">
+          <Image src="/app-logo.png" alt="Restart Logo" width={180} height={40} className="object-contain" priority />
+        </div>
+        <h1 className="text-xl font-semibold text-center text-slate-800">Accedi</h1>
 
         {err && (
           <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
