@@ -27,8 +27,7 @@ export default function LoginPage() {
         return;
       }
       // successo → torna alla home
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch (e: any) {
       setErr(e?.message || "Errore inatteso");
     } finally {

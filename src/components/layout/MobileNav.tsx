@@ -49,7 +49,7 @@ export default function MobileNav() {
         };
     }, [isOpen]);
 
-    if (!mounted) return null;
+
 
     return (
         <>
