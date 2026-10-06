@@ -1,7 +1,7 @@
 // src/app/reportistica/ReportisticaClientV2.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
     Download,
     Search,
@@ -191,9 +191,9 @@ export default function ReportisticaClientV2() {
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
     // --- DATA FETCHING ---
-    const buildParams = () => {
+    const buildParams = useCallback((forPdf: boolean = false) => {
         const p = new URLSearchParams();
-        p.set("format", "json");
+        p.set("format", forPdf ? "pdf" : "json");
         if (modePeriodo === "giorno") p.set("date", date);
         else {
             p.set("from", from);
@@ -204,27 +204,25 @@ export default function ReportisticaClientV2() {
         if (selectedConsulenti.length > 0) p.append("consulente", selectedConsulenti.join(","));
         if (selectedTipi.length > 0) p.append("tipo_abbonamento", selectedTipi.join(","));
 
-        // Esiti are fetched directly without API filters for these flags in the original code,
-        // wait, the original code had:
-        // if (fPresentato) p.append("presentato", "true");
-        // We can just omit them to fetch all and filter client-side, 
-        // OR we can pass them. It's safer to fetch all and filter client-side since that's what we do.
-        // Actually the original code did:
-        if (selectedEsiti.includes("Presentati")) p.append("presentato", "true");
-        if (selectedEsiti.includes("Venduti")) p.append("venduto", "true");
-        if (selectedEsiti.includes("Miss")) p.append("miss", "true");
-        if (selectedEsiti.includes("Contattati")) p.append("contattato", "true");
-        if (selectedEsiti.includes("Negativi")) p.append("negativo", "true");
-        if (selectedEsiti.includes("Assenti")) p.append("assente", "true");
+        // Se è per il PDF, passiamo anche i filtri esiti all'API (che ora usa la logica OR)
+        if (forPdf && selectedEsiti.length > 0) {
+            if (selectedEsiti.includes("Presentati")) p.append("presentato", "true");
+            if (selectedEsiti.includes("Venduti")) p.append("venduto", "true");
+            if (selectedEsiti.includes("Miss (Netti)") || selectedEsiti.includes("Miss")) p.append("miss_netti", "true");
+            if (selectedEsiti.includes("Miss Recuperati")) p.append("recuperati", "true");
+            if (selectedEsiti.includes("Contattati")) p.append("contattato", "true");
+            if (selectedEsiti.includes("Negativi")) p.append("negativo", "true");
+            if (selectedEsiti.includes("Assenti")) p.append("assente", "true");
+        }
         
         return p;
-    };
+    }, [modePeriodo, date, from, to, selectedSezioni, selectedConsulenti, selectedTipi, selectedEsiti]);
 
     const fetchData = async () => {
         setLoading(true);
         setError("");
         try {
-            const p = buildParams();
+            const p = buildParams(false);
             const res = await fetch(`/api/report?${p.toString()}`, { cache: "no-store" });
             if (!res.ok) throw new Error(`Errore API (${res.status})`);
             const data: ReportResponse = await res.json();
@@ -242,8 +240,7 @@ export default function ReportisticaClientV2() {
         return () => clearTimeout(t);
     }, [
         modePeriodo, date, from, to,
-        selectedSezioni, selectedConsulenti, selectedTipi,
-        selectedEsiti
+        selectedSezioni, selectedConsulenti, selectedTipi
     ]);
 
     // --- FILTERED ROWS ---
@@ -266,7 +263,8 @@ export default function ReportisticaClientV2() {
                 let match = false;
                 if (selectedEsiti.includes("Presentati") && row.presentato) match = true;
                 if (selectedEsiti.includes("Venduti") && row.venduto) match = true;
-                if (selectedEsiti.includes("Miss") && row.miss) match = true;
+                if ((selectedEsiti.includes("Miss (Netti)") || selectedEsiti.includes("Miss")) && row.miss && !(row as any).isRecuperato) match = true;
+                if (selectedEsiti.includes("Miss Recuperati") && (row as any).isRecuperato) match = true;
                 if (selectedEsiti.includes("Assenti") && row.assente) match = true;
                 if (selectedEsiti.includes("Contattati") && row.contattato) match = true;
                 if (selectedEsiti.includes("Negativi") && row.negativo) match = true;
@@ -306,8 +304,7 @@ export default function ReportisticaClientV2() {
     };
 
     const pdfHref = useMemo(() => {
-        const p = buildParams();
-        p.set("format", "pdf");
+        const p = buildParams(true);
         return `/api/report?${p.toString()}`;
     }, [buildParams]);
 
@@ -478,7 +475,7 @@ export default function ReportisticaClientV2() {
                             />
                             <DropdownFilter 
                                 label="Esito" 
-                                options={["Presentati", "Venduti", "Miss", "Assenti", "Contattati", "Negativi"]} 
+                                options={["Presentati", "Venduti", "Miss (Netti)", "Miss Recuperati", "Assenti", "Contattati", "Negativi"]} 
                                 selected={selectedEsiti} 
                                 toggle={(v: string) => toggleSelection(selectedEsiti, setSelectedEsiti, v)} 
                                 clear={() => setSelectedEsiti([])} 
@@ -513,11 +510,19 @@ export default function ReportisticaClientV2() {
                                 <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.venduto}</p>
                             </div>
 
-                            {/* Miss */}
-                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Miss"); }} className={cn("bg-white border border-red-100 rounded-xl p-5 hover:border-red-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Miss") ? "ring-2 ring-red-500 border-transparent" : "")}>
+                            {/* Miss (Netti) */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Miss (Netti)"); }} className={cn("bg-white border border-red-100 rounded-xl p-5 hover:border-red-300 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden w-[140px] shrink-0", (selectedEsiti.includes("Miss (Netti)") || selectedEsiti.includes("Miss")) ? "ring-2 ring-red-500 border-transparent" : "")}>
                                 <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
-                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-red-600 uppercase tracking-wide group-hover:text-red-700">Miss</h3><div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center"><X className="w-3.5 h-3.5 text-red-500" /></div></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-red-600 uppercase tracking-wide group-hover:text-red-700">Miss (Netti)</h3><div className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center"><X className="w-3.5 h-3.5 text-red-500" /></div></div>
                                 <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.miss}</p>
+                            </div>
+
+                            {/* Miss Recuperati */}
+                            <div onClick={() => { toggleSelection(selectedEsiti, setSelectedEsiti, "Miss Recuperati"); }} className={cn("bg-cyan-50/50 border border-cyan-100 rounded-xl p-5 transition-all cursor-pointer group shadow-sm hover:shadow-md hover:border-cyan-300 relative overflow-hidden w-[140px] shrink-0", selectedEsiti.includes("Miss Recuperati") ? "ring-2 ring-cyan-500 border-transparent" : "")}>
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-xl"></div>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500"></div>
+                                <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-cyan-700 uppercase tracking-wide group-hover:text-cyan-800">Miss Recuperati</h3><div className="w-7 h-7 rounded-lg bg-cyan-100/50 border border-cyan-200 flex items-center justify-center"><RefreshCw className="w-3.5 h-3.5 text-cyan-600" /></div></div>
+                                <p className="text-3xl font-black text-cyan-900 tracking-tight">{kpis.recuperati || 0}</p>
                             </div>
 
                             {/* Assenti */}
@@ -525,13 +530,6 @@ export default function ReportisticaClientV2() {
                                 <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400"></div>
                                 <div className="flex items-center justify-between mb-3 mt-1"><h3 className="text-[11px] font-bold text-yellow-600 uppercase tracking-wide group-hover:text-yellow-700">Assenti</h3><div className="w-7 h-7 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center"><AlertCircle className="w-3.5 h-3.5 text-yellow-500" /></div></div>
                                 <p className="text-3xl font-black text-slate-900 tracking-tight">{kpis.assenti}</p>
-                            </div>
-
-                            {/* Recuperati */}
-                            <div className={cn("bg-cyan-50/50 border border-cyan-100 rounded-xl p-5 transition-all group shadow-sm relative overflow-hidden w-[140px] shrink-0")}>
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full blur-xl"></div>
-                                <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-cyan-700 uppercase tracking-wide">Miss Recuperati</h3><div className="w-7 h-7 rounded-lg bg-cyan-100/50 border border-cyan-200 flex items-center justify-center"><RefreshCw className="w-3.5 h-3.5 text-cyan-600" /></div></div>
-                                <p className="text-3xl font-black text-cyan-900 tracking-tight">{kpis.recuperati || 0}</p>
                             </div>
 
                             {/* Contattati */}

@@ -51,15 +51,28 @@ export async function GET(req: Request) {
     const todayISO = new Date().toISOString().slice(0, 10);
     const hasRange = Boolean(from && to);
 
-    // Filtri multipli (array)
-    const sections = url.searchParams.getAll("section");
-    const consNames = url.searchParams.getAll("consulente");
-    const tipoNames = url.searchParams.getAll("tipo_abbonamento");
+    // Filtri multipli (array, con supporto a stringhe separate da virgola)
+    const sections = url.searchParams.getAll("section")
+      .flatMap((s) => s.split(","))
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const consNames = url.searchParams.getAll("consulente")
+      .flatMap((c) => c.split(","))
+      .map((c) => c.trim())
+      .filter(Boolean);
+
+    const tipoNames = url.searchParams.getAll("tipo_abbonamento")
+      .flatMap((t) => t.split(","))
+      .map((t) => t.trim())
+      .filter(Boolean);
 
     // Booleani (multi: sì/no)
     const presentato = parseBoolMulti(url.searchParams, "presentato");
     const venduto = parseBoolMulti(url.searchParams, "venduto");
     const miss = parseBoolMulti(url.searchParams, "miss");
+    const missNetti = parseBoolMulti(url.searchParams, "miss_netti");
+    const recuperati = parseBoolMulti(url.searchParams, "recuperati");
     const contattato = parseBoolMulti(url.searchParams, "contattato");
     const negativo = parseBoolMulti(url.searchParams, "negativo");
     const assente = parseBoolMulti(url.searchParams, "assente");
@@ -90,22 +103,7 @@ export async function GET(req: Request) {
       else if (date) qb = qb.eq("entry_date", date);
       else qb = qb.eq("entry_date", todayISO);
 
-      // Helper per filtri booleani (false include null)
-      const applyBoolFilter = (q: any, col: string, val: boolean | undefined) => {
-        if (val === true) return q.eq(col, true);
-        if (val === false) return q.or(`${col}.eq.false,${col}.is.null`);
-        return q;
-      };
-
       if (sections.length) qb = qb.in("section", sections);
-
-      qb = applyBoolFilter(qb, "venduto", venduto);
-      qb = applyBoolFilter(qb, "miss", miss);
-      qb = applyBoolFilter(qb, "contattato", contattato);
-      qb = applyBoolFilter(qb, "negativo", negativo);
-      qb = applyBoolFilter(qb, "presentato", presentato);
-      qb = applyBoolFilter(qb, "assente", assente);
-
       if (consNames.length) qb = qb.in("consulenti.name", consNames);
       if (tipoNames.length) qb = qb.in("tipi_abbonamento.name", tipoNames);
 
@@ -145,11 +143,9 @@ export async function GET(req: Request) {
       if (allRows.length > 20000) break;
     }
 
-    let rows = allRows;
-
     // Normalizzo al formato atteso dal client
     // Con la query diretta, consulente è già un oggetto { name: ... } o null
-    const normalized = rows.map((r) => ({
+    const normalized = allRows.map((r) => ({
       ...r,
       consulente: r.consulenti, // Supabase restituisce l'alias della tabella se non rinominato, o il nome della relazione
       tipo_abbonamento: r.tipi_abbonamento,
@@ -195,6 +191,26 @@ export async function GET(req: Request) {
       }
     }
 
+    // Filtro esiti con logica inclusiva "OPPURE" (OR) se specificati nei parametri URL (es. PDF o query specifica)
+    const hasEsitiFilter = Boolean(
+      presentato || venduto || miss || missNetti || recuperati || contattato || negativo || assente
+    );
+
+    let filteredData = normalized;
+    if (hasEsitiFilter) {
+      filteredData = normalized.filter((r) => {
+        if (presentato && r.presentato) return true;
+        if (venduto && r.venduto) return true;
+        if (missNetti && r.miss && !r.isRecuperato) return true;
+        if (recuperati && r.isRecuperato) return true;
+        if (miss && r.miss) return true;
+        if (contattato && r.contattato) return true;
+        if (negativo && r.negativo) return true;
+        if (assente && r.assente) return true;
+        return false;
+      });
+    }
+
     if (format === "json") {
       return NextResponse.json({
         meta: {
@@ -204,7 +220,7 @@ export async function GET(req: Request) {
             tipi_abbonamento: tipiOptions,
           }
         },
-        rows: normalized
+        rows: filteredData
       });
     }
 
@@ -250,7 +266,7 @@ export async function GET(req: Request) {
     const sectionsOrder = SECTIONS; // Use the imported constant
 
     sectionsOrder.forEach(sectionKey => {
-      const sectionEntries = normalized.filter((e: any) => e.section === sectionKey);
+      const sectionEntries = filteredData.filter((e: any) => e.section === sectionKey);
 
       if (sectionEntries.length > 0) {
         // Section Header
@@ -264,7 +280,8 @@ export async function GET(req: Request) {
         const tableBody = sectionEntries.map((e: any) => {
           const dateStr = e.entry_date ? new Date(e.entry_date).toLocaleDateString("it-IT") : "-";
           const time = e.entry_time ? e.entry_time.slice(0, 5) : "-";
-          const client = `${e.nome || ""} ${e.cognome || ""}`;
+          const client = `${e.nome || ""} ${e.cognome || ""}`.trim() || "-";
+          const phone = e.telefono || "-";
           const consultant = e.consulente?.name || "-";
           const type = e.tipo_abbonamento?.name || "-";
 
@@ -274,6 +291,7 @@ export async function GET(req: Request) {
             status = e.contattato ? "COMPLETATO" : "DA CHIAMARE";
           } else {
             if (e.venduto) status = "VENDUTO";
+            else if (e.isRecuperato) status = "MISS (RECUP.)";
             else if (e.miss) status = "MISS CON APP.";
             else if (e.negativo) status = "NEGATIVO";
             else if (e.presentato) status = "PRESENTATO";
@@ -281,16 +299,16 @@ export async function GET(req: Request) {
           }
 
           if (sectionKey === "APPUNTAMENTI TELEFONICI") {
-            return [dateStr, time, client, consultant, e.telefono || "-", status];
+            return [dateStr, time, client, phone, consultant, status];
           } else {
-            return [dateStr, time, client, consultant, type, status];
+            return [dateStr, time, client, phone, consultant, type, status];
           }
         });
 
         // Table Headers
-        let headers = ["Data", "Ora", "Cliente", "Consulente", "Tipo Abb.", "Esito"];
+        let headers = ["Data", "Ora", "Cliente", "Telefono", "Consulente", "Tipo Abb.", "Esito"];
         if (sectionKey === "APPUNTAMENTI TELEFONICI") {
-          headers = ["Data", "Ora", "Cliente", "Consulente", "Telefono", "Stato"];
+          headers = ["Data", "Ora", "Cliente", "Telefono", "Consulente", "Stato"];
         }
 
         autoTable(doc, {
@@ -299,9 +317,25 @@ export async function GET(req: Request) {
           body: tableBody,
           theme: 'grid',
           headStyles: { fillColor: [33, 181, 186], textColor: 255, fontStyle: 'bold' },
-          styles: { fontSize: 9, cellPadding: 3 },
+          styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak' },
+          columnStyles: sectionKey === "APPUNTAMENTI TELEFONICI" ? {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 14 },
+            2: { cellWidth: 44 },
+            3: { cellWidth: 32 },
+            4: { cellWidth: 37 },
+            5: { cellWidth: 35, halign: 'center' },
+          } : {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 14 },
+            2: { cellWidth: 38 },
+            3: { cellWidth: 28 },
+            4: { cellWidth: 28 },
+            5: { cellWidth: 26 },
+            6: { cellWidth: 28, halign: 'center' },
+          },
           alternateRowStyles: { fillColor: [255, 255, 255] },
-          margin: { top: 10 },
+          margin: { top: 10, left: 14, right: 14 },
           didParseCell: (data: any) => {
             if (data.section === 'body') {
               const row = data.row;
@@ -311,6 +345,8 @@ export async function GET(req: Request) {
                 data.cell.styles.fillColor = [209, 250, 229]; // emerald-100
               } else if (status === "MISS CON APP.") {
                 data.cell.styles.fillColor = [255, 237, 213]; // orange-100
+              } else if (status === "MISS (RECUP.)") {
+                data.cell.styles.fillColor = [207, 250, 254]; // cyan-100
               } else if (status === "ASSENTE") {
                 data.cell.styles.fillColor = [254, 249, 195]; // yellow-100
               } else if (status === "NEGATIVO") {

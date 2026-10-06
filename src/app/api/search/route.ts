@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
             agenda.forEach(a => {
                 const dateStr = a.entry_date ? new Date(a.entry_date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
-                const consulenteStr = (a.consulenti as any)?.name ? ` • ${a.consulenti.name}` : "";
+                const consulenteStr = (a.consulenti as any)?.name ? ` • ${(a.consulenti as any).name}` : "";
                 results.push({ type: "agenda", id: a.id, title: `${a.nome} ${a.cognome}`, subtitle: `${a.section} - ${dateStr}${consulenteStr}`, phone: a.telefono, raw: a });
             });
         }
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
 
         if (medical) {
             medical.forEach(m => {
-                const sessionDate = (m.medical_sessions as any)?.date ? new Date(m.medical_sessions.date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
+                const sessionDate = (m.medical_sessions as any)?.date ? new Date((m.medical_sessions as any).date).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) : "";
                 const dateStr = sessionDate ? ` del ${sessionDate}` : "";
                 results.push({ type: "medical", id: m.id, title: `${m.client_name} ${m.client_surname}`, subtitle: `Visita Medica${dateStr}`, phone: m.client_phone, raw: m });
             });
