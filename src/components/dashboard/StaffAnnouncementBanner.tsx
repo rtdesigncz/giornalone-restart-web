@@ -141,7 +141,7 @@ export default function StaffAnnouncementBanner() {
             const { data, error } = await supabase
                 .from("daily_announcements")
                 .insert({
-                    message: formMessage.trim(),
+                    message: formMessage.trim().toUpperCase(),
                     type: formType,
                     author: formAuthor.trim() || "Direzione",
                     expires_mode: formExpiresMode,
@@ -272,9 +272,9 @@ export default function StaffAnnouncementBanner() {
                                 </button>
                             </div>
 
-                            {/* TESTO DEL MESSAGGIO: Molto più grande, in evidenza assoluta */}
+                            {/* TESTO DEL MESSAGGIO: Molto più grande, in evidenza assoluta, sempre in MAIUSCOLO */}
                             <div className={cn(
-                                "mt-3.5 text-base md:text-lg lg:text-[19px] leading-snug md:leading-normal tracking-tight whitespace-pre-line",
+                                "mt-3.5 text-base md:text-lg lg:text-[19px] leading-snug md:leading-normal tracking-tight whitespace-pre-line uppercase font-black",
                                 config.textClass,
                                 !expanded && isLongText && "line-clamp-3 md:line-clamp-4"
                             )}>
@@ -385,7 +385,7 @@ export default function StaffAnnouncementBanner() {
                                     value={formMessage}
                                     onChange={(e) => setFormMessage(e.target.value)}
                                     placeholder="Scrivi qui la comunicazione per lo staff..."
-                                    className="w-full rounded-xl border border-slate-200 p-3 text-sm md:text-base focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all resize-none font-bold text-slate-900"
+                                    className="w-full rounded-xl border border-slate-200 p-3 text-sm md:text-base focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all resize-none font-bold text-slate-900 uppercase"
                                 />
                             </div>
 
