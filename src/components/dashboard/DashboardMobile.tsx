@@ -18,8 +18,8 @@ import ExportPdfButton from "./ExportPdfButton";
 import PassDeliveryTask from "./PassDeliveryTask";
 import AbsentTask from "./AbsentTask";
 import MotivationalQuote from "./MotivationalQuote";
-
 import ConfirmationListPopup from "./ConfirmationListPopup";
+import StaffAnnouncementBanner from "./StaffAnnouncementBanner";
 
 interface DashboardMobileProps {
     stats: any;
@@ -107,6 +107,9 @@ export default function DashboardMobile({
                     </button>
                 </div>
             </div>
+
+            {/* Bacheca Avvisi Staff */}
+            <StaffAnnouncementBanner />
 
             {/* Stats Carousel */}
             <div className="-mx-4 px-4 overflow-x-auto no-scrollbar flex gap-3 snap-x snap-mandatory py-2">

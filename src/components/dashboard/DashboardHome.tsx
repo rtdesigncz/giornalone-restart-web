@@ -26,6 +26,7 @@ import MotivationalQuote from "./MotivationalQuote";
 import AbsentTask from "./AbsentTask";
 import AbsentListPopup from "./AbsentListPopup";
 import ConfirmationListPopup from "./ConfirmationListPopup";
+import StaffAnnouncementBanner from "./StaffAnnouncementBanner";
 
 // Helper
 export default function DashboardHome() {
@@ -522,6 +523,9 @@ export default function DashboardHome() {
                         </button>
                     </div>
                 </div>
+
+                {/* Bacheca Avvisi per lo Staff */}
+                <StaffAnnouncementBanner />
 
                 {/* Collapsible Stats Section */}
                 <div className="space-y-4">
