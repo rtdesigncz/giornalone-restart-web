@@ -1,26 +1,41 @@
-// middleware.ts (sia in root che in src/)
+// src/middleware.ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // lascia passare login, asset Next, API e favicon
-  if (
-    pathname === "/login" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname === "/favicon.ico"
-  ) {
+  const isAuthed = req.cookies.get("gl_auth")?.value === "ok";
+
+  // Se l'utente è già autenticato e visita /login, mandalo direttamente alla dashboard
+  if (pathname === "/login") {
+    if (isAuthed) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
     return NextResponse.next();
   }
 
-  // se c'è il cookie, lascia passare
-  const authed = req.cookies.get("gl_auth")?.value === "ok";
-  if (authed) return NextResponse.next();
+  // Se l'utente è autenticato, lascia passare
+  if (isAuthed) {
+    return NextResponse.next();
+  }
 
-  // altrimenti redirigi al login
+  // Altrimenti redirigi al login
   const url = req.nextUrl.clone();
   url.pathname = "/login";
   return NextResponse.redirect(url);
 }
+
+export const config = {
+  matcher: [
+    /*
+     * Applica il middleware a tutte le rotte TRANNE:
+     * - rotte API (/api/...)
+     * - file statici Next.js (_next/static, _next/image)
+     * - immagini, icone e file statici (.png, .jpg, .svg, .ico, .json, ecc.)
+     */
+    "/((?!api|_next/static|_next/image|favicon|manifest|.*\\.(?:png|jpg|jpeg|svg|webp|ico|json|css|js)$).*)",
+  ],
+};

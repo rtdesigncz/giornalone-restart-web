@@ -2,11 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [u, setU] = useState("");
   const [p, setP] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -28,7 +25,7 @@ export default function LoginPage() {
         return;
       }
       // successo → torna alla home
-      window.location.href = "/";
+      window.location.replace("/");
     } catch (e: any) {
       setErr(e?.message || "Errore inatteso");
     } finally {
@@ -43,7 +40,8 @@ export default function LoginPage() {
         className="w-full max-w-sm bg-white border rounded-xl p-5 space-y-4"
       >
         <div className="flex justify-center mb-6 mt-2">
-          <Image src="/app-logo.png" alt="Restart Logo" width={180} height={40} className="object-contain" priority />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/app-logo.png" alt="Restart Logo" className="h-10 w-auto object-contain" />
         </div>
         <h1 className="text-xl font-semibold text-center text-slate-800">Accedi</h1>
 
