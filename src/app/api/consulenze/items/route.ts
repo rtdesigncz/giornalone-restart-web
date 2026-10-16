@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       telefono: body?.telefono || null,
       scadenza: body?.scadenza || null,
       tipo_abbonamento_corrente: body?.tipo_abbonamento_corrente || null,
+      motivo_negativo: body?.motivo_negativo || null,
     };
     const { data, error } = await supabase
       .from("gestione_items")
@@ -69,7 +70,7 @@ export async function PATCH(req: Request) {
       "nome", "cognome", "telefono", "scadenza", "tipo_abbonamento_corrente",
       "contattato", "preso_appuntamento", "consulenza_fatta",
       "data_consulenza", "esito", "nuovo_abbonamento_name", "data_risposta",
-      "note"
+      "motivo_negativo", "note"
     ];
     const patch: any = {};
     for (const k of allowed) if (k in body) patch[k] = body[k];

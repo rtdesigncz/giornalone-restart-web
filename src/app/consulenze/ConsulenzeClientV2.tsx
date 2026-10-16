@@ -38,6 +38,7 @@ type Item = {
     esito: "ISCRIZIONE" | "RINNOVO" | "INTEGRAZIONE" | "IN ATTESA" | "NEGATIVO" | null;
     nuovo_abbonamento_name: string | null;
     data_risposta: string | null; // YYYY-MM-DD
+    motivo_negativo: string | null;
 
     note: string | null;
 
@@ -47,6 +48,13 @@ type Item = {
 };
 
 const ESITI = ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE", "IN ATTESA", "NEGATIVO"] as const;
+
+export const MOTIVI_NEGATIVO = [
+    { value: "INSODDISFATTO", label: "Insoddisfatto" },
+    { value: "NON FREQUENTA", label: "Non frequenta" },
+    { value: "TRASFERIMENTO", label: "Trasferimento" },
+    { value: "INFORTUNIO", label: "Infortunio" },
+] as const;
 
 const cleanSubscription = (s: string | null) => {
     if (!s) return null;
@@ -222,13 +230,18 @@ export default function ConsulenzeClientV2() {
     const [tempEsito, setTempEsito] = useState<Item["esito"]>(null);
     const [tempNuovoAbb, setTempNuovoAbb] = useState("");
     const [tempDataRisp, setTempDataRisp] = useState("");
+    const [tempMotivoNegativo, setTempMotivoNegativo] = useState<string>("");
     const [tempNote, setTempNote] = useState("");
     const [addToAgenda, setAddToAgenda] = useState(false);
     const [pendingAgendaUpdate, setPendingAgendaUpdate] = useState<{ item: Item, date: string } | null>(null);
 
+    // Negative reason filter and KPI state
+    const [fMotiviNegativo, setFMotiviNegativo] = useState<string[]>([]);
+    const [showNegativiKpi, setShowNegativiKpi] = useState(false);
+
     const resetFiltri = () => {
         setQ(""); setFContattati(false); setFDaContattare(false); setFAppDaFissare(false); setFAppDaFare(false);
-        setFConsFatte(false); setFEsiti([]); setFAbb([]);
+        setFConsFatte(false); setFEsiti([]); setFAbb([]); setFMotiviNegativo([]); setShowNegativiKpi(false);
     };
 
     useEffect(() => {
@@ -284,9 +297,18 @@ export default function ConsulenzeClientV2() {
             if (fConsFatte && !r.consulenza_fatta) return false;
             if (fEsiti.length && (!r.esito || !fEsiti.includes(r.esito))) return false;
             if (fAbb.length && (!r.nuovo_abbonamento_name || !fAbb.includes(r.nuovo_abbonamento_name))) return false;
+            if (fMotiviNegativo.length) {
+                if (r.esito !== "NEGATIVO") return false;
+                const rMotivoUpper = (r.motivo_negativo || "").toUpperCase();
+                const matches = fMotiviNegativo.some(m => {
+                    if (m === "NON_SPECIFICATO") return !r.motivo_negativo;
+                    return m.toUpperCase() === rMotivoUpper;
+                });
+                if (!matches) return false;
+            }
             return true;
         });
-    }, [items, q, fContattati, fDaContattare, fAppDaFissare, fAppDaFare, fConsFatte, fEsiti, fAbb]);
+    }, [items, q, fContattati, fDaContattare, fAppDaFissare, fAppDaFare, fConsFatte, fEsiti, fAbb, fMotiviNegativo]);
 
 // SORTING STATE
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -339,7 +361,21 @@ export default function ConsulenzeClientV2() {
             abbMap.set(n, (abbMap.get(n) || 0) + 1);
         }
         const nuoviAbb = Array.from(abbMap.entries()).map(([name, cnt]) => ({ name, cnt }));
-        return { totale, contattati, appuntamentiDaFissare, appuntamentiDaFare, fatte, daFare, esiti, nuoviAbb };
+
+        // Breakdown motivazioni negativi
+        const negativiTotali = items.filter(r => r.esito === "NEGATIVO").length;
+        const motiviNegativo = MOTIVI_NEGATIVO.map(m => {
+            const cnt = items.filter(r => r.esito === "NEGATIVO" && (r.motivo_negativo || "").toUpperCase() === m.value).length;
+            const pct = negativiTotali > 0 ? Math.round((cnt / negativiTotali) * 100) : 0;
+            return { value: m.value, label: m.label, cnt, pct };
+        });
+        const negativiSenzaMotivo = items.filter(r => r.esito === "NEGATIVO" && !r.motivo_negativo).length;
+        const negativiSenzaMotivoPct = negativiTotali > 0 ? Math.round((negativiSenzaMotivo / negativiTotali) * 100) : 0;
+
+        return {
+            totale, contattati, appuntamentiDaFissare, appuntamentiDaFare, fatte, daFare, esiti, nuoviAbb,
+            negativiTotali, motiviNegativo, negativiSenzaMotivo, negativiSenzaMotivoPct
+        };
     }, [items]);
 
     const toggleStrIn = (arr: string[], set: (v: string[]) => void, val: string) => {
@@ -361,6 +397,7 @@ export default function ConsulenzeClientV2() {
             esito: r.esito || null,
             nuovo_abbonamento_name: r.nuovo_abbonamento_name || null,
             data_risposta: r.data_risposta || null,
+            motivo_negativo: r.motivo_negativo || null,
             note: r.note || null,
         };
         const res = await fetch(`/api/consulenze/items?id=${r.id}`, {
@@ -399,9 +436,10 @@ export default function ConsulenzeClientV2() {
                 setActionModal({ type: 'CONFIRM_RESET', item: r, step: 'FATTA' });
             } else {
                 // Turning ON (Open Modal)
-                setTempEsito(null);
-                setTempNuovoAbb("");
-                setTempDataRisp("");
+                setTempEsito(r.esito || null);
+                setTempNuovoAbb(r.nuovo_abbonamento_name || "");
+                setTempDataRisp(r.data_risposta || "");
+                setTempMotivoNegativo(r.motivo_negativo || "");
                 setTempNote(r.note || "");
                 setActionModal({ type: 'SET_ESITO', item: r });
             }
@@ -424,6 +462,7 @@ export default function ConsulenzeClientV2() {
                 updated.esito = null;
                 updated.nuovo_abbonamento_name = null;
                 updated.data_risposta = null;
+                updated.motivo_negativo = null;
             } else if (step === 'APPUNTAMENTO') {
                 updated.preso_appuntamento = false;
                 // Cascade reset
@@ -432,11 +471,13 @@ export default function ConsulenzeClientV2() {
                 updated.esito = null;
                 updated.nuovo_abbonamento_name = null;
                 updated.data_risposta = null;
+                updated.motivo_negativo = null;
             } else if (step === 'FATTA') {
                 updated.consulenza_fatta = false;
                 updated.esito = null;
                 updated.nuovo_abbonamento_name = null;
                 updated.data_risposta = null;
+                updated.motivo_negativo = null;
             }
         } else if (type === 'SET_APPUNTAMENTO') {
             if (addToAgenda) {
@@ -469,8 +510,9 @@ export default function ConsulenzeClientV2() {
             updated.preso_appuntamento = true;
             updated.consulenza_fatta = true;
             updated.esito = tempEsito;
-            updated.nuovo_abbonamento_name = tempNuovoAbb || null;
-            updated.data_risposta = tempDataRisp || null;
+            updated.nuovo_abbonamento_name = (tempEsito && ["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(tempEsito)) ? (tempNuovoAbb || null) : null;
+            updated.data_risposta = (tempEsito === "IN ATTESA") ? (tempDataRisp || null) : null;
+            updated.motivo_negativo = (tempEsito === "NEGATIVO") ? (tempMotivoNegativo || null) : null;
             updated.note = tempNote || null;
         }
 
@@ -562,6 +604,7 @@ export default function ConsulenzeClientV2() {
             contattato: !!r.contattato, preso_appuntamento: !!r.preso_appuntamento, consulenza_fatta: !!r.consulenza_fatta,
             data_consulenza: r.data_consulenza || null, esito: r.esito || null,
             nuovo_abbonamento_name: r.nuovo_abbonamento_name || null, data_risposta: r.data_risposta || null,
+            motivo_negativo: r.motivo_negativo || null,
             note: r.note || null,
         };
         const res = await fetch(`/api/consulenze/items`, {
@@ -581,7 +624,7 @@ export default function ConsulenzeClientV2() {
                 scadenza: x.scadenza, tipo_abbonamento_corrente: x.tipo_abbonamento_corrente,
                 contattato: x.contattato, preso_appuntamento: x.preso_appuntamento, consulenza_fatta: x.consulenza_fatta,
                 data_consulenza: x.data_consulenza, esito: x.esito, nuovo_abbonamento_name: x.nuovo_abbonamento_name,
-                data_risposta: x.data_risposta, note: x.note
+                data_risposta: x.data_risposta, motivo_negativo: x.motivo_negativo, note: x.note
             };
             return { ...x, _editing: true, _backup: backup };
         }));
@@ -595,6 +638,9 @@ export default function ConsulenzeClientV2() {
                 alert("ATTENZIONE: Devi obbligatoriamente selezionare il Nuovo Abbonamento per salvare un esito positivo.");
                 return;
             }
+        }
+        if (r.esito !== "NEGATIVO") {
+            r.motivo_negativo = null;
         }
         try {
             await persistFullRow(r);
@@ -807,7 +853,13 @@ export default function ConsulenzeClientV2() {
                                 <CustomSelect
                                     options={ESITI.map(e => ({ value: e, label: e }))}
                                     value={tempEsito || ""}
-                                    onChange={v => setTempEsito(v as any)}
+                                    onChange={v => {
+                                        const next = (v || null) as Item["esito"];
+                                        setTempEsito(next);
+                                        if (next !== "NEGATIVO") setTempMotivoNegativo("");
+                                        if (!next || !["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(next)) setTempNuovoAbb("");
+                                        if (next !== "IN ATTESA") setTempDataRisp("");
+                                    }}
                                     placeholder="— Seleziona Esito —"
                                 />
                             </div>
@@ -820,6 +872,21 @@ export default function ConsulenzeClientV2() {
                                         value={tempNuovoAbb}
                                         onChange={v => setTempNuovoAbb(v)}
                                         placeholder="— Seleziona Abbonamento (Obbligatorio) —"
+                                    />
+                                </div>
+                            )}
+
+                            {tempEsito === "NEGATIVO" && (
+                                <div className="col-span-2 space-y-1 animate-in fade-in slide-in-from-top-1">
+                                    <label className="text-xs font-bold text-rose-700 uppercase flex items-center justify-between">
+                                        <span>Motivazione Negativo</span>
+                                        <span className="text-[10px] font-normal text-rose-500 lowercase">(opzionale)</span>
+                                    </label>
+                                    <CustomSelect
+                                        options={MOTIVI_NEGATIVO.map(m => ({ value: m.value, label: m.label }))}
+                                        value={tempMotivoNegativo}
+                                        onChange={v => setTempMotivoNegativo(v)}
+                                        placeholder="— Seleziona Motivazione —"
                                     />
                                 </div>
                             )}
@@ -906,7 +973,7 @@ export default function ConsulenzeClientV2() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    {(fDaContattare || fContattati || fAppDaFissare || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0) && (
+                                    {(fDaContattare || fContattati || fAppDaFissare || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0 || fMotiviNegativo.length > 0) && (
                                         <button 
                                             onClick={resetFiltri}
                                             className="hidden sm:flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors"
@@ -944,10 +1011,10 @@ export default function ConsulenzeClientV2() {
                 </div>
             </div>                
             {/* NEW KPI SAAS CARDS */}
-            <div className="bg-slate-50 border-b border-slate-200 py-4 px-4 sm:px-6">
+            <div className="bg-slate-50 border-b border-slate-200 py-5 sm:py-6 px-4 sm:px-6">
                 <div className="grid grid-cols-2 md:grid-cols-7 gap-4 max-w-[1600px] mx-auto">
                     {/* Totale */}
-                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFissare && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
+                    <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFissare && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0 && fMotiviNegativo.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
                             <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3>
                             <Users className="w-4 h-4 text-slate-400" />
@@ -1012,41 +1079,154 @@ export default function ConsulenzeClientV2() {
                 </div>
                 
                 {/* Esiti & Abbonamenti Break-down */}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-center mt-4 max-w-[1600px] mx-auto overflow-x-auto pb-1">
-                    {/* Esiti Breakdown */}
-                    <div className="flex gap-2 flex-wrap justify-center">
-                        {kpi.esiti.map(e => {
-                            let colorClass = "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
-                            let badgeClass = "text-slate-900";
-                            if (e.esito === "ISCRIZIONE") { colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"; badgeClass = "text-emerald-900"; }
-                            if (e.esito === "RINNOVO") { colorClass = "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"; badgeClass = "text-teal-900"; }
-                            if (e.esito === "INTEGRAZIONE") { colorClass = "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"; badgeClass = "text-cyan-900"; }
-                            if (e.esito === "IN ATTESA") { colorClass = "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"; badgeClass = "text-amber-900"; }
-                            if (e.esito === "NEGATIVO") { colorClass = "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"; badgeClass = "text-red-900"; }
+                <div className="mt-5 max-w-[1600px] mx-auto">
+                    <div className="bg-white/90 border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-xs flex flex-col md:flex-row gap-4 items-center justify-center">
+                        {/* Esiti Breakdown */}
+                        <div className="flex gap-2.5 flex-wrap justify-center items-center py-0.5">
+                            {kpi.esiti.map(e => {
+                                let colorClass = "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
+                                let badgeClass = "text-slate-900";
+                                if (e.esito === "ISCRIZIONE") { colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"; badgeClass = "text-emerald-900"; }
+                                if (e.esito === "RINNOVO") { colorClass = "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"; badgeClass = "text-teal-900"; }
+                                if (e.esito === "INTEGRAZIONE") { colorClass = "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"; badgeClass = "text-cyan-900"; }
+                                if (e.esito === "IN ATTESA") { colorClass = "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"; badgeClass = "text-amber-900"; }
+                                if (e.esito === "NEGATIVO") { 
+                                    const isSelected = fEsiti.includes("NEGATIVO") || showNegativiKpi || fMotiviNegativo.length > 0;
+                                    colorClass = isSelected
+                                        ? "bg-red-100 text-red-800 border-red-300 ring-2 ring-red-400 shadow-xs"
+                                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"; 
+                                    badgeClass = "text-red-900"; 
+                                }
 
-                            return (
-                                <div key={e.esito} onClick={() => { resetFiltri(); setFEsiti([e.esito]); }} className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-bold cursor-pointer transition-colors", colorClass)}>
-                                    <span>{e.esito}</span>
-                                    <span className={cn("bg-white px-1.5 rounded-md shadow-sm", badgeClass)}>{e.cnt}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    
-                    {kpi.nuoviAbb && kpi.nuoviAbb.length > 0 && (
-                        <>
-                            <div className="w-px h-5 bg-slate-200 hidden md:block"></div>
-                            <div className="flex gap-2 flex-wrap justify-center">
-                                {kpi.nuoviAbb.map(abb => (
-                                    <div key={abb.name} onClick={() => { resetFiltri(); setFAbb([abb.name]); }} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[11px] font-bold cursor-pointer hover:bg-indigo-100 transition-colors">
-                                        <span>{abb.name}</span>
-                                        <span className="bg-white px-1.5 rounded-md shadow-sm text-indigo-900">{abb.cnt}</span>
+                                return (
+                                    <div
+                                        key={e.esito}
+                                        onClick={() => {
+                                            if (e.esito === "NEGATIVO") {
+                                                const wasSelected = fEsiti.includes("NEGATIVO") && showNegativiKpi && !fMotiviNegativo.length;
+                                                resetFiltri();
+                                                if (!wasSelected) {
+                                                    setFEsiti(["NEGATIVO"]);
+                                                    setShowNegativiKpi(true);
+                                                }
+                                            } else {
+                                                resetFiltri();
+                                                setFEsiti([e.esito]);
+                                            }
+                                        }}
+                                        className={cn("flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]", colorClass)}
+                                    >
+                                        <span>{e.esito}</span>
+                                        <span className={cn("bg-white px-2 py-0.5 rounded-md shadow-xs text-xs font-black", badgeClass)}>{e.cnt}</span>
+                                        {e.esito === "NEGATIVO" && kpi.negativiTotali > 0 && (
+                                            <ChevronDown className={cn("w-3.5 h-3.5 text-red-500 transition-transform ml-0.5", (showNegativiKpi || fEsiti.includes("NEGATIVO") || fMotiviNegativo.length > 0) && "rotate-180")} />
+                                        )}
                                     </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
+                                );
+                            })}
+                        </div>
+                        
+                        {kpi.nuoviAbb && kpi.nuoviAbb.length > 0 && (
+                            <>
+                                <div className="w-px h-6 bg-slate-200 hidden md:block"></div>
+                                <div className="flex gap-2.5 flex-wrap justify-center items-center py-0.5">
+                                    {kpi.nuoviAbb.map(abb => (
+                                        <div key={abb.name} onClick={() => { resetFiltri(); setFAbb([abb.name]); }} className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-bold cursor-pointer hover:bg-indigo-100 transition-all shadow-xs hover:scale-[1.02]">
+                                            <span>{abb.name}</span>
+                                            <span className="bg-white px-2 py-0.5 rounded-md shadow-xs text-indigo-900 text-xs font-black">{abb.cnt}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
+
+                {/* KPI A COMPARSA - MOTIVAZIONI NEGATIVI */}
+                {(showNegativiKpi || fEsiti.includes("NEGATIVO") || fMotiviNegativo.length > 0) && kpi.negativiTotali > 0 && (
+                    <div className="mt-4 pt-3.5 border-t border-rose-200/70 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="bg-gradient-to-r from-rose-50/90 via-white to-rose-50/90 border border-rose-200 rounded-2xl p-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-200 animate-pulse"></span>
+                                <span className="text-xs font-black uppercase tracking-wider text-rose-800">
+                                    Motivazioni Negativi ({kpi.negativiTotali})
+                                </span>
+                                {fMotiviNegativo.length > 0 && (
+                                    <button
+                                        onClick={() => setFMotiviNegativo([])}
+                                        className="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline ml-2 cursor-pointer"
+                                    >
+                                        Tutti i negativi
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 flex-wrap justify-center items-center">
+                                {kpi.motiviNegativo.map(m => {
+                                    const isSelected = fMotiviNegativo.includes(m.value);
+                                    return (
+                                        <button
+                                            key={m.value}
+                                            onClick={() => {
+                                                if (!fEsiti.includes("NEGATIVO")) setFEsiti(["NEGATIVO"]);
+                                                toggleStrIn(fMotiviNegativo, setFMotiviNegativo, m.value);
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all shadow-sm",
+                                                isSelected
+                                                    ? "bg-rose-600 text-white border-rose-700 ring-2 ring-rose-400 ring-offset-1 shadow-rose-200 scale-[1.02]"
+                                                    : "bg-white text-slate-700 border-rose-200/80 hover:bg-rose-50/80 hover:border-rose-300 hover:scale-[1.01]"
+                                            )}
+                                        >
+                                            <span className={cn(isSelected ? "text-white" : "text-slate-800")}>{m.label}</span>
+                                            <span className={cn(
+                                                "px-1.5 py-0.5 rounded-md text-[11px] font-extrabold",
+                                                isSelected ? "bg-rose-700 text-white" : "bg-rose-100 text-rose-900"
+                                            )}>
+                                                {m.cnt}
+                                            </span>
+                                            <span className={cn("text-[10px] font-medium", isSelected ? "text-rose-200" : "text-slate-400")}>
+                                                {m.pct}%
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+
+                                {kpi.negativiSenzaMotivo > 0 && (
+                                    <button
+                                        onClick={() => {
+                                            if (!fEsiti.includes("NEGATIVO")) setFEsiti(["NEGATIVO"]);
+                                            toggleStrIn(fMotiviNegativo, setFMotiviNegativo, "NON_SPECIFICATO");
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all shadow-sm",
+                                            fMotiviNegativo.includes("NON_SPECIFICATO")
+                                                ? "bg-slate-700 text-white border-slate-800 ring-2 ring-slate-400 scale-[1.02]"
+                                                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:scale-[1.01]"
+                                        )}
+                                    >
+                                        <span>Non specificato</span>
+                                        <span className={cn(
+                                            "px-1.5 py-0.5 rounded-md text-[11px] font-extrabold",
+                                            fMotiviNegativo.includes("NON_SPECIFICATO") ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-700"
+                                        )}>
+                                            {kpi.negativiSenzaMotivo}
+                                        </span>
+                                        <span className="text-[10px] font-medium text-slate-400">{kpi.negativiSenzaMotivoPct}%</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => setShowNegativiKpi(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-rose-100/50 transition-colors"
+                                title="Chiudi dettaglio motivazioni"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* MAIN TABLE AREA */}
@@ -1273,6 +1453,7 @@ export default function ConsulenzeClientV2() {
                                                                             const patch: any = { esito: v };
                                                                             if (!v || !["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(v)) patch.nuovo_abbonamento_name = null;
                                                                             if (v !== "IN ATTESA") patch.data_risposta = "";
+                                                                            if (v !== "NEGATIVO") patch.motivo_negativo = null;
                                                                             setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
                                                                         }}
                                                                     >
@@ -1284,6 +1465,19 @@ export default function ConsulenzeClientV2() {
                                                                         <select className={cn("input-sm w-full text-xs", !r.nuovo_abbonamento_name && "border-red-400 bg-red-50")} value={r.nuovo_abbonamento_name || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, nuovo_abbonamento_name: e.target.value } : x))}>
                                                                             <option value="">— Nuovo Abb (Obbligatorio) —</option>
                                                                             {abbOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                                                                        </select>
+                                                                    )}
+
+                                                                    {r.esito === "NEGATIVO" && (
+                                                                        <select
+                                                                            className="input-sm w-full text-xs border-red-200 bg-red-50/60 text-red-900 font-medium"
+                                                                            value={r.motivo_negativo || ""}
+                                                                            onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, motivo_negativo: e.target.value || null } : x))}
+                                                                        >
+                                                                            <option value="">— Motivazione Negativo —</option>
+                                                                            {MOTIVI_NEGATIVO.map(m => (
+                                                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                                                            ))}
                                                                         </select>
                                                                     )}
 
@@ -1307,6 +1501,12 @@ export default function ConsulenzeClientV2() {
                                                                                         : ""
                                                                                 }
                                                                             />
+
+                                                                            {r.esito === "NEGATIVO" && r.motivo_negativo && (
+                                                                                <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full mt-1">
+                                                                                    <span>{MOTIVI_NEGATIVO.find(m => m.value === (r.motivo_negativo || "").toUpperCase())?.label || r.motivo_negativo}</span>
+                                                                                </div>
+                                                                            )}
 
                                                                             {r.nuovo_abbonamento_name && (
                                                                                 <div className="text-xs text-slate-600 font-medium flex items-center gap-1 mt-1">
@@ -1528,19 +1728,52 @@ export default function ConsulenzeClientV2() {
                                             <div className="space-y-3 pt-2 border-t border-slate-100">
                                                 {isEditing ? (
                                                     <div className="space-y-2">
-                                                        <select className="input-sm w-full text-xs" disabled={!r.consulenza_fatta} value={r.esito || ""} onChange={e => { const v = (e.target.value || null) as Item["esito"]; setItems(it => it.map(x => x.id === r.id ? { ...x, esito: v } : x)); }}>
+                                                        <select
+                                                            className="input-sm w-full text-xs"
+                                                            disabled={!r.consulenza_fatta}
+                                                            value={r.esito || ""}
+                                                            onChange={e => {
+                                                                const v = (e.target.value || null) as Item["esito"];
+                                                                const patch: any = { esito: v };
+                                                                if (!v || !["ISCRIZIONE", "RINNOVO", "INTEGRAZIONE"].includes(v)) patch.nuovo_abbonamento_name = null;
+                                                                if (v !== "IN ATTESA") patch.data_risposta = "";
+                                                                if (v !== "NEGATIVO") patch.motivo_negativo = null;
+                                                                setItems(it => it.map(x => x.id === r.id ? { ...x, ...patch } : x));
+                                                            }}
+                                                        >
                                                             <option value="">-- Esito --</option>
                                                             {ESITI.map(e => <option key={e} value={e}>{e}</option>)}
                                                         </select>
+
+                                                        {r.esito === "NEGATIVO" && (
+                                                            <select
+                                                                className="input-sm w-full text-xs border-red-200 bg-red-50/60 text-red-900 font-medium"
+                                                                value={r.motivo_negativo || ""}
+                                                                onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, motivo_negativo: e.target.value || null } : x))}
+                                                            >
+                                                                <option value="">— Motivazione Negativo —</option>
+                                                                {MOTIVI_NEGATIVO.map(m => (
+                                                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+
                                                         <textarea className="input-sm w-full text-xs min-h-[60px]" placeholder="Note..." value={r.note || ""} onChange={e => setItems(it => it.map(x => x.id === r.id ? { ...x, note: e.target.value } : x))} />
                                                     </div>
                                                 ) : (
                                                     <>
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-xs font-bold text-slate-400 uppercase">Esito</span>
-                                                            {r.esito ? (
-                                                                <StatusBadge label={r.esito} color={r.esito === "ISCRIZIONE" ? "emerald" : r.esito === "NEGATIVO" ? "red" : r.esito === "RINNOVO" ? "blue" : "amber"} />
-                                                            ) : <span className="text-slate-300 text-xs italic">In attesa</span>}
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                {r.esito ? (
+                                                                    <StatusBadge label={r.esito} color={r.esito === "ISCRIZIONE" ? "emerald" : r.esito === "NEGATIVO" ? "red" : r.esito === "RINNOVO" ? "blue" : "amber"} />
+                                                                ) : <span className="text-slate-300 text-xs italic">In attesa</span>}
+                                                                {r.esito === "NEGATIVO" && r.motivo_negativo && (
+                                                                    <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                                                        {MOTIVI_NEGATIVO.find(m => m.value === (r.motivo_negativo || "").toUpperCase())?.label || r.motivo_negativo}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         {r.note && (
                                                             <div className="bg-amber-50/50 p-2 rounded text-xs text-slate-600 italic border border-amber-100">

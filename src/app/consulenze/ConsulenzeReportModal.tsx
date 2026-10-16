@@ -60,7 +60,31 @@ export default function ConsulenzeReportModal({ isOpen, onClose, items, listName
     .join(" - ");
 
   // NEGATIVI
-  const negativi = items.filter(i => i.esito === "NEGATIVO").length;
+  const negativiItems = items.filter(i => i.esito === "NEGATIVO");
+  const negativi = negativiItems.length;
+  const motiviMap: Record<string, number> = {
+    "INSODDISFATTO": 0,
+    "NON FREQUENTA": 0,
+    "TRASFERIMENTO": 0,
+    "INFORTUNIO": 0,
+  };
+  let nonSpecificati = 0;
+  negativiItems.forEach(i => {
+    const m = (i.motivo_negativo || "").toUpperCase();
+    if (m in motiviMap) {
+      motiviMap[m]++;
+    } else {
+      nonSpecificati++;
+    }
+  });
+
+  const motiviBreakdownText = [
+    motiviMap["INSODDISFATTO"] > 0 ? `${motiviMap["INSODDISFATTO"]} Insoddisfatto` : null,
+    motiviMap["NON FREQUENTA"] > 0 ? `${motiviMap["NON FREQUENTA"]} Non frequenta` : null,
+    motiviMap["TRASFERIMENTO"] > 0 ? `${motiviMap["TRASFERIMENTO"]} Trasferimento` : null,
+    motiviMap["INFORTUNIO"] > 0 ? `${motiviMap["INFORTUNIO"]} Infortunio` : null,
+    nonSpecificati > 0 ? `${nonSpecificati} Non specificato` : null,
+  ].filter(Boolean).join(" - ");
 
   const handleCopy = () => {
     const text = `📊 Report Lista: ${listName || "Senza Nome"}
@@ -78,7 +102,7 @@ APPUNTAMENTI FISSATI: ${appuntamentiFissatiTotale}
 
 IN ATTESA: ${inAttesaTotale} (${inAttesaFuturo} da oggi in poi, ${inAttesaMancati} mancati)
 VENDUTI: ${vendutiTotale}${abbonamentiBreakdown ? ` (${abbonamentiBreakdown})` : ""}
-NEGATIVI: ${negativi}`;
+NEGATIVI: ${negativi}${motiviBreakdownText ? ` (${motiviBreakdownText})` : ""}`;
 
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -231,9 +255,40 @@ NEGATIVI: ${negativi}`;
                 </div>
 
                 {/* Negativi */}
-                <div className="p-4 bg-rose-50/30 flex justify-between items-center">
-                  <span className="font-bold text-rose-700 text-base uppercase tracking-wide">Negativi</span>
-                  <span className="font-black text-rose-600 text-2xl">{negativi}</span>
+                <div className="p-4 bg-rose-50/30">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-rose-700 text-base uppercase tracking-wide">Negativi</span>
+                    <span className="font-black text-rose-600 text-2xl">{negativi}</span>
+                  </div>
+                  {negativi > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-rose-100 flex flex-wrap gap-1.5">
+                      {motiviMap["INSODDISFATTO"] > 0 && (
+                        <span className="text-[11px] font-semibold bg-rose-100/70 text-rose-800 px-2 py-0.5 rounded-md">
+                          Insoddisfatto: <b>{motiviMap["INSODDISFATTO"]}</b>
+                        </span>
+                      )}
+                      {motiviMap["NON FREQUENTA"] > 0 && (
+                        <span className="text-[11px] font-semibold bg-rose-100/70 text-rose-800 px-2 py-0.5 rounded-md">
+                          Non frequenta: <b>{motiviMap["NON FREQUENTA"]}</b>
+                        </span>
+                      )}
+                      {motiviMap["TRASFERIMENTO"] > 0 && (
+                        <span className="text-[11px] font-semibold bg-rose-100/70 text-rose-800 px-2 py-0.5 rounded-md">
+                          Trasferimento: <b>{motiviMap["TRASFERIMENTO"]}</b>
+                        </span>
+                      )}
+                      {motiviMap["INFORTUNIO"] > 0 && (
+                        <span className="text-[11px] font-semibold bg-rose-100/70 text-rose-800 px-2 py-0.5 rounded-md">
+                          Infortunio: <b>{motiviMap["INFORTUNIO"]}</b>
+                        </span>
+                      )}
+                      {nonSpecificati > 0 && (
+                        <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                          Non spec.: <b>{nonSpecificati}</b>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
               </div>
