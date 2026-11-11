@@ -49,7 +49,7 @@ import {
     parsePassItemMeta,
     serializePassItemMeta,
     upsertExtraApp,
-    removeExtraApp,
+    buildCompactedTrialsPatch,
     getUnifiedTrials,
     getEffectiveProposalState,
     getDaysDiffFromToday,
@@ -637,6 +637,7 @@ export default function ConsegnaPassClient() {
             alert("Appuntamento non trovato in agenda (potrebbe essere stato cancellato).");
             if (confirm("Vuoi pulire questo slot nel Pass?")) {
                 await clearPassSlot(item.id, step);
+                if (selectedGestioneId) fetchPassItems(selectedGestioneId);
             }
         }
     };
@@ -678,19 +679,30 @@ export default function ConsegnaPassClient() {
     };
 
     const clearPassSlot = async (itemId: string, step: number) => {
-        if (step <= 3) {
-            const updates: any = {};
-            updates[`data_app_${step}`] = null;
-            updates[`esito_app_${step}`] = null;
-            updates[`id_app_${step}`] = null;
-            await updatePassItem(itemId, updates);
-        } else {
-            const item = passItems.find((p) => p.id === itemId);
-            if (!item) return;
-            const meta = parsePassItemMeta(item.note);
-            const nextMeta = removeExtraApp(meta, step);
-            await updatePassItem(itemId, { note: serializePassItemMeta(nextMeta) });
+        const item = passItems.find((p) => p.id === itemId);
+        if (!item) return;
+
+        const { patch, remainingTrials } = buildCompactedTrialsPatch(item, step);
+        const res = await fetch(`/api/pass/items?id=${itemId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+            alert("Errore aggiornamento slot");
+            return;
         }
+        setPassItems((prev) =>
+            prev.map((p) =>
+                p.id === itemId
+                    ? {
+                          ...p,
+                          ...patch,
+                          agenda_sync: p.agenda_sync ? { ...p.agenda_sync, trials: remainingTrials } : null,
+                      }
+                    : p
+            )
+        );
     };
 
     // Sync All from Agenda helper (persists agenda outcomes & sales into pass_items)

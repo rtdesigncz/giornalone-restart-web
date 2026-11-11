@@ -34,6 +34,15 @@ interface PassEditPopupProps {
     strategy?: PassStrategy;
 }
 
+const DECLINE_REASONS = [
+    { value: "Prezzo / Budget", label: "Prezzo / Budget" },
+    { value: "Orari / Tempo", label: "Orari / Mancanza tempo" },
+    { value: "Indeciso / Ci pensa", label: "Indeciso / Ci pensa" },
+    { value: "Distanza / Trasferimento", label: "Distanza / Trasferimento" },
+    { value: "Altra palestra", label: "Scelta altra palestra" },
+    { value: "Motivi personali/salute", label: "Motivi personali / salute" },
+];
+
 export default function PassEditPopup({
     isOpen,
     onClose,
@@ -77,7 +86,13 @@ export default function PassEditPopup({
                 setProposalStatus("pending");
             }
             setProposalDate(meta.proposal_date || new Date().toISOString().slice(0, 10));
-            setDeclineReason(meta.decline_reason || "");
+            const matchedReason =
+                DECLINE_REASONS.find(
+                    (r) => r.value.toUpperCase() === (meta.decline_reason || "").toUpperCase()
+                )?.value ||
+                meta.decline_reason ||
+                "";
+            setDeclineReason(matchedReason);
             setFreeNote(meta.text || "");
         }
     }, [isOpen, initialData]);
@@ -312,12 +327,11 @@ export default function PassEditPopup({
                                     className="w-full px-3 py-2 text-sm rounded-lg border border-rose-200 bg-white"
                                 >
                                     <option value="">Seleziona o lascia vuoto...</option>
-                                    <option value="Prezzo / Budget">Prezzo / Budget</option>
-                                    <option value="Orari / Tempo">Orari / Mancanza tempo</option>
-                                    <option value="Indeciso / Ci pensa">Indeciso / Ci pensa</option>
-                                    <option value="Distanza / Trasferimento">Distanza / Trasferimento</option>
-                                    <option value="Altra palestra">Scelta altra palestra</option>
-                                    <option value="Motivi personali/salute">Motivi personali / salute</option>
+                                    {DECLINE_REASONS.map((r) => (
+                                        <option key={r.value} value={r.value}>
+                                            {r.label}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         )}

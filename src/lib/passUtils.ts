@@ -79,6 +79,16 @@ export interface PassItemMeta {
   extra_apps?: ExtraTrialSlot[];
 }
 
+function getCI(obj: Record<string, any>, key: string): any {
+  if (!obj || typeof obj !== "object") return undefined;
+  if (key in obj) return obj[key];
+  const upper = key.toUpperCase();
+  if (upper in obj) return obj[upper];
+  const lower = key.toLowerCase();
+  if (lower in obj) return obj[lower];
+  return undefined;
+}
+
 export function parsePassItemMeta(note?: string | null): PassItemMeta {
   if (!note || typeof note !== "string") {
     return { paid: false };
@@ -88,27 +98,46 @@ export function parsePassItemMeta(note?: string | null): PassItemMeta {
     return { paid: false, text: trimmed || null };
   }
   try {
-    const parsed = JSON.parse(trimmed);
-    const extraApps: ExtraTrialSlot[] = Array.isArray(parsed.extra_apps)
-      ? parsed.extra_apps
-          .filter((a: any) => a && typeof a.step === "number" && a.date)
-          .map((a: any) => ({
-            step: Number(a.step),
-            date: String(a.date).slice(0, 10),
-            esito: a.esito === "show" || a.esito === "no_show" ? a.esito : "pending",
-            entry_id: a.entry_id || null,
-          }))
+    // Postgres trg_pass_items_uppercase applies UPPER(note), so guard any bare TRUE/FALSE/NULL literals
+    const safeJson = trimmed
+      .replace(/:\s*TRUE\b/g, ":true")
+      .replace(/:\s*FALSE\b/g, ":false")
+      .replace(/:\s*NULL\b/g, ":null");
+    const parsed = JSON.parse(safeJson);
+
+    const rawExtra = getCI(parsed, "extra_apps");
+    const extraApps: ExtraTrialSlot[] = Array.isArray(rawExtra)
+      ? rawExtra
+          .map((a: any) => {
+            const stepVal = Number(getCI(a, "step"));
+            const dateVal = getCI(a, "date");
+            const rawEsito = String(getCI(a, "esito") || "").toLowerCase();
+            const rawEntryId = getCI(a, "entry_id");
+            return {
+              step: stepVal,
+              date: dateVal ? String(dateVal).slice(0, 10) : "",
+              esito: (rawEsito === "show" || rawEsito === "no_show" ? rawEsito : "pending") as SyncedOutcome,
+              entry_id: rawEntryId ? String(rawEntryId).toLowerCase() : null,
+            };
+          })
+          .filter((a: ExtraTrialSlot) => !isNaN(a.step) && a.step > 0 && Boolean(a.date))
           .sort((a: ExtraTrialSlot, b: ExtraTrialSlot) => a.step - b.step)
       : [];
 
+    const rawPaid = getCI(parsed, "paid");
+    const isPaid = rawPaid === true || rawPaid === 1 || rawPaid === "1" || String(rawPaid).toLowerCase() === "true";
+    const rawAmount = getCI(parsed, "paid_amount");
+    const rawProposal = getCI(parsed, "proposal_status");
+    const normProposal = rawProposal ? (String(rawProposal).toLowerCase() as ProposalStatus) : undefined;
+
     return {
-      paid: Boolean(parsed.paid),
-      paid_amount: typeof parsed.paid_amount === "number" ? parsed.paid_amount : undefined,
-      paid_date: parsed.paid_date || null,
-      proposal_status: parsed.proposal_status || undefined,
-      proposal_date: parsed.proposal_date || null,
-      decline_reason: parsed.decline_reason || null,
-      text: parsed.text || null,
+      paid: isPaid,
+      paid_amount: typeof rawAmount === "number" ? rawAmount : undefined,
+      paid_date: getCI(parsed, "paid_date") || null,
+      proposal_status: normProposal,
+      proposal_date: getCI(parsed, "proposal_date") || null,
+      decline_reason: getCI(parsed, "decline_reason") || null,
+      text: getCI(parsed, "text") || null,
       extra_apps: extraApps.length > 0 ? extraApps : undefined,
     };
   } catch {
@@ -118,7 +147,8 @@ export function parsePassItemMeta(note?: string | null): PassItemMeta {
 
 export function serializePassItemMeta(meta: PassItemMeta): string | null {
   const clean: Record<string, any> = {};
-  if (meta.paid) clean.paid = true;
+  // Use 1 instead of boolean true because Postgres force_uppercase() turns true into invalid JSON 'TRUE'
+  if (meta.paid) clean.paid = 1;
   if (typeof meta.paid_amount === "number" && meta.paid_amount > 0) clean.paid_amount = meta.paid_amount;
   if (meta.paid_date) clean.paid_date = meta.paid_date;
   if (meta.proposal_status) clean.proposal_status = meta.proposal_status;
@@ -354,6 +384,58 @@ export function getEffectiveProposalState(
     daysSinceFirstShow: null,
     firstShowDate: null,
   };
+}
+
+/**
+ * Removes a trial slot and shifts subsequent trials down sequentially (1, 2, 3, 4...)
+ * across DB columns (1..3) and note.extra_apps (>=4).
+ */
+export function buildCompactedTrialsPatch(
+  item: PassItemLike,
+  stepToRemove: number
+): { patch: Record<string, any>; remainingTrials: SyncedSlotInfo[] } {
+  const remainingTrials = getUnifiedTrials(item)
+    .filter((t) => t.step !== stepToRemove && Boolean(t.date))
+    .sort((a, b) => a.step - b.step)
+    .map((t, idx) => ({ ...t, step: idx + 1 }));
+
+  const patch: Record<string, any> = {
+    data_app_1: null,
+    esito_app_1: null,
+    id_app_1: null,
+    data_app_2: null,
+    esito_app_2: null,
+    id_app_2: null,
+    data_app_3: null,
+    esito_app_3: null,
+    id_app_3: null,
+  };
+
+  let meta = parsePassItemMeta(item.note);
+  meta = { ...meta, extra_apps: undefined };
+
+  for (const trial of remainingTrials) {
+    const dateVal = trial.date ? trial.date.slice(0, 10) : null;
+    const esitoVal: SyncedOutcome =
+      trial.status === "show" || trial.status === "no_show" ? trial.status : "pending";
+    const idVal = trial.entry_id || null;
+
+    if (trial.step <= 3) {
+      patch[`data_app_${trial.step}`] = dateVal;
+      patch[`esito_app_${trial.step}`] = esitoVal;
+      patch[`id_app_${trial.step}`] = idVal;
+    } else if (dateVal) {
+      meta = upsertExtraApp(meta, {
+        step: trial.step,
+        date: dateVal,
+        esito: esitoVal,
+        entry_id: idVal,
+      });
+    }
+  }
+
+  patch.note = serializePassItemMeta(meta);
+  return { patch, remainingTrials };
 }
 
 export function cleanPhoneTail(phone?: string | null): string {
