@@ -129,10 +129,10 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                 payload.assente = false;
             }
 
-            const { error } = await supabase.from("entries").insert(payload);
+            const { data: insertedData, error } = await supabase.from("entries").insert(payload).select().single();
             if (error) throw error;
 
-            onSave();
+            onSave(insertedData || payload);
             onClose();
         } catch (e: any) {
             alert("Errore salvataggio: " + e.message);

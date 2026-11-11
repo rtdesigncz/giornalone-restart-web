@@ -1,22 +1,33 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Check, UserPlus } from "lucide-react";
+import { X, Check, UserPlus, Euro } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PassStrategy } from "@/lib/passUtils";
 
 interface ReferralActivationPopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (data: { nome: string; cognome: string; telefono: string; cliente_provenienza?: string; source_type?: string }) => void;
+    onConfirm: (data: {
+        nome: string;
+        cognome: string;
+        telefono: string;
+        cliente_provenienza?: string;
+        source_type?: string;
+        paid?: boolean;
+        paid_amount?: number;
+    }) => void;
     clientName?: string;
     isManual?: boolean;
+    strategy?: PassStrategy;
 }
 
-export default function ReferralActivationPopup({ isOpen, onClose, onConfirm, clientName, isManual = false }: ReferralActivationPopupProps) {
+export default function ReferralActivationPopup({ isOpen, onClose, onConfirm, clientName, isManual = false, strategy }: ReferralActivationPopupProps) {
     const [nome, setNome] = useState("");
     const [cognome, setCognome] = useState("");
     const [telefono, setTelefono] = useState("");
     const [clienteProvenienza, setClienteProvenienza] = useState("");
     const [sourceType, setSourceType] = useState<'pass' | 'social' | 'whatsapp'>('pass');
+    const [paid, setPaid] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -30,6 +41,7 @@ export default function ReferralActivationPopup({ isOpen, onClose, onConfirm, cl
             setTelefono("");
             setClienteProvenienza("");
             setSourceType('pass');
+            setPaid(false);
         }
     }, [isOpen]);
 
@@ -45,7 +57,9 @@ export default function ReferralActivationPopup({ isOpen, onClose, onConfirm, cl
             cognome,
             telefono,
             cliente_provenienza: isManual && sourceType === 'pass' ? clienteProvenienza : undefined,
-            source_type: isManual ? (sourceType === 'pass' ? 'manual_pass' : sourceType) : 'pass'
+            source_type: isManual ? (sourceType === 'pass' ? 'manual_pass' : sourceType) : 'pass',
+            paid: strategy?.strategy_type === 'paid' ? paid : undefined,
+            paid_amount: strategy?.strategy_type === 'paid' && paid ? strategy.price : undefined,
         });
         onClose();
     };
@@ -162,6 +176,22 @@ export default function ReferralActivationPopup({ isOpen, onClose, onConfirm, cl
                             onChange={e => setTelefono(e.target.value)}
                         />
                     </div>
+
+                    {strategy?.strategy_type === 'paid' && (
+                        <div className="flex items-center gap-3 p-3.5 bg-amber-50/70 rounded-xl border border-amber-200">
+                            <input
+                                type="checkbox"
+                                id="pass-paid"
+                                checked={paid}
+                                onChange={e => setPaid(e.target.checked)}
+                                className="w-5 h-5 rounded text-amber-600 focus:ring-amber-500 border-amber-300"
+                            />
+                            <label htmlFor="pass-paid" className="text-sm font-bold text-amber-900 cursor-pointer select-none flex-1 flex items-center gap-1.5">
+                                <Euro size={15} className="text-amber-600" />
+                                Quota prove pagata (€{strategy.price})
+                            </label>
+                        </div>
+                    )}
 
                     <div className="pt-4 flex gap-3">
                         <button

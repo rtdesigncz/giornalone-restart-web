@@ -13,6 +13,7 @@ import {
     Settings,
     Menu,
     X,
+    Sparkles,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
     { label: "Consulenze", href: "/consulenze", icon: Users },
     { label: "Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
+    { label: "Chiedi ai Dati", href: "/ask", icon: Sparkles },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 

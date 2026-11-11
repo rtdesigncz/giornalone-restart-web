@@ -185,14 +185,17 @@ export default function EntryDrawer({
                 payload.entry_time += ":00";
             }
 
+            let savedData: any = payload;
             if (isNew) {
-                const { error } = await supabase.from("entries").insert(payload);
+                const { data, error } = await supabase.from("entries").insert(payload).select().single();
                 if (error) throw error;
+                savedData = data || payload;
             } else {
-                const { error } = await supabase.from("entries").update(payload).eq("id", entry.id);
+                const { data, error } = await supabase.from("entries").update(payload).eq("id", entry.id).select().single();
                 if (error) throw error;
+                savedData = data || { ...payload, id: entry.id };
             }
-            if (onSave) onSave(payload);
+            if (onSave) onSave(savedData);
             onClose();
         } catch (e: any) {
             alert("Errore salvataggio: " + e.message);
@@ -208,7 +211,9 @@ export default function EntryDrawer({
             <EntryWizard
                 isOpen={isOpen}
                 onClose={onClose}
-                onSave={handleSave}
+                onSave={(savedData) => {
+                    if (onSave) onSave(savedData);
+                }}
                 section={effectiveSection}
                 date={date}
                 initialData={entry ? (isDuplicate ? {

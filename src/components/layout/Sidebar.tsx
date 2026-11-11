@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, Settings, BarChart3, X, LogOut, CalendarCheck, Ticket, Stethoscope, ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { LayoutDashboard, Users, Settings, BarChart3, X, LogOut, CalendarCheck, Ticket, Stethoscope, ChevronRight, PanelLeftClose, PanelLeftOpen, Search, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
+    { label: "Chiedi ai Dati", href: "/ask", icon: Sparkles },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
