@@ -58,6 +58,18 @@ export default function EntryDrawer({
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedClient, setSelectedClient] = useState<AnyObj | null>(null);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autocompleteContainerRef = useRef<HTMLDivElement>(null);
+
+    // Close autocomplete on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (autocompleteContainerRef.current && !autocompleteContainerRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         setMounted(true);
@@ -100,7 +112,7 @@ export default function EntryDrawer({
 
         if (query.length >= 2) {
             searchTimeoutRef.current = setTimeout(() => {
-                fetch(`/api/clients?q=${encodeURIComponent(query)}&limit=5`)
+                fetch(`/api/clients?q=${encodeURIComponent(query)}&limit=6`)
                     .then(r => r.json())
                     .then(data => {
                         if (data.clients && data.clients.length > 0) {
@@ -112,9 +124,28 @@ export default function EntryDrawer({
                         }
                     })
                     .catch(() => {});
-            }, 200);
+            }, 150);
         } else {
             setShowSuggestions(false);
+        }
+    };
+
+    const handleFocusSearch = (field: string) => {
+        const nextNome = formData.nome || "";
+        const nextCognome = formData.cognome || "";
+        const nextPhone = formData.telefono || "";
+        const query = (field === "telefono" ? nextPhone : `${nextCognome} ${nextNome}`).trim();
+
+        if (query.length >= 2) {
+            fetch(`/api/clients?q=${encodeURIComponent(query)}&limit=6`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.clients && data.clients.length > 0) {
+                        setClientSuggestions(data.clients);
+                        setShowSuggestions(true);
+                    }
+                })
+                .catch(() => {});
         }
     };
 
@@ -371,7 +402,7 @@ export default function EntryDrawer({
 
 
                     {/* RIGA 1: Nome, Cognome e Telefono con Autocompletamento Clienti */}
-                    <div className="relative">
+                    <div className="relative" ref={autocompleteContainerRef}>
                         <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">Nome</label>
@@ -380,6 +411,7 @@ export default function EntryDrawer({
                                     placeholder="Mario"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleClientSearch("nome", e.target.value)}
+                                    onFocus={() => handleFocusSearch("nome")}
                                 />
                             </div>
                             <div>
@@ -389,6 +421,7 @@ export default function EntryDrawer({
                                     placeholder="Rossi"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleClientSearch("cognome", e.target.value)}
+                                    onFocus={() => handleFocusSearch("cognome")}
                                 />
                             </div>
                             <div>
@@ -398,6 +431,7 @@ export default function EntryDrawer({
                                     placeholder="+39..."
                                     value={formData.telefono || ""}
                                     onChange={(e) => handleClientSearch("telefono", e.target.value)}
+                                    onFocus={() => handleFocusSearch("telefono")}
                                 />
                             </div>
                         </div>

@@ -48,10 +48,13 @@ export async function GET(req: Request) {
     }
 
     if (q) {
-      // Search in cognome, nome, or telefono
-      query = query.or(
-        `cognome.ilike.%${q}%,nome.ilike.%${q}%,telefono.ilike.%${q}%,email.ilike.%${q}%`
-      );
+      // Support multi-word searches (e.g. "Claudia Foresta" or "Foresta Claudia")
+      const words = q.trim().split(/\s+/).filter(Boolean);
+      for (const w of words) {
+        query = query.or(
+          `cognome.ilike.%${w}%,nome.ilike.%${w}%,telefono.ilike.%${w}%,email.ilike.%${w}%`
+        );
+      }
     }
 
     // Sort & Pagination
