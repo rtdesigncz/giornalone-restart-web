@@ -44,10 +44,19 @@ export default function EntryDrawer({
     const [loading, setLoading] = useState(false);
     const [consulenti, setConsulenti] = useState<AnyObj[]>([]);
     const [tipi, setTipi] = useState<AnyObj[]>([]);
-    const [targetSection, setTargetSection] = useState(isDuplicate ? "" : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)"));
+    const isSectionLocked = !!(entry?.lockSectionChange || initialData?.lockSectionChange);
+    const [targetSection, setTargetSection] = useState(
+        isDuplicate
+            ? ""
+            : (entry?.section || section || initialData?.section || "APPUNTAMENTI (Pianificazione)")
+    );
 
     const isNew = !entry || isDuplicate || entry.id === "new";
-    const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
+    const effectiveSection = isSectionLocked
+        ? (targetSection || entry?.section || "APPUNTAMENTI RINNOVI E INTEGRAZIONI")
+        : (isDuplicate || allowSectionChange)
+        ? targetSection
+        : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
     const isTelefonici = effectiveSection === "APPUNTAMENTI TELEFONICI";
 
     const [isMobile, setIsMobile] = useState(false);
@@ -245,7 +254,11 @@ export default function EntryDrawer({
     const handleSave = async () => {
         setLoading(true);
 
-        const effectiveSection = (isDuplicate || allowSectionChange) ? targetSection : section;
+        const effectiveSection = isSectionLocked
+            ? (targetSection || entry?.section || "APPUNTAMENTI RINNOVI E INTEGRAZIONI")
+            : (isDuplicate || allowSectionChange)
+            ? targetSection
+            : section;
         
         if ((isDuplicate || allowSectionChange) && !effectiveSection) {
             alert("Seleziona obbligatoriamente la sezione di destinazione.");
@@ -390,13 +403,27 @@ export default function EntryDrawer({
                     
                     {(isDuplicate || allowSectionChange) && (
                         <div className="bg-cyan-50/50 p-4 rounded-xl border border-cyan-100 mb-4">
-                            <label className="block text-xs font-bold text-cyan-800 mb-2 uppercase tracking-wide">Sezione di destinazione *</label>
-                            <CustomSelect 
-                                options={DB_SECTIONS.map(s => ({ value: s, label: getSectionLabel(s) }))}
-                                value={targetSection}
-                                onChange={(val) => setTargetSection(val)}
-                                placeholder={isDuplicate ? "-- Scegli dove duplicare --" : "-- Scegli nuova sezione --"}
-                            />
+                            <label className="block text-xs font-bold text-cyan-800 mb-2 uppercase tracking-wide flex items-center justify-between">
+                                <span>Sezione di destinazione *</span>
+                                {isSectionLocked && (
+                                    <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        Non Modificabile (Rinnovi)
+                                    </span>
+                                )}
+                            </label>
+                            {isSectionLocked ? (
+                                <div className="input-modern bg-slate-100/90 text-slate-800 font-bold flex items-center justify-between cursor-not-allowed border-slate-300 select-none">
+                                    <span>{getSectionLabel(targetSection || "APPUNTAMENTI RINNOVI E INTEGRAZIONI")}</span>
+                                    <span className="text-[11px] text-slate-500 font-normal">Fissa per Rinnovi/Integrazioni</span>
+                                </div>
+                            ) : (
+                                <CustomSelect 
+                                    options={DB_SECTIONS.map(s => ({ value: s, label: getSectionLabel(s) }))}
+                                    value={targetSection}
+                                    onChange={(val) => setTargetSection(val)}
+                                    placeholder={isDuplicate ? "-- Scegli dove duplicare --" : "-- Scegli nuova sezione --"}
+                                />
+                            )}
                         </div>
                     )}
 

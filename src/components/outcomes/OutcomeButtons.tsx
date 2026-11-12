@@ -85,12 +85,13 @@ export default function OutcomeButtons({
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
+                            const enrichedEntry = { ...entry, section: entry.section || section };
                             if (btn.isActive) {
                                 if (confirm("Sei sicuro di voler rimuovere questo esito?")) {
-                                    onOutcomeClick(btn.type, entry);
+                                    onOutcomeClick(btn.type, enrichedEntry);
                                 }
                             } else {
-                                onOutcomeClick(btn.type, entry);
+                                onOutcomeClick(btn.type, enrichedEntry);
                             }
                         }}
                         className={cn(

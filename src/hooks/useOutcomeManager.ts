@@ -91,11 +91,18 @@ export function useOutcomeManager(onUpdate: () => void) {
         if (!reschedulePopup.entry) return;
 
         if (shouldReschedule) {
+            const entrySec = (reschedulePopup.entry.section || "").toUpperCase();
+            const isRinnovi = entrySec === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" ||
+                              entrySec.includes("RINNOV") ||
+                              entrySec.includes("INTEGRAZION");
+            const targetSection = isRinnovi ? "APPUNTAMENTI RINNOVI E INTEGRAZIONI" : "MISS CON APPUNTAMENTO";
+
             setEntryToMiss({ ...reschedulePopup.entry, wasPresent }); // Store wasPresent for later
             setRescheduleEntryData({
                 ...reschedulePopup.entry,
                 id: "new", // Treat as new entry
-                section: "MISS CON APPUNTAMENTO",
+                section: targetSection,
+                lockSectionChange: isRinnovi, // SOLO per Rinnovi/Integrazioni la sezione di destinazione di default è RINNOVI ed è NON MODIFICABILE
                 // Reset outcomes for the new copy
                 miss: false,
                 venduto: false,
@@ -106,7 +113,7 @@ export function useOutcomeManager(onUpdate: () => void) {
                 contattato: false,
                 // Clear time to force selection
                 entry_time: "",
-                note: `Riprogrammato da Miss il ${new Date().toLocaleDateString()}. ${reschedulePopup.entry.note ? `Note prec: ${reschedulePopup.entry.note}` : ""}`,
+                note: `Riprogrammato da Miss il ${new Date().toLocaleDateString("it-IT")}. ${reschedulePopup.entry.note ? `Note prec: ${reschedulePopup.entry.note}` : ""}`,
                 // Reset WhatsApp status
                 whatsapp_sent: false
             });
