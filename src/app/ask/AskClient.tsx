@@ -82,9 +82,9 @@ const DEFAULT_PROMPTS: SavedPrompt[] = [
   },
   {
     id: "default-4",
-    title: "Appuntamenti persi (Miss) recenti",
+    title: "Miss reali degli ultimi 60 giorni",
     badge: "Recupero",
-    prompt: "Elenco degli appuntamenti segnati come miss negli ultimi 60 giorni con nome, cognome, telefono, consulente e note.",
+    prompt: "Mostrami tutti i miss degli ultimi 60 giorni senza duplicati.",
     createdAt: new Date().toISOString()
   },
   {
@@ -92,6 +92,13 @@ const DEFAULT_PROMPTS: SavedPrompt[] = [
     title: "Pass consegnati non ancora iscritti",
     badge: "Pass",
     prompt: "Mostrami i pass consegnati dove il referral (amico invitato) non è ancora iscritto.",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "default-6",
+    title: "Verifiche del Bisogno mancanti",
+    badge: "Consigliato",
+    prompt: "Mostrami tutti gli iscritti attivi a cui non è ancora stata fissata la verifica del bisogno, distinguendo chi è entro i 15 giorni e chi oltre.",
     createdAt: new Date().toISOString()
   }
 ];
@@ -134,10 +141,32 @@ export default function AskClient() {
     setIsClient(true);
     try {
       const storedPrompts = localStorage.getItem("restart_ask_saved_prompts");
+      const defaultsVersion = localStorage.getItem("restart_ask_defaults_version");
       if (storedPrompts) {
-        setSavedPrompts(JSON.parse(storedPrompts));
+        const parsedPrompts: SavedPrompt[] = JSON.parse(storedPrompts);
+        if (defaultsVersion !== "2") {
+          const existingIds = new Set(parsedPrompts.map(p => p.id));
+          const merged = parsedPrompts.map(p => {
+            if (p.id === "default-4") {
+              const updatedDefault4 = DEFAULT_PROMPTS.find(d => d.id === "default-4");
+              return updatedDefault4 || p;
+            }
+            return p;
+          });
+          DEFAULT_PROMPTS.forEach(d => {
+            if (!existingIds.has(d.id)) {
+              merged.push(d);
+            }
+          });
+          setSavedPrompts(merged);
+          localStorage.setItem("restart_ask_saved_prompts", JSON.stringify(merged));
+          localStorage.setItem("restart_ask_defaults_version", "2");
+        } else {
+          setSavedPrompts(parsedPrompts);
+        }
       } else {
         localStorage.setItem("restart_ask_saved_prompts", JSON.stringify(DEFAULT_PROMPTS));
+        localStorage.setItem("restart_ask_defaults_version", "2");
       }
 
       const storedRecent = localStorage.getItem("restart_ask_recent_searches");

@@ -211,6 +211,67 @@ ORDER BY d.entry_date DESC
 LIMIT 500
 \`\`\`
 
+REGOLA TASSATIVA PER "VERIFICHE DEL BISOGNO MANCANTI" / "ISCRITTI SENZA VERIFICA DEL BISOGNO":
+Quando l'utente chiede le persone iscritte a cui **manca la verifica del bisogno** (o non è stata ancora fissata / va rifissata):
+1. **Vendite valide (nuovi iscritti E rinnovi) senza pacchetti:** considera tutte le righe con \`venduto = TRUE\` (incluse sia le nuove iscrizioni in \`'APPUNTAMENTI (Pianificazione)'\`, \`'TOUR SPONTANEI'\`, \`'MISS CON APPUNTAMENTO'\`, SIA i rinnovi/integrazioni in \`'APPUNTAMENTI RINNOVI E INTEGRAZIONI'\`) ma **SOLO** per abbonamenti \`tipi_abbonamento.name IN ('Mensile', 'Quadrimestrale', 'Annuale')\`. ESCLUDI sempre i pacchetti (\`'Pacchetto Reformer'\`, \`'Pacchetto Personal'\`, \`'Pacchetto 10 Ingressi'\`).
+2. **Solo abbonamenti ancora attivi oggi:** per ogni persona (deduplicata per \`person_key\`), prendi l'acquisto più recente tra i 3 abbonamenti validi e calcola la \`scadenza_stimata\`:
+   - \`Mensile\` -> \`(entry_date + INTERVAL '1 month')::date\`
+   - \`Quadrimestrale\` -> \`(entry_date + INTERVAL '4 months')::date\`
+   - \`Annuale\` -> \`(entry_date + INTERVAL '12 months')::date\`
+   Filtra \`WHERE ls.scadenza_stimata >= CURRENT_DATE\` (così chi ha fatto un mensile scaduto senza rinnovare viene escluso automaticamente).
+3. **Quando una Verifica del Bisogno è mancante (o da rifissare):** controlla \`NOT EXISTS\` in \`entries_clean vb\` dove \`vb.section = 'APPUNTAMENTI VERIFICHE DEL BISOGNO'\` AND \`vb.entry_date >= ls.entry_date\` AND \`COALESCE(vb.assente, FALSE) = FALSE AND COALESCE(vb.miss, FALSE) = FALSE\` (quindi se aveva una verifica ma è risultato \`Assente\` o \`Miss\` senza averne fissata un'altra dopo, resta in elenco da rifissare!). Per il match persona confronta telefono (\`>= 9\` cifre) oppure nome+cognome (anche normalizzati o invertiti \`TRIM(nome || ' ' || cognome)\`).
+4. **Distinzione fascia 15 giorni:** mostra TUTTI gli iscritti attivi senza verifica valida, distinguendo con \`CASE WHEN (CURRENT_DATE - ls.entry_date) <= 15 THEN 'Entro 15gg' ELSE 'Oltre 15gg' END AS fascia_verifica\` (a meno che l'utente non chieda esplicitamente solo quelli entro 15gg), più \`stato_verifica\` (\`'Da rifissare (prec. Assente/Miss)'\` vs \`'Mai fissata'\`).
+Schema SQL di riferimento:
+\`\`\`sql
+WITH entries_clean AS (...),
+last_sub AS (
+  SELECT DISTINCT ON (CASE WHEN ec.phone_len >= 9 THEN 'P:' || ec.clean_phone ELSE 'N:' || TRIM(ec.clean_nome || ' ' || ec.clean_cognome) END)
+    ec.*,
+    TRIM(ec.clean_nome || ' ' || ec.clean_cognome) AS full_name,
+    t.name AS abbonamento,
+    CASE
+      WHEN t.name = 'Mensile' THEN (ec.entry_date + INTERVAL '1 month')::date
+      WHEN t.name = 'Quadrimestrale' THEN (ec.entry_date + INTERVAL '4 months')::date
+      WHEN t.name = 'Annuale' THEN (ec.entry_date + INTERVAL '12 months')::date
+    END AS scadenza_stimata
+  FROM entries_clean ec
+  JOIN tipi_abbonamento t ON ec.tipo_abbonamento_id = t.id
+  WHERE ec.venduto = TRUE
+    AND t.name IN ('Mensile', 'Quadrimestrale', 'Annuale')
+  ORDER BY (CASE WHEN ec.phone_len >= 9 THEN 'P:' || ec.clean_phone ELSE 'N:' || TRIM(ec.clean_nome || ' ' || ec.clean_cognome) END),
+    ec.entry_date DESC, ec.entry_time DESC NULLS LAST, ec.created_at DESC
+)
+SELECT
+  ls.entry_date AS data_vendita,
+  (CURRENT_DATE - ls.entry_date) AS giorni_trascorsi,
+  CASE WHEN (CURRENT_DATE - ls.entry_date) <= 15 THEN 'Entro 15gg' ELSE 'Oltre 15gg' END AS fascia_verifica,
+  CASE WHEN EXISTS (
+    SELECT 1 FROM entries_clean vb_ko
+    WHERE vb_ko.section = 'APPUNTAMENTI VERIFICHE DEL BISOGNO'
+      AND vb_ko.entry_date >= ls.entry_date
+      AND (vb_ko.assente = TRUE OR vb_ko.miss = TRUE)
+      AND ((ls.phone_len >= 9 AND vb_ko.phone_len >= 9 AND ls.clean_phone = vb_ko.clean_phone)
+        OR ls.full_name = TRIM(vb_ko.clean_nome || ' ' || vb_ko.clean_cognome)
+        OR (length(ls.clean_cognome) >= 2 AND length(ls.clean_nome) >= 2 AND ((ls.clean_cognome = vb_ko.clean_cognome AND ls.clean_nome = vb_ko.clean_nome) OR (ls.clean_cognome = vb_ko.clean_nome AND ls.clean_nome = vb_ko.clean_cognome))))
+  ) THEN 'Da rifissare (prec. Assente/Miss)' ELSE 'Mai fissata' END AS stato_verifica,
+  ls.section AS provenienza, ls.abbonamento, ls.scadenza_stimata, ls.nome, ls.cognome, ls.telefono, c.name AS consulente
+FROM last_sub ls
+LEFT JOIN consulenti c ON ls.consulente_id = c.id
+WHERE ls.scadenza_stimata >= CURRENT_DATE
+  AND NOT EXISTS (
+    SELECT 1 FROM entries_clean vb
+    WHERE vb.section = 'APPUNTAMENTI VERIFICHE DEL BISOGNO'
+      AND vb.entry_date >= ls.entry_date
+      AND COALESCE(vb.assente, FALSE) = FALSE
+      AND COALESCE(vb.miss, FALSE) = FALSE
+      AND ((ls.phone_len >= 9 AND vb.phone_len >= 9 AND ls.clean_phone = vb.clean_phone)
+        OR ls.full_name = TRIM(vb.clean_nome || ' ' || vb.clean_cognome)
+        OR (length(ls.clean_cognome) >= 2 AND length(ls.clean_nome) >= 2 AND ((ls.clean_cognome = vb.clean_cognome AND ls.clean_nome = vb.clean_nome) OR (ls.clean_cognome = vb.clean_nome AND ls.clean_nome = vb.clean_cognome))))
+  )
+ORDER BY ls.entry_date DESC, ls.cognome ASC
+LIMIT 500
+\`\`\`
+
 REGOLE TECNICHE DI SICUREZZA:
 - Genera SOLO query SELECT o WITH ... SELECT.
 - MAI comandi di modifica (INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE).
