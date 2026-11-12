@@ -161,7 +161,7 @@ export default function ClientiClient() {
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
             <div className="text-2xl font-black text-emerald-600 mt-1">{counts.attivi}</div>
-            <div className="text-[11px] text-emerald-700/80 mt-0.5 font-medium">Abbonamento regolare</div>
+            <div className="text-[11px] text-emerald-700/80 mt-0.5 font-medium">Abbonamento valido ({counts.in_scadenza} in scadenza)</div>
           </div>
 
           {/* In Scadenza Card */}
@@ -175,11 +175,11 @@ export default function ClientiClient() {
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">In Scadenza (≤ 30 gg)</span>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Di cui In Scadenza (≤ 30 gg)</span>
               <Clock size={16} className="text-amber-500" />
             </div>
             <div className="text-2xl font-black text-amber-600 mt-1">{counts.in_scadenza}</div>
-            <div className="text-[11px] text-amber-700/80 mt-0.5 font-medium">Da contattare per rinnovo</div>
+            <div className="text-[11px] text-amber-700/80 mt-0.5 font-medium">Sottoinsieme attivo per rinnovo</div>
           </div>
 
           {/* Scaduti Card */}
@@ -224,25 +224,25 @@ export default function ClientiClient() {
                 onClick={() => { setSelectedStato("ALL"); setPagination(p => ({ ...p, page: 1 })); }}
                 className={cn("px-3 py-1 rounded-lg transition-all", selectedStato === "ALL" ? "bg-white text-slate-900 shadow-sm" : "hover:text-slate-900")}
               >
-                Tutti
+                Tutti ({counts.total})
               </button>
               <button
                 onClick={() => { setSelectedStato("ATTIVO"); setPagination(p => ({ ...p, page: 1 })); }}
                 className={cn("px-3 py-1 rounded-lg transition-all", selectedStato === "ATTIVO" ? "bg-emerald-500 text-white shadow-sm font-bold" : "hover:text-slate-900")}
               >
-                Attivi
+                Attivi ({counts.attivi})
               </button>
               <button
                 onClick={() => { setSelectedStato("IN_SCADENZA"); setPagination(p => ({ ...p, page: 1 })); }}
                 className={cn("px-3 py-1 rounded-lg transition-all", selectedStato === "IN_SCADENZA" ? "bg-amber-500 text-white shadow-sm font-bold" : "hover:text-slate-900")}
               >
-                In Scadenza
+                In Scadenza ({counts.in_scadenza})
               </button>
               <button
                 onClick={() => { setSelectedStato("SCADUTO"); setPagination(p => ({ ...p, page: 1 })); }}
                 className={cn("px-3 py-1 rounded-lg transition-all", selectedStato === "SCADUTO" ? "bg-rose-500 text-white shadow-sm font-bold" : "hover:text-slate-900")}
               >
-                Scaduti
+                Scaduti ({counts.scaduti})
               </button>
             </div>
 

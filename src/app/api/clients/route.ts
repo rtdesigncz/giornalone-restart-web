@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     // Fetch summary counts
     const [
       { count: totalCount },
-      { count: attiviCount },
+      { count: attiviPureCount },
       { count: inScadenzaCount },
       { count: scadutiCount },
     ] = await Promise.all([
@@ -34,13 +34,21 @@ export async function GET(req: Request) {
       supabase.from("clients").select("*", { count: "exact", head: true }).eq("stato", "SCADUTO"),
     ]);
 
+    // I clienti "in scadenza" hanno un abbonamento valido e sono a tutti gli effetti ATTIVI
+    const attiviTotali = (attiviPureCount || 0) + (inScadenzaCount || 0);
+
     // Build main query
     let query = supabase
       .from("clients")
       .select("*, tipi_abbonamento(name)", { count: "exact" });
 
     if (stato && stato !== "ALL") {
-      query = query.eq("stato", stato);
+      if (stato === "ATTIVO") {
+        // Mostra tutti i clienti con abbonamento in corso di validità (inclusi quelli in scadenza)
+        query = query.in("stato", ["ATTIVO", "IN_SCADENZA"]);
+      } else {
+        query = query.eq("stato", stato);
+      }
     }
 
     if (disciplina && disciplina !== "ALL") {
@@ -76,7 +84,8 @@ export async function GET(req: Request) {
       },
       counts: {
         total: totalCount || 0,
-        attivi: attiviCount || 0,
+        attivi: attiviTotali,
+        attivi_oltre_30: attiviPureCount || 0,
         in_scadenza: inScadenzaCount || 0,
         scaduti: scadutiCount || 0,
       },
