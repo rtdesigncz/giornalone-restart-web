@@ -54,7 +54,7 @@ export default function AgendaTable({ section }: { section: string }) {
         setLoading(true);
         let q = supabase
             .from("entries")
-            .select(`*, consulente:consulenti(*), tipo_abbonamento:tipi_abbonamento(*)`)
+            .select(`*, consulente:consulenti(*), tipo_abbonamento:tipi_abbonamento(*), client:clients(id, pacchetto_originale, data_scadenza, stato, disciplina)`)
             .eq("section", section)
             .eq("entry_date", dateParam)
             .order("entry_time", { ascending: true });
@@ -223,10 +223,34 @@ export default function AgendaTable({ section }: { section: string }) {
                                             {toHHMM(row.entry_time)}
                                         </td>
                                         <td className="py-4 px-6">
-                                            <div className="flex items-center gap-2 group/timeline">
+                                            <div className="flex items-center gap-2 flex-wrap group/timeline">
                                                 <div className="font-bold text-slate-800 text-sm group-hover/timeline:text-brand transition-colors cursor-pointer" onClick={(e) => { e.stopPropagation(); setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }}>
                                                     {row.nome} {row.cognome}
                                                 </div>
+                                                {row.client && (
+                                                    <span
+                                                        title={`Cliente Wellness: ${row.client.pacchetto_originale || ""} - Scadenza: ${row.client.data_scadenza ? new Date(row.client.data_scadenza).toLocaleDateString("it-IT") : ""}`}
+                                                        className={cn(
+                                                            "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs select-none",
+                                                            row.client.stato === "ATTIVO"
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                : row.client.stato === "IN_SCADENZA"
+                                                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                : "bg-rose-50 text-rose-700 border-rose-200"
+                                                        )}
+                                                    >
+                                                        <span className={cn(
+                                                            "w-1.5 h-1.5 rounded-full",
+                                                            row.client.stato === "ATTIVO" ? "bg-emerald-500" : row.client.stato === "IN_SCADENZA" ? "bg-amber-500" : "bg-rose-500"
+                                                        )}></span>
+                                                        <span>{row.client.disciplina || "Cliente"}</span>
+                                                        {row.client.data_scadenza && (
+                                                            <span className="opacity-80">
+                                                                • {new Date(row.client.data_scadenza).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                )}
                                                 <button onClick={(e) => { e.stopPropagation(); setTimelinePhone(row.telefono); setTimelineName(`${row.cognome || ""} ${row.nome || ""}`); setTimelineOpen(true); }} className="opacity-0 group-hover/timeline:opacity-100 transition-opacity p-1 bg-brand/10 text-brand rounded-full hover:bg-brand hover:text-white" title="Vedi Storico">
                                                     <Clock className="w-3 h-3" />
                                                 </button>

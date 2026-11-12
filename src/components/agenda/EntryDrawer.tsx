@@ -1,7 +1,7 @@
 "use client";
 
-import { X, Save, Trash2, Calendar, Clock, User, Phone, Tag, FileText, ChevronDown, Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { X, Save, Trash2, Calendar, Clock, User, Phone, Tag, FileText, ChevronDown, Check, Dumbbell, Sparkles } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
@@ -53,6 +53,12 @@ export default function EntryDrawer({
     const [isMobile, setIsMobile] = useState(false);
     const [mounted, setMounted] = useState(false);
 
+    // Client autocomplete state
+    const [clientSuggestions, setClientSuggestions] = useState<AnyObj[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedClient, setSelectedClient] = useState<AnyObj | null>(null);
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
         setMounted(true);
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -60,6 +66,69 @@ export default function EntryDrawer({
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Fetch client details if entry is linked
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedClient(null);
+            setShowSuggestions(false);
+            return;
+        }
+
+        const linkedId = entry?.client_id || initialData?.client_id;
+        if (linkedId) {
+            fetch(`/api/clients/${linkedId}`)
+                .then(r => r.json())
+                .then(d => { if (d.client) setSelectedClient(d.client); })
+                .catch(() => {});
+        } else if (entry?.telefono) {
+            fetch(`/api/clients?q=${encodeURIComponent(entry.telefono)}&limit=1`)
+                .then(r => r.json())
+                .then(d => { if (d.clients?.[0]) setSelectedClient(d.clients[0]); })
+                .catch(() => {});
+        }
+    }, [isOpen, entry, initialData]);
+
+    const handleClientSearch = (field: string, val: string) => {
+        handleChange(field, val);
+        const nextNome = field === "nome" ? val : formData.nome || "";
+        const nextCognome = field === "cognome" ? val : formData.cognome || "";
+        const nextPhone = field === "telefono" ? val : formData.telefono || "";
+        const query = (field === "telefono" ? nextPhone : `${nextCognome} ${nextNome}`).trim();
+
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+        if (query.length >= 2) {
+            searchTimeoutRef.current = setTimeout(() => {
+                fetch(`/api/clients?q=${encodeURIComponent(query)}&limit=5`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.clients && data.clients.length > 0) {
+                            setClientSuggestions(data.clients);
+                            setShowSuggestions(true);
+                        } else {
+                            setClientSuggestions([]);
+                            setShowSuggestions(false);
+                        }
+                    })
+                    .catch(() => {});
+            }, 200);
+        } else {
+            setShowSuggestions(false);
+        }
+    };
+
+    const handleSelectClient = (client: AnyObj) => {
+        setFormData(prev => ({
+            ...prev,
+            nome: client.nome || prev.nome,
+            cognome: client.cognome || prev.cognome,
+            telefono: client.telefono || prev.telefono,
+            client_id: client.id,
+        }));
+        setSelectedClient(client);
+        setShowSuggestions(false);
+    };
 
     // Load dropdowns from API
     useEffect(() => {
@@ -167,6 +236,7 @@ export default function EntryDrawer({
                 nome: formData.nome || "",
                 cognome: formData.cognome || "",
                 telefono: formData.telefono || "",
+                client_id: formData.client_id || (selectedClient?.id ?? null),
                 consulente_id: formData.consulente_id || null,
                 tipo_abbonamento_id: formData.tipo_abbonamento_id || null,
                 note: formData.note || "",
@@ -300,35 +370,121 @@ export default function EntryDrawer({
                     )}
 
 
-                    {/* RIGA 1: Nome, Cognome e Telefono SULLA STESSA RIGA */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-800 mb-1">Nome</label>
-                            <input
-                                className="input-modern"
-                                placeholder="Mario"
-                                value={formData.nome || ""}
-                                onChange={(e) => handleChange("nome", e.target.value)}
-                            />
+                    {/* RIGA 1: Nome, Cognome e Telefono con Autocompletamento Clienti */}
+                    <div className="relative">
+                        <div className="grid grid-cols-3 gap-3">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-800 mb-1">Nome</label>
+                                <input
+                                    className="input-modern"
+                                    placeholder="Mario"
+                                    value={formData.nome || ""}
+                                    onChange={(e) => handleClientSearch("nome", e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-800 mb-1">Cognome</label>
+                                <input
+                                    className="input-modern"
+                                    placeholder="Rossi"
+                                    value={formData.cognome || ""}
+                                    onChange={(e) => handleClientSearch("cognome", e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-800 mb-1">Telefono</label>
+                                <input
+                                    className="input-modern font-mono"
+                                    placeholder="+39..."
+                                    value={formData.telefono || ""}
+                                    onChange={(e) => handleClientSearch("telefono", e.target.value)}
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-800 mb-1">Cognome</label>
-                            <input
-                                className="input-modern"
-                                placeholder="Rossi"
-                                value={formData.cognome || ""}
-                                onChange={(e) => handleChange("cognome", e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-800 mb-1">Telefono</label>
-                            <input
-                                className="input-modern font-mono"
-                                placeholder="+39..."
-                                value={formData.telefono || ""}
-                                onChange={(e) => handleChange("telefono", e.target.value)}
-                            />
-                        </div>
+
+                        {/* Floating Suggestions Dropdown */}
+                        {showSuggestions && clientSuggestions.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Clienti Wellness trovati</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSuggestions(false)}
+                                        className="text-slate-400 hover:text-slate-700"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                                {clientSuggestions.map((client) => (
+                                    <div
+                                        key={client.id}
+                                        onClick={() => handleSelectClient(client)}
+                                        className="p-2.5 hover:bg-cyan-50/50 cursor-pointer transition-colors flex items-center justify-between"
+                                    >
+                                        <div>
+                                            <div className="font-bold text-slate-900 text-xs">
+                                                {client.cognome} {client.nome}
+                                            </div>
+                                            <div className="text-[11px] text-slate-500">
+                                                {client.telefono || "Nessun tel"} • {client.pacchetto_originale || "Abbonato"}
+                                            </div>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                "text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                                                client.stato === "ATTIVO"
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                    : client.stato === "IN_SCADENZA"
+                                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                    : "bg-rose-50 text-rose-700 border-rose-200"
+                                            )}
+                                        >
+                                            {client.stato?.replace("_", " ")}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Selected Client Status Badge */}
+                        {selectedClient && (
+                            <div className="mt-2 p-2.5 rounded-xl border border-cyan-100 bg-cyan-50/40 flex items-center justify-between text-xs animate-in fade-in">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            "w-2 h-2 rounded-full flex-shrink-0",
+                                            selectedClient.stato === "ATTIVO"
+                                                ? "bg-emerald-500"
+                                                : selectedClient.stato === "IN_SCADENZA"
+                                                ? "bg-amber-500"
+                                                : "bg-rose-500"
+                                        )}
+                                    />
+                                    <div className="text-[11px]">
+                                        <span className="font-bold text-slate-800">
+                                            {selectedClient.pacchetto_originale || "Cliente censito"}
+                                        </span>
+                                        {selectedClient.data_scadenza && (
+                                            <span className="text-slate-500 ml-1">
+                                                • Scadenza: <b>{new Date(selectedClient.data_scadenza).toLocaleDateString("it-IT")}</b>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <span
+                                    className={cn(
+                                        "text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                                        selectedClient.stato === "ATTIVO"
+                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                            : selectedClient.stato === "IN_SCADENZA"
+                                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                                            : "bg-rose-50 text-rose-700 border-rose-200"
+                                    )}
+                                >
+                                    {selectedClient.stato?.replace("_", " ")}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* RIGA 2: Data e Orario */}

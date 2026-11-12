@@ -48,7 +48,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
         setLoading(true);
         const { data, error } = await supabase
             .from("entries")
-            .select("*")
+            .select("*, consulente:consulenti(*), tipo_abbonamento:tipi_abbonamento(*), client:clients(id, pacchetto_originale, data_scadenza, stato, disciplina)")
             .eq("section", section)
             .gte("entry_date", startISO)
             .lte("entry_date", endISO);

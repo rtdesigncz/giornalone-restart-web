@@ -27,6 +27,13 @@ type Entry = {
   assente?: boolean; // Added assente
   created_at: string;
   updated_at: string;
+  client?: {
+    id?: string;
+    pacchetto_originale?: string;
+    data_scadenza?: string;
+    stato?: string;
+    disciplina?: string;
+  } | null;
 };
 
 import OutcomeButtons from "./outcomes/OutcomeButtons";
@@ -80,6 +87,33 @@ export default function EntryCard({
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="text-[16px] font-bold text-slate-900 leading-tight">
             {row.nome ?? ""} {row.cognome ?? ""}
+            {row.client && (
+              <span
+                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ml-1.5 align-middle select-none ${
+                  row.client.stato === "ATTIVO"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : row.client.stato === "IN_SCADENZA"
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    row.client.stato === "ATTIVO"
+                      ? "bg-emerald-500"
+                      : row.client.stato === "IN_SCADENZA"
+                      ? "bg-amber-500"
+                      : "bg-rose-500"
+                  }`}
+                />
+                <span>{row.client.disciplina || "Cliente"}</span>
+                {row.client.data_scadenza && (
+                  <span className="opacity-80">
+                    • {new Date(row.client.data_scadenza).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                )}
+              </span>
+            )}
             {row.whatsapp_sent && (
               <div className="flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 w-fit">
                 <MessageCircle size={10} className="fill-emerald-600" />

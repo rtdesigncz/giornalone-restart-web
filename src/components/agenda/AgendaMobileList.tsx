@@ -50,7 +50,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
         setLoading(true);
         let q = supabase
             .from("entries")
-            .select(`*, consulente:consulenti(*), tipo_abbonamento:tipi_abbonamento(*)`)
+            .select(`*, consulente:consulenti(*), tipo_abbonamento:tipi_abbonamento(*), client:clients(id, pacchetto_originale, data_scadenza, stato, disciplina)`)
             .eq("section", section)
             .eq("entry_date", dateParam)
             .order("entry_time", { ascending: true });

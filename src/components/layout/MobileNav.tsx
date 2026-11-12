@@ -14,12 +14,14 @@ import {
     Menu,
     X,
     Sparkles,
+    Contact2,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
 const NAV_ITEMS = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
+    { label: "Clienti", href: "/clienti", icon: Contact2 },
     { label: "Consulenze", href: "/consulenze", icon: Users },
     { label: "Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
