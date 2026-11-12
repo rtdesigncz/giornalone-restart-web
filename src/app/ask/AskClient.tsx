@@ -60,46 +60,18 @@ export interface RecentSearch {
 
 const DEFAULT_PROMPTS: SavedPrompt[] = [
   {
-    id: "default-1",
-    title: "Verifiche del Bisogno dopo acquisto",
-    badge: "Consigliato",
-    prompt: "Voglio sapere tutte le persone che hanno comprato un abbonamento e che da quella data in poi hanno un appuntamento nella sezione verifiche del bisogno.",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "default-2",
-    title: "Vendite del mese per consulente",
-    badge: "Performance",
-    prompt: "Quante vendite di abbonamento ci sono state questo mese suddivise per ciascun consulente?",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "default-3",
-    title: "Motivi esito negativo consulenze",
-    badge: "Statistiche",
-    prompt: "Quali sono le motivazioni di esito negativo più frequenti nelle consulenze e quante volte compaiono?",
-    createdAt: new Date().toISOString()
-  },
-  {
     id: "default-4",
     title: "Miss reali degli ultimi 60 giorni",
     badge: "Recupero",
     prompt: "Mostrami tutti i miss degli ultimi 60 giorni senza duplicati.",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "default-5",
-    title: "Pass consegnati non ancora iscritti",
-    badge: "Pass",
-    prompt: "Mostrami i pass consegnati dove il referral (amico invitato) non è ancora iscritto.",
-    createdAt: new Date().toISOString()
+    createdAt: "2026-11-12T12:00:00.000Z"
   },
   {
     id: "default-6",
     title: "Verifiche del Bisogno mancanti",
     badge: "Consigliato",
     prompt: "Mostrami tutti gli iscritti attivi a cui non è ancora stata fissata la verifica del bisogno, distinguendo chi è entro i 15 giorni e chi oltre.",
-    createdAt: new Date().toISOString()
+    createdAt: "2026-11-12T12:00:00.000Z"
   }
 ];
 
@@ -110,7 +82,8 @@ export default function AskClient() {
   const [error, setError] = useState<string | null>(null);
 
   // Persistent States
-  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>(DEFAULT_PROMPTS);
+  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(true);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [isClient, setIsClient] = useState(false);
 
@@ -136,56 +109,41 @@ export default function AskClient() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load from LocalStorage on mount
+  // Load saved prompts from Supabase (/api/ask/prompts) and recent searches from LocalStorage on mount
   useEffect(() => {
     setIsClient(true);
-    try {
-      const storedPrompts = localStorage.getItem("restart_ask_saved_prompts");
-      const defaultsVersion = localStorage.getItem("restart_ask_defaults_version");
-      if (storedPrompts) {
-        const parsedPrompts: SavedPrompt[] = JSON.parse(storedPrompts);
-        if (defaultsVersion !== "2") {
-          const existingIds = new Set(parsedPrompts.map(p => p.id));
-          const merged = parsedPrompts.map(p => {
-            if (p.id === "default-4") {
-              const updatedDefault4 = DEFAULT_PROMPTS.find(d => d.id === "default-4");
-              return updatedDefault4 || p;
-            }
-            return p;
-          });
-          DEFAULT_PROMPTS.forEach(d => {
-            if (!existingIds.has(d.id)) {
-              merged.push(d);
-            }
-          });
-          setSavedPrompts(merged);
-          localStorage.setItem("restart_ask_saved_prompts", JSON.stringify(merged));
-          localStorage.setItem("restart_ask_defaults_version", "2");
-        } else {
-          setSavedPrompts(parsedPrompts);
-        }
-      } else {
-        localStorage.setItem("restart_ask_saved_prompts", JSON.stringify(DEFAULT_PROMPTS));
-        localStorage.setItem("restart_ask_defaults_version", "2");
-      }
+    let active = true;
 
+    const loadSavedPrompts = async () => {
+      setPromptsLoading(true);
+      try {
+        const res = await fetch("/api/ask/prompts", { cache: "no-store" });
+        const json = await res.json();
+        if (active && res.ok && Array.isArray(json.prompts)) {
+          setSavedPrompts(json.prompts);
+        }
+      } catch (e) {
+        console.error("Errore caricamento ricerche frequenti:", e);
+      } finally {
+        if (active) setPromptsLoading(false);
+      }
+    };
+
+    loadSavedPrompts();
+
+    try {
       const storedRecent = localStorage.getItem("restart_ask_recent_searches");
       if (storedRecent) {
         setRecentSearches(JSON.parse(storedRecent));
       }
     } catch (e) {
-      console.error("Errore lettura localStorage:", e);
+      console.error("Errore lettura localStorage cronologia:", e);
     }
-  }, []);
 
-  const updateSavedPrompts = (newList: SavedPrompt[]) => {
-    setSavedPrompts(newList);
-    try {
-      localStorage.setItem("restart_ask_saved_prompts", JSON.stringify(newList));
-    } catch (e) {
-      console.error("Errore salvataggio prompt:", e);
-    }
-  };
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const updateRecentSearches = (newList: RecentSearch[]) => {
     setRecentSearches(newList);
@@ -196,26 +154,44 @@ export default function AskClient() {
     }
   };
 
-  // Delete a saved prompt
-  const handleDeletePrompt = (id: string, e: React.MouseEvent) => {
+  // Delete a saved prompt permanently on Supabase
+  const handleDeletePrompt = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Vuoi davvero eliminare questo prompt frequente?")) {
-      const filtered = savedPrompts.filter(p => p.id !== id);
-      updateSavedPrompts(filtered);
+    if (!confirm("Vuoi davvero eliminare questo prompt frequente?")) return;
+
+    const prev = savedPrompts;
+    setSavedPrompts(prev.filter(p => p.id !== id));
+    try {
+      const res = await fetch(`/api/ask/prompts?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Errore eliminazione");
+      if (Array.isArray(json.prompts)) {
+        setSavedPrompts(json.prompts);
+      }
+    } catch (err: any) {
+      setSavedPrompts(prev);
+      alert("Errore eliminazione ricerca frequente: " + (err.message || ""));
     }
   };
 
-  // Restore default prompts
-  const handleRestoreDefaults = () => {
-    if (confirm("Vuoi ripristinare i prompt frequenti predefiniti di Restart? I tuoi prompt personalizzati verranno mantenuti.")) {
-      const existingIds = new Set(savedPrompts.map(p => p.id));
-      const merged = [...savedPrompts];
-      DEFAULT_PROMPTS.forEach(d => {
-        if (!existingIds.has(d.id)) {
-          merged.push(d);
-        }
+  // Restore default prompts permanently on Supabase
+  const handleRestoreDefaults = async () => {
+    if (!confirm("Vuoi ripristinare i prompt frequenti predefiniti di Restart? I tuoi prompt personalizzati verranno mantenuti.")) return;
+    try {
+      const res = await fetch("/api/ask/prompts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore_defaults" }),
       });
-      updateSavedPrompts(merged);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Errore ripristino");
+      if (Array.isArray(json.prompts)) {
+        setSavedPrompts(json.prompts);
+      }
+    } catch (err: any) {
+      alert("Errore ripristino predefiniti: " + (err.message || ""));
     }
   };
 
@@ -245,24 +221,32 @@ export default function AskClient() {
     setIsSaveModalOpen(true);
   };
 
-  // Confirm save prompt
-  const handleSavePromptSubmit = (e: React.FormEvent) => {
+  // Confirm save prompt permanently on Supabase
+  const handleSavePromptSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPromptTitle.trim() || !newPromptText.trim()) return;
 
-    const newPrompt: SavedPrompt = {
-      id: "prompt-" + Date.now(),
-      title: newPromptTitle.trim(),
-      prompt: newPromptText.trim(),
-      badge: newPromptBadge.trim() || "Frequente",
-      createdAt: new Date().toISOString()
-    };
-
-    const updated = [newPrompt, ...savedPrompts];
-    updateSavedPrompts(updated);
-    setIsSaveModalOpen(false);
-    setSavedSuccessToast(true);
-    setTimeout(() => setSavedSuccessToast(false), 2500);
+    try {
+      const res = await fetch("/api/ask/prompts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newPromptTitle.trim(),
+          prompt: newPromptText.trim(),
+          badge: newPromptBadge.trim() || "Frequente",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Errore salvataggio");
+      if (Array.isArray(json.prompts)) {
+        setSavedPrompts(json.prompts);
+      }
+      setIsSaveModalOpen(false);
+      setSavedSuccessToast(true);
+      setTimeout(() => setSavedSuccessToast(false), 2500);
+    } catch (err: any) {
+      alert("Errore salvataggio ricerca frequente: " + (err.message || ""));
+    }
   };
 
   // Main Ask handler
@@ -687,7 +671,11 @@ export default function AskClient() {
             {/* TAB CONTENT: SAVED PROMPTS */}
             {activeTab === "favorites" && (
               <div>
-                {savedPrompts.length === 0 ? (
+                {promptsLoading ? (
+                  <div className="py-4 text-center text-xs text-slate-400">
+                    Caricamento ricerche frequenti...
+                  </div>
+                ) : savedPrompts.length === 0 ? (
                   <div className="py-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                     <Star size={24} className="mx-auto mb-1.5 text-slate-300" />
                     <p className="text-xs font-semibold text-slate-600">Nessun prompt frequente salvato</p>
