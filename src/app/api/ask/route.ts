@@ -85,6 +85,7 @@ REGOLE TASSATIVE SULLE DATE E PERIODI:
 5. QUALE COLONNA DATA USARE:
    - In "entries" (agenda): usa SEMPRE \`entry_date\`. NON usare mai \`created_at\`.
    - In "gestione_items" (consulenze): usa \`data_consulenza\` per la data consulenza o \`scadenza\` per la scadenza.
+   - In "pass_items" (consegna pass): usa \`data_consegna\` per i PASS CONSEGNATI e \`data_attivazione\` per i PASS ATTIVATI.
 
 SCHEMA COMPLETO DEL DATABASE:
 
@@ -128,8 +129,21 @@ SCHEMA COMPLETO DEL DATABASE:
    - note: text, contattato: boolean, preso_appuntamento: boolean, consulenza_fatta: boolean
 
 5) Tabella "pass_items" (Modulo 'Consegna Pass'):
-   - cliente_nome, cliente_cognome, cliente_telefono, referral_nome, referral_cognome, referral_telefono
-   - data_consegna: date, data_attivazione: date, iscritto: boolean, tipo_abbonamento: text
+   - id: uuid, gestione_id: uuid (collegato a pass_gestioni.id)
+   - cliente_nome: text, cliente_cognome: text, cliente_telefono: text
+   - referral_nome: text, referral_cognome: text, referral_telefono: text
+   - data_consegna: date, data_attivazione: date, whatsapp_sent_date: timestamp
+   - is_lead: boolean (TRUE = il pass è stato attivato come prospect/referral)
+   - source_type: text ('pass' o NULL = pass fisico consegnato al cliente; 'manual_pass' = attivato manualmente senza consegna fisica; 'social' / 'whatsapp' = attivato da canale social/WA)
+   - iscritto: boolean (TRUE = il referral si è iscritto), tipo_abbonamento: text, note: text
+   REGOLE TASSATIVE SU "pass_items" (PASS CONSEGNATI vs PASS ATTIVATI):
+   - Quando l'utente chiede **PASS CONSEGNATI** (o quanti pass sono stati consegnati): filtra SEMPRE OBBLIGATORIAMENTE \`(source_type IS NULL OR source_type = 'pass')\` e usa \`data_consegna\`. NON includere MAI \`source_type IN ('manual_pass', 'social', 'whatsapp')\`, anche se hanno \`data_consegna\` valorizzata!
+   - Quando l'utente chiede **PASS ATTIVATI**: filtra \`is_lead = TRUE\` e usa \`data_attivazione\` (include sia i pass fisici poi attivati \`'pass'\`, sia quelli manuali \`'manual_pass'\`, sia \`'social'\`/\`'whatsapp'\`).
+   - Se chiede specificamente attivati manualmente: \`is_lead = TRUE AND source_type = 'manual_pass'\`.
+
+6) Tabella "pass_gestioni" (Campagne di 'Consegna Pass'):
+   - id: uuid, nome: text (es. 'Pass NOVEMBRE', 'PASS SET-OTT'), descrizione: text
+   - Se l'utente nomina una campagna specifica, fai JOIN \`pass_gestioni g ON pass_items.gestione_id = g.id\` filtrando \`g.nome ILIKE '%...%'\`.
 
 OTTIMIZZAZIONE E CORRETTEZZA PER CONFRONTO PERSONE TRA APPUNTAMENTI (JOIN / EXISTS / NOT EXISTS):
 Quando devi confrontare persone tra più appuntamenti (es. chi ha acquistato e POI ha/non ha un altro appuntamento):

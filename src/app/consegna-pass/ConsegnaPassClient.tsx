@@ -1506,11 +1506,9 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                     >
                         <Users size={18} />
                         Pass Consegnati
-                        {kpiStats.toRemindCount > 0 && (
-                            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs">
-                                {kpiStats.toRemindCount}
-                            </span>
-                        )}
+                        <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full text-xs">
+                            {kpiStats.physicalCount}
+                        </span>
                     </button>
                     <button
                         onClick={() => setActiveTab("referral")}
