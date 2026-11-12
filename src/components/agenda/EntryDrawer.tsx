@@ -273,14 +273,46 @@ export default function EntryDrawer({
         }
 
         try {
+            let resolvedClientId = formData.client_id || (selectedClient?.id ?? null);
+
+            // Auto-resolve client_id from clients table if not already linked
+            if (!resolvedClientId) {
+                if (formData.telefono && formData.telefono.trim().length >= 6) {
+                    const cleanTel = formData.telefono.replace(/\D/g, "");
+                    const { data: matchedClient } = await supabase
+                        .from("clients")
+                        .select("id")
+                        .or(`telefono.eq.${formData.telefono.trim()},telefono.ilike.%${cleanTel.slice(-8)}%`)
+                        .limit(1)
+                        .maybeSingle();
+                    if (matchedClient) {
+                        resolvedClientId = matchedClient.id;
+                    }
+                }
+                if (!resolvedClientId && formData.cognome && formData.nome) {
+                    const { data: matchedClient } = await supabase
+                        .from("clients")
+                        .select("id")
+                        .ilike("cognome", formData.cognome.trim())
+                        .ilike("nome", formData.nome.trim())
+                        .limit(1)
+                        .maybeSingle();
+                    if (matchedClient) {
+                        resolvedClientId = matchedClient.id;
+                    }
+                }
+            }
+
+            const targetSection = isDuplicate || allowSectionChange ? effectiveSection : formData.section;
+
             const payload: AnyObj = {
-                section: isDuplicate || allowSectionChange ? effectiveSection : formData.section,
+                section: targetSection,
                 entry_date: formData.entry_date,
                 entry_time: formData.entry_time || null,
                 nome: formData.nome || "",
                 cognome: formData.cognome || "",
                 telefono: formData.telefono || "",
-                client_id: formData.client_id || (selectedClient?.id ?? null),
+                client_id: resolvedClientId,
                 consulente_id: formData.consulente_id || null,
                 tipo_abbonamento_id: formData.tipo_abbonamento_id || null,
                 note: formData.note || "",
@@ -318,6 +350,54 @@ export default function EntryDrawer({
                 if (error) throw error;
                 savedData = data || { ...payload, id: entry.id };
             }
+
+            // Sync with rinnovi_items if this appointment is in Rinnovi section and linked to a client
+            const isRenewal = targetSection === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" || targetSection?.includes("RINNOV");
+            if (resolvedClientId && isRenewal) {
+                try {
+                    const { data: cl } = await supabase
+                        .from("clients")
+                        .select("id, data_scadenza, pacchetto_originale, disciplina, prezzo")
+                        .eq("id", resolvedClientId)
+                        .maybeSingle();
+
+                    if (cl && cl.data_scadenza) {
+                        const meseRef = cl.data_scadenza.slice(0, 7);
+                        const { data: existingRin } = await supabase
+                            .from("rinnovi_items")
+                            .select("id")
+                            .eq("client_id", resolvedClientId)
+                            .eq("mese_riferimento", meseRef)
+                            .maybeSingle();
+
+                        if (existingRin) {
+                            await supabase.from("rinnovi_items").update({
+                                preso_appuntamento: true,
+                                data_consulenza: formData.entry_date,
+                                contattato: true,
+                                entry_id: savedData.id,
+                            }).eq("id", existingRin.id);
+                        } else {
+                            await supabase.from("rinnovi_items").insert({
+                                client_id: cl.id,
+                                mese_riferimento: meseRef,
+                                scadenza_originaria: cl.data_scadenza,
+                                abbonamento_originario: cl.pacchetto_originale ? cl.pacchetto_originale.replace(/^=+\s*/, "").trim() : null,
+                                disciplina: cl.disciplina || "ALTRO",
+                                prezzo_originario: cl.prezzo || 0,
+                                contattato: true,
+                                preso_appuntamento: true,
+                                data_consulenza: formData.entry_date,
+                                entry_id: savedData.id,
+                                consulenza_fatta: false,
+                            });
+                        }
+                    }
+                } catch (rinErr) {
+                    console.error("Error auto-syncing rinnovi_item from EntryDrawer:", rinErr);
+                }
+            }
+
             if (onSave) onSave(savedData);
             onClose();
         } catch (e: any) {

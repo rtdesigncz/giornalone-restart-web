@@ -59,7 +59,36 @@ export function useOutcomeManager(onUpdate: () => void) {
         if (updates.miss) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.assente = false; }
         if (updates.assente) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.miss = false; }
 
-        await supabase.from("entries").update(updates).eq("id", id);
+        const { data: updatedEntry } = await supabase.from("entries").update(updates).eq("id", id).select("id, client_id, section").maybeSingle();
+
+        if (updatedEntry && updatedEntry.client_id) {
+            const entrySec = (updatedEntry.section || "").toUpperCase();
+            if (entrySec.includes("RINNOV") || entrySec.includes("INTEGRAZION")) {
+                const rinUpdates: any = {};
+                if (updates.venduto) {
+                    rinUpdates.esito = "RINNOVO";
+                    rinUpdates.consulenza_fatta = true;
+                } else if (updates.negativo) {
+                    rinUpdates.esito = "NEGATIVO";
+                    rinUpdates.consulenza_fatta = true;
+                } else if (updates.miss) {
+                    if (updates.presentato) {
+                        rinUpdates.esito = "IN ATTESA";
+                        rinUpdates.consulenza_fatta = true;
+                    } else {
+                        rinUpdates.consulenza_fatta = false;
+                        rinUpdates.esito = null;
+                    }
+                } else if (updates.assente) {
+                    rinUpdates.consulenza_fatta = false;
+                    rinUpdates.esito = null;
+                }
+                if (Object.keys(rinUpdates).length > 0) {
+                    await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", updatedEntry.client_id);
+                }
+            }
+        }
+
         onUpdate();
     };
 
@@ -140,6 +169,18 @@ export function useOutcomeManager(onUpdate: () => void) {
                 venduto: false,
                 negativo: false
             }).eq("id", entryToMiss.id);
+
+            if (entryToMiss.client_id) {
+                const rinUpdates: any = {};
+                if (entryToMiss.wasPresent) {
+                    rinUpdates.esito = "IN ATTESA";
+                    rinUpdates.consulenza_fatta = true;
+                } else {
+                    rinUpdates.consulenza_fatta = false;
+                    rinUpdates.esito = null;
+                }
+                await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", entryToMiss.client_id);
+            }
 
             setEntryToMiss(null);
         }

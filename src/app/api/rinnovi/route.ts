@@ -91,32 +91,103 @@ export async function GET(req: Request) {
     if (itemsErr) throw itemsErr;
 
     // 3. Real-time enrichment from entries (Agenda)
-    // ONLY match entries that belong to renewal sections from wStart onwards
+    // Match entries that belong to renewal sections (without artificial date cutoffs)
     const clientIds = (items || []).map((it: any) => it.client_id).filter(Boolean);
     const explicitEntryIds = (items || []).map((it: any) => it.entry_id).filter(Boolean);
     const clientEntriesMap = new Map<string, any[]>();
     const entriesById = new Map<string, any>();
 
+    // Phone and Name mappings for fallback matching when agenda entry has client_id == null
+    const phoneToClientId = new Map<string, string>();
+    const nameToClientId = new Map<string, string>();
+    const clientPhones: string[] = [];
+
+    (items || []).forEach((it: any) => {
+      const c = it.client;
+      if (it.client_id) {
+        if (c?.telefono) {
+          const cleanPhone = c.telefono.replace(/\D/g, "");
+          if (cleanPhone.length >= 6) {
+            phoneToClientId.set(cleanPhone, it.client_id);
+            phoneToClientId.set(c.telefono.trim(), it.client_id);
+            clientPhones.push(c.telefono.trim());
+          }
+        }
+        if (c?.cognome && c?.nome) {
+          const key = `${c.cognome.trim().toLowerCase()} ${c.nome.trim().toLowerCase()}`;
+          nameToClientId.set(key, it.client_id);
+        }
+      }
+    });
+
+    const renewalSections = ["APPUNTAMENTI RINNOVI E INTEGRAZIONI", "MISS CON APPUNTAMENTO"];
+    const allFoundEntries: any[] = [];
+
+    // 1. Fetch by client_id (ordered by entry_date DESC, entry_time DESC)
     if (clientIds.length > 0) {
-      const { data: agendaEntries } = await supabase
+      const { data: byClientId } = await supabase
         .from("entries")
         .select(`
-          id, entry_date, entry_time, section, venduto, presentato, assente, miss, note,
-          client_id,
+          id, entry_date, entry_time, section, venduto, presentato, assente, miss, negativo, note,
+          client_id, telefono, nome, cognome,
           consulente:consulenti(name),
           tipo_abbonamento:tipi_abbonamento(name)
         `)
         .in("client_id", clientIds)
-        .in("section", ["APPUNTAMENTI RINNOVI E INTEGRAZIONI", "MISS CON APPUNTAMENTO"])
-        .gte("entry_date", wStart)
+        .in("section", renewalSections)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: false });
 
-      (agendaEntries || []).forEach((e: any) => {
-        const arr = clientEntriesMap.get(e.client_id) || [];
+      if (byClientId) allFoundEntries.push(...byClientId);
+    }
+
+    // 2. Fetch by phone number for any entries that have client_id == null
+    if (clientPhones.length > 0) {
+      const { data: byPhone } = await supabase
+        .from("entries")
+        .select(`
+          id, entry_date, entry_time, section, venduto, presentato, assente, miss, negativo, note,
+          client_id, telefono, nome, cognome,
+          consulente:consulenti(name),
+          tipo_abbonamento:tipi_abbonamento(name)
+        `)
+        .in("telefono", clientPhones)
+        .in("section", renewalSections)
+        .order("entry_date", { ascending: false })
+        .order("entry_time", { ascending: false });
+
+      if (byPhone) {
+        const existingIds = new Set(allFoundEntries.map((e) => e.id));
+        for (const ep of byPhone) {
+          if (!existingIds.has(ep.id)) {
+            allFoundEntries.push(ep);
+            existingIds.add(ep.id);
+          }
+        }
+      }
+    }
+
+    // Map entries to clientIds
+    for (const e of allFoundEntries) {
+      let cId = e.client_id;
+      if (!cId && e.telefono) {
+        const cleanP = e.telefono.replace(/\D/g, "");
+        cId = phoneToClientId.get(e.telefono.trim()) || phoneToClientId.get(cleanP);
+      }
+      if (!cId && e.cognome && e.nome) {
+        const key = `${e.cognome.trim().toLowerCase()} ${e.nome.trim().toLowerCase()}`;
+        cId = nameToClientId.get(key);
+      }
+
+      if (cId) {
+        // Self-heal entry in background if client_id was null
+        if (!e.client_id) {
+          supabase.from("entries").update({ client_id: cId }).eq("id", e.id).then();
+        }
+        const arr = clientEntriesMap.get(cId) || [];
         arr.push(e);
-        clientEntriesMap.set(e.client_id, arr);
-      });
+        clientEntriesMap.set(cId, arr);
+      }
     }
 
     if (explicitEntryIds.length > 0) {
@@ -187,10 +258,15 @@ export async function GET(req: Request) {
           consulenzaFatta = true;
           esito = "RINNOVO";
           nuovoAbb = agenda.tipo_abbonamento?.name || "Rinnovato";
+        } else if (agenda.negativo) {
+          consulenzaFatta = true;
+          esito = "NEGATIVO";
         } else if (agenda.miss && agenda.presentato) {
           // Cliente PRESENTATO alla consulenza ma NON ha rinnovato subito -> IN ATTESA
           consulenzaFatta = true;
           if (!esito) esito = "IN ATTESA";
+        } else if (agenda.presentato && !agenda.miss && !agenda.assente) {
+          consulenzaFatta = true;
         } else if (daRiprogrammare) {
           // Miss o assente senza presentazione e NON ancora riprogrammato
           consulenzaFatta = false;
@@ -207,9 +283,11 @@ export async function GET(req: Request) {
 
       // If appointment is taken or esito is set, contacted is logically true
       const contattato = !!it.contattato || presoApp || !!esito;
+      const dataConsulenza = agenda?.entry_date || it.data_consulenza || null;
 
       return {
         ...it,
+        data_consulenza: dataConsulenza,
         contattato,
         preso_appuntamento: presoApp,
         consulenza_fatta: consulenzaFatta,
@@ -338,14 +416,22 @@ export async function GET(req: Request) {
     });
 
     // 7. Curated available months list
-    // Get unique months from rinnovi_items + past 2 months + next 6 months
+    // Get unique months from rinnovi_items + clients data_scadenza + past 2 months + next 6 months
     const { data: dbMonths } = await supabase
       .from("rinnovi_items")
       .select("mese_riferimento");
 
+    const { data: clientExpiryDates } = await supabase
+      .from("clients")
+      .select("data_scadenza")
+      .not("data_scadenza", "is", null);
+
     const monthsSet = new Set<string>();
     (dbMonths || []).forEach((r: any) => {
       if (r.mese_riferimento) monthsSet.add(r.mese_riferimento);
+    });
+    (clientExpiryDates || []).forEach((c: any) => {
+      if (c.data_scadenza) monthsSet.add(c.data_scadenza.slice(0, 7));
     });
 
     // Add reasonable window around today: -2 months to +6 months
