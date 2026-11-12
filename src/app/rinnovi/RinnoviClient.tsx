@@ -973,16 +973,31 @@ export default function RinnoviClient() {
                               <div
                                 className={cn(
                                   "text-xs flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full font-semibold shadow-2xs",
-                                  agenda?.assente
-                                    ? "bg-rose-50 border border-rose-200 text-rose-800"
-                                    : agenda?.miss && !agenda?.presentato
-                                    ? "bg-amber-50 border border-amber-200 text-amber-800"
+                                  row.da_riprogrammare
+                                    ? agenda?.assente
+                                      ? "bg-rose-50 border border-rose-200 text-rose-800"
+                                      : "bg-amber-50 border border-amber-200 text-amber-800"
+                                    : row.riprogrammato
+                                    ? "bg-teal-50 border border-teal-200 text-teal-900"
                                     : agenda
                                     ? "bg-indigo-50 border border-indigo-200 text-indigo-900"
                                     : "bg-teal-50 border border-teal-200 text-teal-800"
                                 )}
                               >
-                                <Calendar className={cn("w-3 h-3", agenda?.assente ? "text-rose-600" : agenda?.miss && !agenda?.presentato ? "text-amber-600" : agenda ? "text-indigo-600" : "text-teal-600")} />
+                                <Calendar
+                                  className={cn(
+                                    "w-3 h-3",
+                                    row.da_riprogrammare
+                                      ? agenda?.assente
+                                        ? "text-rose-600"
+                                        : "text-amber-600"
+                                      : row.riprogrammato
+                                      ? "text-teal-600"
+                                      : agenda
+                                      ? "text-indigo-600"
+                                      : "text-teal-600"
+                                  )}
+                                />
                                 <span>
                                   {agenda
                                     ? `${new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}${
@@ -995,25 +1010,26 @@ export default function RinnoviClient() {
                                 )}
                               </div>
 
-                              {/* Flag esplicito se l'appuntamento è saltato o è Miss senza presentazione */}
-                              {agenda?.assente && (
-                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-                                    Assente - Da Riprogrammare
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleBookInAgenda(row)}
-                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline"
-                                  >
-                                    + Riprogramma
-                                  </button>
-                                </div>
+                              {/* Flag se è già stato riprogrammato (ha ereditato la nuova data dall'agenda) */}
+                              {row.riprogrammato && (
+                                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full flex items-center gap-1 mt-0.5">
+                                  <RefreshCw className="w-2.5 h-2.5 text-teal-600" />
+                                  Riprogrammato
+                                </span>
                               )}
-                              {agenda?.miss && !agenda?.presentato && (
+
+                              {/* Flag se l'appuntamento è saltato/assente e NON ancora riprogrammato in agenda */}
+                              {row.da_riprogrammare && (
                                 <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                                    Miss - Da Riprogrammare
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                      agenda?.assente
+                                        ? "text-rose-700 bg-rose-50 border border-rose-200"
+                                        : "text-amber-700 bg-amber-50 border border-amber-200"
+                                    )}
+                                  >
+                                    {agenda?.assente ? "Assente - Da Riprogrammare" : "Miss - Da Riprogrammare"}
                                   </span>
                                   <button
                                     type="button"

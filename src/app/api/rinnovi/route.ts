@@ -90,11 +90,10 @@ export async function GET(req: Request) {
     if (itemsErr) throw itemsErr;
 
     // 3. Real-time enrichment from entries (Agenda)
-    // ONLY match entries that belong to APPUNTAMENTI RINNOVI E INTEGRAZIONI within [wStart, wEnd]
-    // OR matching explicit entry_id
+    // ONLY match entries that belong to renewal sections from wStart onwards
     const clientIds = (items || []).map((it: any) => it.client_id).filter(Boolean);
     const explicitEntryIds = (items || []).map((it: any) => it.entry_id).filter(Boolean);
-    const entriesByClient = new Map<string, any>();
+    const clientEntriesMap = new Map<string, any[]>();
     const entriesById = new Map<string, any>();
 
     if (clientIds.length > 0) {
@@ -107,16 +106,15 @@ export async function GET(req: Request) {
           tipo_abbonamento:tipi_abbonamento(name)
         `)
         .in("client_id", clientIds)
-        .eq("section", "APPUNTAMENTI RINNOVI E INTEGRAZIONI")
+        .in("section", ["APPUNTAMENTI RINNOVI E INTEGRAZIONI", "MISS CON APPUNTAMENTO"])
         .gte("entry_date", wStart)
-        .lte("entry_date", wEnd)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: false });
 
       (agendaEntries || []).forEach((e: any) => {
-        if (!entriesByClient.has(e.client_id)) {
-          entriesByClient.set(e.client_id, e);
-        }
+        const arr = clientEntriesMap.get(e.client_id) || [];
+        arr.push(e);
+        clientEntriesMap.set(e.client_id, arr);
       });
     }
 
@@ -136,36 +134,73 @@ export async function GET(req: Request) {
       });
     }
 
+    function resolveClientAgenda(entries: any[] | undefined) {
+      if (!entries || entries.length === 0) return null;
+      // Sort descending by entry_date, entry_time
+      const sorted = [...entries].sort((a, b) => {
+        const da = `${a.entry_date} ${a.entry_time || "00:00"}`;
+        const db = `${b.entry_date} ${b.entry_time || "00:00"}`;
+        return db.localeCompare(da);
+      });
+
+      const sold = sorted.find((e: any) => e.venduto);
+      if (sold) return { entry: sold, riprogrammato: false, daRiprogrammare: false };
+
+      const hasPastMissOrAssente = sorted.some((e: any) => e.assente || (e.miss && !e.presentato));
+      const activeUpcoming = sorted.find((e: any) => !e.assente && (!e.miss || e.presentato));
+
+      if (activeUpcoming) {
+        const isRescheduled = hasPastMissOrAssente && activeUpcoming.id !== sorted[sorted.length - 1].id;
+        return {
+          entry: activeUpcoming,
+          riprogrammato: isRescheduled || (activeUpcoming.note || "").toUpperCase().includes("RIPROGRAMMATO"),
+          daRiprogrammare: false,
+        };
+      }
+
+      // All entries are miss or assente without presentato -> needs rescheduling
+      return {
+        entry: sorted[0],
+        riprogrammato: false,
+        daRiprogrammare: true,
+      };
+    }
+
     // 4. Enrich and calculate live states
     const enrichedList = (items || []).map((it: any) => {
-      const agenda = (it.entry_id ? entriesById.get(it.entry_id) : null) || entriesByClient.get(it.client_id);
+      const clientEntries = clientEntriesMap.get(it.client_id);
+      const resolved = resolveClientAgenda(clientEntries);
+      const agenda = resolved?.entry || (it.entry_id ? entriesById.get(it.entry_id) : null);
       
+      const riprogrammato = resolved?.riprogrammato || false;
+      const daRiprogrammare = resolved?.daRiprogrammare || false;
+
       let presoApp = !!it.preso_appuntamento || !!agenda;
-      let consulenzaFatta = !!it.consulenza_fatta || (agenda ? (agenda.presentato || agenda.venduto) : false);
+      let consulenzaFatta = !!it.consulenza_fatta;
       let esito = it.esito || null;
       let nuovoAbb = it.nuovo_abbonamento_name || null;
       let assente = agenda ? !!agenda.assente : false;
 
-      // Auto-sync esito from live agenda if not explicitly set manually
-      if (!esito && agenda) {
+      if (agenda) {
         if (agenda.venduto) {
+          consulenzaFatta = true;
           esito = "RINNOVO";
           nuovoAbb = agenda.tipo_abbonamento?.name || "Rinnovato";
         } else if (agenda.miss && agenda.presentato) {
           // Cliente PRESENTATO alla consulenza ma NON ha rinnovato subito -> IN ATTESA
-          esito = "IN ATTESA";
-        }
-        // NOTA: Se l'appuntamento è MISS e NON presentato, NON è "IN ATTESA", ma va riprogrammato!
-      }
-
-      // If agenda marked assente or miss without presentato, the consultation did NOT take place
-      const daRiprogrammare = agenda ? (agenda.assente || (agenda.miss && !agenda.presentato)) : false;
-      if (daRiprogrammare) {
-        if (esito === "IN ATTESA") {
-          esito = null;
-        }
-        if (!it.consulenza_fatta) {
+          consulenzaFatta = true;
+          if (!esito) esito = "IN ATTESA";
+        } else if (daRiprogrammare) {
+          // Miss o assente senza presentazione e NON ancora riprogrammato
           consulenzaFatta = false;
+          if (esito === "IN ATTESA") esito = null;
+        } else if (riprogrammato) {
+          // Ha già ereditato il nuovo appuntamento riprogrammato:
+          // Se la nuova data non è ancora stata svolta, la consulenza non è ancora fatta
+          if (!it.consulenza_fatta && !agenda.presentato && !agenda.venduto) {
+            consulenzaFatta = false;
+            if (esito === "IN ATTESA") esito = null;
+          }
         }
       }
 
@@ -181,6 +216,7 @@ export async function GET(req: Request) {
         nuovo_abbonamento_name: nuovoAbb,
         assente,
         da_riprogrammare: daRiprogrammare,
+        riprogrammato,
         agenda_entry: agenda
           ? {
               id: agenda.id,
