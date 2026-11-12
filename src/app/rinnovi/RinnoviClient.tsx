@@ -5,7 +5,6 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   RefreshCw,
   Search,
-  Filter,
   Calendar,
   CalendarCheck,
   CheckCircle2,
@@ -13,18 +12,12 @@ import {
   AlertCircle,
   Phone,
   MessageCircle,
-  Users,
-  ChevronDown,
-  Check,
   X,
-  XCircle,
-  MoreHorizontal,
-  Flame,
-  ArrowRight,
-  TrendingUp,
   History,
-  FileText,
-  Dumbbell,
+  AlertTriangle,
+  PieChart,
+  Check,
+  ArrowUpDown,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,15 +25,141 @@ import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ClientDetailDrawer from "@/app/clienti/ClientDetailDrawer";
 import CustomSelect from "@/components/ui/CustomSelect";
 
-const ESITI = ["RINNOVO", "INTEGRAZIONE", "IN ATTESA", "NEGATIVO"] as const;
+export const ESITI = ["RINNOVO", "INTEGRAZIONE", "IN ATTESA", "NEGATIVO"] as const;
 
 export const MOTIVI_NEGATIVO = [
-  { value: "NON FREQUENTA", label: "Non frequenta" },
   { value: "INSODDISFATTO", label: "Insoddisfatto" },
+  { value: "NON FREQUENTA", label: "Non frequenta" },
   { value: "TRASFERIMENTO", label: "Trasferimento" },
   { value: "INFORTUNIO", label: "Infortunio" },
   { value: "ALTRO", label: "Altro" },
 ] as const;
+
+// Visual Step Icon (Same as in Consulenze)
+const StepIcon = ({
+  completed,
+  active,
+  icon: Icon,
+  onClick,
+  colorClass = "emerald",
+  disabled,
+}: {
+  completed?: boolean;
+  active?: boolean;
+  icon: any;
+  onClick: () => void;
+  colorClass?: "emerald" | "amber" | "teal" | "indigo" | "rose";
+  disabled?: boolean;
+}) => {
+  const colorStyles: Record<string, { completed: string; active: string }> = {
+    emerald: {
+      completed: "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200",
+      active: "border-emerald-500 text-emerald-500 bg-white shadow-sm",
+    },
+    amber: {
+      completed: "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200",
+      active: "border-amber-500 text-amber-500 bg-white shadow-sm",
+    },
+    teal: {
+      completed: "bg-teal-500 border-teal-500 text-white shadow-md shadow-teal-200",
+      active: "border-teal-500 text-teal-500 bg-white shadow-sm",
+    },
+    indigo: {
+      completed: "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200",
+      active: "border-indigo-600 text-indigo-600 bg-white shadow-sm",
+    },
+    rose: {
+      completed: "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-200",
+      active: "border-rose-500 text-rose-500 bg-white shadow-sm",
+    },
+  };
+
+  const styles = colorStyles[colorClass] || colorStyles.emerald;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "w-8 h-8 rounded-full flex items-center justify-center transition-all border-2 relative group focus:outline-none focus:ring-2 focus:ring-offset-1",
+        completed
+          ? styles.completed
+          : active
+          ? styles.active
+          : "border-slate-200 text-slate-300 bg-slate-50 hover:border-slate-300 hover:bg-slate-100",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <Icon className="w-4 h-4" />
+      {!disabled && (
+        <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30">
+          {completed ? "Clicca per annullare" : "Clicca per completare"}
+        </span>
+      )}
+    </button>
+  );
+};
+
+// Polished Action Modal for workflow transitions
+const ActionModal = ({
+  isOpen,
+  title,
+  children,
+  onClose,
+  onConfirm,
+  confirmLabel = "Conferma",
+  confirmColor = "indigo",
+}: {
+  isOpen: boolean;
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  onConfirm: () => void;
+  confirmLabel?: string;
+  confirmColor?: "indigo" | "red" | "emerald";
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-slate-950/20 w-full max-w-lg overflow-hidden flex flex-col border border-slate-200/80 animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+          <h3 className="font-extrabold text-base text-slate-900 tracking-tight">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6 font-sans">{children}</div>
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end gap-3 font-sans">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md transition-all flex items-center gap-2",
+              confirmColor === "red"
+                ? "bg-rose-600 hover:bg-rose-700 shadow-rose-200"
+                : confirmColor === "emerald"
+                ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
+                : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200"
+            )}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function RinnoviClient() {
   const [mese, setMese] = useState<string>(() => {
@@ -50,40 +169,78 @@ export default function RinnoviClient() {
 
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [items, setItems] = useState<any[]>([]);
-  const [counts, setCounts] = useState({
+  const [counts, setCounts] = useState<any>({
     total: 0,
     contattati: 0,
-    appuntamenti: 0,
-    consulenze: 0,
+    daContattare: 0,
+    appuntamentiDaFissare: 0,
+    appuntamentiDaFare: 0,
+    appuntamentiTotali: 0,
+    consulenzeFatte: 0,
     rinnovati: 0,
     integrazioni: 0,
     inAttesa: 0,
     negativi: 0,
     tassoChiusura: 0,
+    motiviCounts: {},
   });
+  const [abbOptions, setAbbOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [esitoFilter, setEsitoFilter] = useState("ALL");
+  const [filtro, setFiltro] = useState("ALL"); // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
   const [disciplinaFilter, setDisciplinaFilter] = useState("ALL");
+  const [showNegativiModal, setShowNegativiModal] = useState(false);
+
+  // Sorting
+  const [sortKey, setSortKey] = useState<"scadenza" | "cliente">("scadenza");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // Drawers
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerInitialData, setDrawerInitialData] = useState<any>(null);
   const [detailClientId, setDetailClientId] = useState<string | null>(null);
+  const [pendingAgendaItem, setPendingAgendaItem] = useState<any>(null);
 
-  // Editing cells state
+  // Inline Note Editing
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
+  // Action Modals State
+  const [actionModal, setActionModal] = useState<{
+    type: "CONFIRM_RESET" | "SET_APPUNTAMENTO" | "SET_ESITO" | null;
+    item: any | null;
+    step?: "CONTATTATO" | "APPUNTAMENTO" | "FATTA";
+  }>({ type: null, item: null });
+
+  // Modal temporary form values
+  const [tempDate, setTempDate] = useState("");
+  const [tempEsito, setTempEsito] = useState<string | null>(null);
+  const [tempNuovoAbb, setTempNuovoAbb] = useState("");
+  const [tempDataRisp, setTempDataRisp] = useState("");
+  const [tempMotivoNegativo, setTempMotivoNegativo] = useState("");
+  const [tempNote, setTempNote] = useState("");
+  const [addToAgenda, setAddToAgenda] = useState(false);
+
+  // Fetch Abbonamenti Options once
+  useEffect(() => {
+    fetch("/api/consulenze/options/abbonamenti")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.options) setAbbOptions(d.options);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch Rinnovi data for current month & filters
   const fetchRinnovi = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("mese", mese);
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (esitoFilter !== "ALL") params.set("esito", esitoFilter);
+      if (filtro !== "ALL") params.set("filtro", filtro);
       if (disciplinaFilter !== "ALL") params.set("disciplina", disciplinaFilter);
 
       const res = await fetch(`/api/rinnovi?${params.toString()}`);
@@ -101,45 +258,176 @@ export default function RinnoviClient() {
     } finally {
       setLoading(false);
     }
-  }, [mese, searchQuery, esitoFilter, disciplinaFilter]);
+  }, [mese, searchQuery, filtro, disciplinaFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchRinnovi();
-    }, 200);
+    }, 150);
     return () => clearTimeout(timer);
   }, [fetchRinnovi]);
 
+  // Patch an individual rinnovi_item
   const updateItem = async (id: string, updates: Record<string, any>) => {
     // Optimistic UI update
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
 
     try {
-      await fetch(`/api/rinnovi/${id}`, {
+      const res = await fetch(`/api/rinnovi/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (!res.ok) throw new Error("Errore aggiornamento");
     } catch (err) {
       console.error("Failed to update item:", err);
       fetchRinnovi();
     }
   };
 
-  const handleBookAppointment = (item: any) => {
-    const client = item.client;
+  // Step click handler with modal transitions
+  const handleStepClick = (item: any, step: "CONTATTATO" | "APPUNTAMENTO" | "FATTA") => {
+    if (step === "CONTATTATO") {
+      if (item.contattato) {
+        setActionModal({ type: "CONFIRM_RESET", item, step: "CONTATTATO" });
+      } else {
+        updateItem(item.id, { contattato: true });
+      }
+    } else if (step === "APPUNTAMENTO") {
+      if (item.preso_appuntamento) {
+        setActionModal({ type: "CONFIRM_RESET", item, step: "APPUNTAMENTO" });
+      } else {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        setTempDate(item.data_consulenza || todayStr);
+        setAddToAgenda(false);
+        setActionModal({ type: "SET_APPUNTAMENTO", item });
+      }
+    } else if (step === "FATTA") {
+      if (item.consulenza_fatta) {
+        setActionModal({ type: "CONFIRM_RESET", item, step: "FATTA" });
+      } else {
+        setTempEsito(item.esito || null);
+        setTempNuovoAbb(item.nuovo_abbonamento_name || "");
+        setTempDataRisp(item.data_risposta || "");
+        setTempMotivoNegativo(item.motivo_negativo || "");
+        setTempNote(item.note || "");
+        setActionModal({ type: "SET_ESITO", item });
+      }
+    }
+  };
+
+  // Confirm action modal
+  const confirmActionModal = async () => {
+    const { type, item, step } = actionModal;
+    if (!item) return;
+
+    if (type === "CONFIRM_RESET") {
+      if (step === "CONTATTATO") {
+        await updateItem(item.id, {
+          contattato: false,
+          preso_appuntamento: false,
+          consulenza_fatta: false,
+          data_consulenza: null,
+          esito: null,
+          nuovo_abbonamento_name: null,
+          data_risposta: null,
+          motivo_negativo: null,
+        });
+      } else if (step === "APPUNTAMENTO") {
+        await updateItem(item.id, {
+          preso_appuntamento: false,
+          consulenza_fatta: false,
+          data_consulenza: null,
+          esito: null,
+          nuovo_abbonamento_name: null,
+          data_risposta: null,
+          motivo_negativo: null,
+        });
+      } else if (step === "FATTA") {
+        await updateItem(item.id, {
+          consulenza_fatta: false,
+          esito: null,
+          nuovo_abbonamento_name: null,
+          data_risposta: null,
+          motivo_negativo: null,
+        });
+      }
+      setActionModal({ type: null, item: null });
+    } else if (type === "SET_APPUNTAMENTO") {
+      if (addToAgenda) {
+        setPendingAgendaItem({ item, date: tempDate });
+        setDrawerInitialData({
+          section: "APPUNTAMENTI RINNOVI E INTEGRAZIONI",
+          nome: item.client?.nome || "",
+          cognome: item.client?.cognome || "",
+          telefono: item.client?.telefono || "",
+          client_id: item.client_id,
+          entry_date: tempDate,
+          note: `RINNOVO ${formatMonthHuman(item.mese_riferimento)} - Precedente: ${item.abbonamento_originario || ""}`,
+        });
+        setDrawerOpen(true);
+        setActionModal({ type: null, item: null });
+        return;
+      }
+
+      await updateItem(item.id, {
+        contattato: true,
+        preso_appuntamento: true,
+        data_consulenza: tempDate || null,
+      });
+      setActionModal({ type: null, item: null });
+    } else if (type === "SET_ESITO") {
+      if (tempEsito && ["RINNOVO", "INTEGRAZIONE"].includes(tempEsito)) {
+        if (!tempNuovoAbb) {
+          alert("ATTENZIONE: Seleziona obbligatoriamente il Nuovo Abbonamento per salvare un esito positivo.");
+          return;
+        }
+      }
+
+      await updateItem(item.id, {
+        contattato: true,
+        preso_appuntamento: true,
+        consulenza_fatta: true,
+        esito: tempEsito,
+        nuovo_abbonamento_name: ["RINNOVO", "INTEGRAZIONE"].includes(tempEsito || "") ? tempNuovoAbb || null : null,
+        motivo_negativo: tempEsito === "NEGATIVO" ? tempMotivoNegativo || null : null,
+        data_risposta: tempEsito === "IN ATTESA" ? tempDataRisp || null : null,
+        note: tempNote || null,
+      });
+      setActionModal({ type: null, item: null });
+    }
+  };
+
+  // Open EntryDrawer directly for booking
+  const handleBookInAgenda = (item: any) => {
+    setPendingAgendaItem({ item, date: new Date().toISOString().slice(0, 10) });
     setDrawerInitialData({
       section: "APPUNTAMENTI RINNOVI E INTEGRAZIONI",
-      nome: client?.nome || "",
-      cognome: client?.cognome || "",
-      telefono: client?.telefono || "",
+      nome: item.client?.nome || "",
+      cognome: item.client?.cognome || "",
+      telefono: item.client?.telefono || "",
       client_id: item.client_id,
-      note: `RINNOVO DA LISTA SCADENZA ${formatMonthHuman(item.mese_riferimento)} - Abbonamento precedente: ${item.abbonamento_originario || ""}`,
+      note: `RINNOVO ${formatMonthHuman(item.mese_riferimento)} - Scadenza: ${item.scadenza_originaria || ""} - ${item.abbonamento_originario || ""}`,
     });
     setDrawerOpen(true);
   };
 
-  const formatMonthHuman = (mStr: string) => {
+  // Callback when entry is saved in EntryDrawer
+  const handleEntryDrawerSave = () => {
+    setDrawerOpen(false);
+    if (pendingAgendaItem) {
+      updateItem(pendingAgendaItem.item.id, {
+        contattato: true,
+        preso_appuntamento: true,
+        data_consulenza: pendingAgendaItem.date,
+      });
+      setPendingAgendaItem(null);
+    }
+    setTimeout(() => fetchRinnovi(), 400);
+  };
+
+  const formatMonthHuman = (mStr?: string | null) => {
+    if (!mStr) return "";
     const [y, m] = mStr.split("-").map(Number);
     const date = new Date(Date.UTC(y, m - 1, 1));
     const monthName = new Intl.DateTimeFormat("it-IT", { month: "long" }).format(date);
@@ -157,11 +445,37 @@ export default function RinnoviClient() {
     return Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  // Sort rows client-side
+  const sortedItems = useMemo(() => {
+    const list = [...items];
+    list.sort((a, b) => {
+      if (sortKey === "scadenza") {
+        const da = a.scadenza_originaria || "";
+        const db = b.scadenza_originaria || "";
+        return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+      } else {
+        const na = `${a.client?.cognome || ""} ${a.client?.nome || ""}`.trim().toLowerCase();
+        const nb = `${b.client?.cognome || ""} ${b.client?.nome || ""}`.trim().toLowerCase();
+        return sortDir === "asc" ? na.localeCompare(nb) : nb.localeCompare(na);
+      }
+    });
+    return list;
+  }, [items, sortKey, sortDir]);
+
+  const toggleSort = (key: "scadenza" | "cliente") => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-16">
-      {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+      {/* Top Navbar */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner">
               <RefreshCw size={20} />
@@ -169,19 +483,19 @@ export default function RinnoviClient() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black text-slate-900 tracking-tight">Gestione Rinnovi</h1>
-                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full">
-                  Real-Time Agenda
+                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles size={11} /> Real-Time Agenda
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                Sincronizzazione in tempo reale con l'Agenda e le scadenze clienti
+                Pannello commerciale integrato con l'Anagrafica Clienti e l'Agenda Giornalone
               </p>
             </div>
           </div>
 
           {/* Month Selector */}
           <div className="flex items-center gap-2.5">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Mese Scadenza:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Campagna Mese:</span>
             <select
               value={mese}
               onChange={(e) => setMese(e.target.value)}
@@ -197,156 +511,240 @@ export default function RinnoviClient() {
         </div>
       </div>
 
-      <div className="max-w-[1650px] mx-auto px-4 md:px-8 pt-5 space-y-5">
+      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-5 space-y-5">
         {/* KPI Cards Banner */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {/* Card 1: In Scadenza */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+          {/* 1. Totale In Scadenza */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span>In Scadenza</span>
+              <span>Totale</span>
               <Calendar size={14} className="text-slate-400" />
             </div>
             <div className="text-2xl font-black text-slate-900 mt-1">{counts.total}</div>
             <div className="text-[11px] text-slate-400 mt-0.5 font-medium">{formatMonthHuman(mese)}</div>
           </div>
 
-          {/* Card 2: Contattati */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
+          {/* 2. Contattati */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
               <span>Contattati</span>
               <Phone size={14} className="text-cyan-600" />
             </div>
             <div className="text-2xl font-black text-cyan-600 mt-1">{counts.contattati}</div>
             <div className="text-[11px] text-slate-400 mt-0.5 font-medium">
-              {counts.total > 0 ? `${Math.round((counts.contattati / counts.total) * 100)}% del totale` : "0%"}
+              {counts.total > 0 ? `${Math.round((counts.contattati / counts.total) * 100)}%` : "0%"} su {counts.total}
             </div>
           </div>
 
-          {/* Card 3: Appuntamenti */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span>In Agenda</span>
+          {/* 3. Appuntamenti Da Fare */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-bold text-indigo-700 uppercase tracking-wider">
+              <span>App. Da Fare</span>
               <CalendarCheck size={14} className="text-indigo-600" />
             </div>
-            <div className="text-2xl font-black text-indigo-600 mt-1">{counts.appuntamenti}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Fissati per colloquio</div>
+            <div className="text-2xl font-black text-indigo-600 mt-1">{counts.appuntamentiDaFare}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Tot. fissati: {counts.appuntamentiTotali}</div>
           </div>
 
-          {/* Card 4: Rinnovati */}
-          <div className="bg-emerald-50/50 rounded-2xl border border-emerald-300 p-3.5 shadow-sm">
-            <div className="flex items-center justify-between text-xs font-bold text-emerald-700 uppercase tracking-wider">
+          {/* 4. Consulenze Fatte */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-bold text-teal-700 uppercase tracking-wider">
+              <span>Consulenze</span>
+              <CheckCircle2 size={14} className="text-teal-600" />
+            </div>
+            <div className="text-2xl font-black text-teal-600 mt-1">{counts.consulenzeFatte}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Colloqui eseguiti</div>
+          </div>
+
+          {/* 5. Rinnovati */}
+          <div className="bg-emerald-50/60 rounded-2xl border border-emerald-300 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-bold text-emerald-800 uppercase tracking-wider">
               <span>Rinnovati</span>
               <CheckCircle2 size={14} className="text-emerald-500" />
             </div>
             <div className="text-2xl font-black text-emerald-600 mt-1">{counts.rinnovati}</div>
-            <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-              Tasso: <b>{counts.tassoChiusura}%</b>
+            <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+              Chiusura: <b>{counts.tassoChiusura}%</b>
             </div>
           </div>
 
-          {/* Card 5: In Attesa */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
+          {/* 6. In Attesa */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
             <div className="flex items-center justify-between text-xs font-bold text-amber-700 uppercase tracking-wider">
-              <span>In Attesa / Miss</span>
+              <span>In Attesa</span>
               <Clock size={14} className="text-amber-500" />
             </div>
             <div className="text-2xl font-black text-amber-600 mt-1">{counts.inAttesa}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Da richiamare</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Da ricontattare</div>
           </div>
 
-          {/* Card 6: Negativi */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
-            <div className="flex items-center justify-between text-xs font-bold text-rose-700 uppercase tracking-wider">
-              <span>Negativi</span>
-              <AlertCircle size={14} className="text-rose-500" />
+          {/* 7. Negativi */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold text-rose-700 uppercase tracking-wider">
+                <span>Negativi</span>
+                <button
+                  type="button"
+                  onClick={() => setShowNegativiModal(true)}
+                  className="text-rose-400 hover:text-rose-600"
+                  title="Vedi motivazioni"
+                >
+                  <PieChart size={14} />
+                </button>
+              </div>
+              <div className="text-2xl font-black text-rose-600 mt-1">{counts.negativi}</div>
             </div>
-            <div className="text-2xl font-black text-rose-600 mt-1">{counts.negativi}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Non rinnovati</div>
+            <button
+              type="button"
+              onClick={() => setShowNegativiModal(true)}
+              className="text-[11px] text-rose-600 font-bold hover:underline flex items-center gap-1 mt-0.5"
+            >
+              <span>Vedi motivi</span>
+            </button>
           </div>
         </div>
 
-        {/* Filters and Search Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative w-full md:w-80">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cerca cliente, telefono..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] text-slate-800 placeholder-slate-400 font-medium"
-            />
-          </div>
-
-          <div className="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-            {/* Esito Selector */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
-              <button
-                onClick={() => setEsitoFilter("ALL")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "ALL" ? "bg-white text-slate-900 shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                Tutti
-              </button>
-              <button
-                onClick={() => setEsitoFilter("DA_CONTATTARE")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "DA_CONTATTARE" ? "bg-slate-700 text-white shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                Da Contattare
-              </button>
-              <button
-                onClick={() => setEsitoFilter("PRESO_APPUNTAMENTO")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "PRESO_APPUNTAMENTO" ? "bg-indigo-600 text-white shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                Fissati
-              </button>
-              <button
-                onClick={() => setEsitoFilter("RINNOVO")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "RINNOVO" ? "bg-emerald-600 text-white shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                Rinnovati
-              </button>
-              <button
-                onClick={() => setEsitoFilter("IN ATTESA")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "IN ATTESA" ? "bg-amber-500 text-white shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                In Attesa
-              </button>
-              <button
-                onClick={() => setEsitoFilter("NEGATIVO")}
-                className={cn("px-2.5 py-1 rounded-lg transition-all", esitoFilter === "NEGATIVO" ? "bg-rose-600 text-white shadow-sm font-bold" : "hover:text-slate-900")}
-              >
-                Negativi
-              </button>
+        {/* Filter Bar with Consulenze workflow pills */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs space-y-3">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
+            {/* Search */}
+            <div className="relative w-full lg:w-80">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cerca cliente, telefono, note..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] text-slate-800 placeholder-slate-400 font-medium"
+              />
             </div>
 
-            {/* Disciplina Selector */}
-            <select
-              value={disciplinaFilter}
-              onChange={(e) => setDisciplinaFilter(e.target.value)}
-              className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:border-[#21b5ba]"
+            {/* Discipline Selector */}
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <span className="text-xs font-bold text-slate-400 uppercase">Disciplina:</span>
+              <select
+                value={disciplinaFilter}
+                onChange={(e) => setDisciplinaFilter(e.target.value)}
+                className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:border-[#21b5ba] cursor-pointer"
+              >
+                <option value="ALL">Tutte le discipline</option>
+                <option value="CORSI">Corsi</option>
+                <option value="SALA">Sala</option>
+                <option value="SALA+CORSI">Open (Sala+Corsi)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Workflow Status Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100 text-xs font-bold">
+            <button
+              onClick={() => setFiltro("ALL")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "ALL" ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
             >
-              <option value="ALL">Tutte le discipline</option>
-              <option value="CORSI">Corsi</option>
-              <option value="SALA">Sala</option>
-              <option value="SALA+CORSI">Open (Sala+Corsi)</option>
-            </select>
+              Tutti ({counts.total})
+            </button>
+            <button
+              onClick={() => setFiltro("DA_CONTATTARE")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "DA_CONTATTARE" ? "bg-slate-800 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              Da Contattare ({counts.daContattare})
+            </button>
+            <button
+              onClick={() => setFiltro("CONTATTATI")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "CONTATTATI" ? "bg-cyan-600 text-white shadow-xs" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
+              )}
+            >
+              Contattati ({counts.contattati})
+            </button>
+            <button
+              onClick={() => setFiltro("APP_DA_FISSARE")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "APP_DA_FISSARE" ? "bg-indigo-600 text-white shadow-xs" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              )}
+            >
+              App. da fissare ({counts.appuntamentiDaFissare})
+            </button>
+            <button
+              onClick={() => setFiltro("APP_DA_FARE")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "APP_DA_FARE" ? "bg-indigo-700 text-white shadow-xs" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              )}
+            >
+              App. da fare ({counts.appuntamentiDaFare})
+            </button>
+            <button
+              onClick={() => setFiltro("CONSULENZE_FATTE")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "CONSULENZE_FATTE" ? "bg-teal-600 text-white shadow-xs" : "bg-teal-50 text-teal-700 hover:bg-teal-100"
+              )}
+            >
+              Consulenze Fatte ({counts.consulenzeFatte})
+            </button>
+            <button
+              onClick={() => setFiltro("RINNOVO")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "RINNOVO" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              )}
+            >
+              Rinnovati ({counts.rinnovati})
+            </button>
+            <button
+              onClick={() => setFiltro("IN ATTESA")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "IN ATTESA" ? "bg-amber-500 text-white shadow-xs" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+              )}
+            >
+              In Attesa ({counts.inAttesa})
+            </button>
+            <button
+              onClick={() => setFiltro("NEGATIVO")}
+              className={cn(
+                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
+                filtro === "NEGATIVO" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+              )}
+            >
+              Negativi ({counts.negativi})
+            </button>
           </div>
         </div>
 
         {/* Main Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3 px-3.5">Cliente</th>
+                  <th className="py-3 px-3.5 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("cliente")}>
+                    <div className="flex items-center gap-1">
+                      <span>Cliente</span>
+                      <ArrowUpDown size={12} />
+                    </div>
+                  </th>
                   <th className="py-3 px-3.5">Recapito</th>
-                  <th className="py-3 px-3.5">Scadenza</th>
-                  <th className="py-3 px-3.5">Abbonamento Attuale</th>
-                  <th className="py-3 px-3.5 text-center">Contattato</th>
-                  <th className="py-3 px-3.5">Appuntamento Agenda</th>
-                  <th className="py-3 px-3.5 text-center">Consulenza</th>
-                  <th className="py-3 px-3.5">Esito Rinnovo</th>
+                  <th className="py-3 px-3.5 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("scadenza")}>
+                    <div className="flex items-center gap-1">
+                      <span>Scadenza</span>
+                      <ArrowUpDown size={12} />
+                    </div>
+                  </th>
+                  <th className="py-3 px-3.5">Abbonamento Originario</th>
+                  <th className="py-3 px-3.5 text-center">1. Contattato</th>
+                  <th className="py-3 px-3.5 text-center">2. Appuntamento</th>
+                  <th className="py-3 px-3.5 text-center">3. Consulenza</th>
+                  <th className="py-3 px-3.5">Esito Commerciale</th>
                   <th className="py-3 px-3.5">Note Commerciali</th>
                 </tr>
               </thead>
@@ -360,14 +758,14 @@ export default function RinnoviClient() {
                       </div>
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : sortedItems.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-16 text-center text-slate-400">
-                      Nessun cliente in scadenza trovato per {formatMonthHuman(mese)} con i filtri attuali.
+                      Nessun cliente trovato per {formatMonthHuman(mese)} con i filtri selezionati.
                     </td>
                   </tr>
                 ) : (
-                  items.map((row) => {
+                  sortedItems.map((row) => {
                     const client = row.client;
                     const days = getDaysDiff(row.scadenza_originaria);
                     const agenda = row.agenda_entry;
@@ -377,7 +775,13 @@ export default function RinnoviClient() {
                         key={row.id}
                         className={cn(
                           "hover:bg-slate-50/70 transition-colors",
-                          row.esito === "RINNOVO" ? "bg-emerald-50/20" : row.esito === "NEGATIVO" ? "bg-rose-50/20" : ""
+                          row.esito === "RINNOVO"
+                            ? "bg-emerald-50/20"
+                            : row.esito === "NEGATIVO"
+                            ? "bg-rose-50/20"
+                            : row.esito === "IN ATTESA"
+                            ? "bg-amber-50/20"
+                            : ""
                         )}
                       >
                         {/* 1. Cliente */}
@@ -392,7 +796,7 @@ export default function RinnoviClient() {
                             <button
                               onClick={() => setDetailClientId(row.client_id)}
                               className="text-slate-300 hover:text-cyan-600 p-0.5 transition-colors"
-                              title="Apri scheda cliente"
+                              title="Apri scheda anagrafica cliente"
                             >
                               <History size={13} />
                             </button>
@@ -414,7 +818,7 @@ export default function RinnoviClient() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                title="Invia WhatsApp"
+                                title="Invia messaggio WhatsApp"
                               >
                                 <MessageCircle size={15} />
                               </a>
@@ -435,7 +839,11 @@ export default function RinnoviClient() {
                             <div
                               className={cn(
                                 "text-[10px] font-semibold mt-0.5",
-                                days > 0 ? "text-amber-600" : days === 0 ? "text-amber-700 font-bold" : "text-rose-600"
+                                days > 0
+                                  ? "text-amber-600"
+                                  : days === 0
+                                  ? "text-amber-700 font-bold"
+                                  : "text-rose-600"
                               )}
                             >
                               {days > 0 ? `Tra ${days} gg` : days === 0 ? "Oggi!" : `Scaduto da ${Math.abs(days)} gg`}
@@ -443,120 +851,123 @@ export default function RinnoviClient() {
                           )}
                         </td>
 
-                        {/* 4. Abbonamento Attuale */}
+                        {/* 4. Abbonamento Originario */}
                         <td className="py-3 px-3.5">
-                          <div className="text-xs font-semibold text-slate-800 max-w-[200px] truncate" title={row.abbonamento_originario}>
+                          <div
+                            className="text-xs font-semibold text-slate-800 max-w-[200px] truncate"
+                            title={row.abbonamento_originario}
+                          >
                             {row.abbonamento_originario || "—"}
                           </div>
                         </td>
 
-                        {/* 5. Contattato (Checkbox) */}
+                        {/* 5. Step 1: Contattato */}
                         <td className="py-3 px-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateItem(row.id, { contattato: !row.contattato })}
-                            className={cn(
-                              "w-6 h-6 rounded-lg border flex items-center justify-center transition-all mx-auto",
-                              row.contattato
-                                ? "bg-emerald-500 border-emerald-600 text-white shadow-xs"
-                                : "bg-white border-slate-300 hover:border-slate-400 text-transparent"
-                            )}
-                          >
-                            <Check size={14} strokeWidth={3} />
-                          </button>
+                          <div className="flex justify-center">
+                            <StepIcon
+                              completed={row.contattato}
+                              icon={Phone}
+                              colorClass="cyan"
+                              onClick={() => handleStepClick(row, "CONTATTATO")}
+                            />
+                          </div>
                         </td>
 
-                        {/* 6. Appuntamento in Agenda (Real-Time Smart Pill) */}
+                        {/* 6. Step 2: Appuntamento */}
                         <td className="py-3 px-3.5">
-                          {agenda ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl px-2.5 py-1 text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs">
-                                <CalendarCheck size={13} className="text-indigo-600 flex-shrink-0" />
-                                <div>
-                                  <span>
-                                    {new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
-                                  </span>
-                                  {agenda.time && <span className="ml-1 text-indigo-600 font-bold">{agenda.time.slice(0, 5)}</span>}
-                                  {agenda.consulente_name && (
-                                    <span className="text-indigo-500 text-[10px] block font-normal">
-                                      con {agenda.consulente_name}
-                                    </span>
-                                  )}
+                          <div className="flex items-center justify-center gap-2">
+                            <StepIcon
+                              completed={row.preso_appuntamento}
+                              icon={Calendar}
+                              colorClass="indigo"
+                              onClick={() => handleStepClick(row, "APPUNTAMENTO")}
+                            />
+                          </div>
+                          {/* Live Agenda Badge */}
+                          {agenda && (
+                            <div className="mt-1.5 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg px-2 py-0.5 text-[10px] font-semibold flex items-center justify-center gap-1 shadow-2xs">
+                              <CalendarCheck size={11} className="text-indigo-600 shrink-0" />
+                              <span>
+                                {new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                              </span>
+                              {agenda.time && <span>{agenda.time.slice(0, 5)}</span>}
+                              {agenda.consulente_name && (
+                                <span className="text-indigo-600 font-normal">({agenda.consulente_name})</span>
+                              )}
+                            </div>
+                          )}
+                          {!agenda && !row.preso_appuntamento && (
+                            <div className="text-center mt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleBookInAgenda(row)}
+                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
+                              >
+                                + Agenda
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 7. Step 3: Consulenza Fatta */}
+                        <td className="py-3 px-3.5 text-center">
+                          <div className="flex justify-center">
+                            <StepIcon
+                              completed={row.consulenza_fatta}
+                              icon={Check}
+                              colorClass="emerald"
+                              onClick={() => handleStepClick(row, "FATTA")}
+                            />
+                          </div>
+                        </td>
+
+                        {/* 8. Esito Commerciale */}
+                        <td className="py-3 px-3.5">
+                          {row.esito ? (
+                            <div className="space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => handleStepClick(row, "FATTA")}
+                                className={cn(
+                                  "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide border transition-transform hover:scale-105",
+                                  row.esito === "RINNOVO"
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                    : row.esito === "INTEGRAZIONE"
+                                    ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                                    : row.esito === "IN ATTESA"
+                                    ? "bg-amber-100 text-amber-800 border-amber-300"
+                                    : "bg-rose-100 text-rose-800 border-rose-300"
+                                )}
+                              >
+                                {row.esito}
+                              </button>
+
+                              {row.nuovo_abbonamento_name && row.esito === "RINNOVO" && (
+                                <div className="text-[10px] font-bold text-emerald-700">
+                                  {row.nuovo_abbonamento_name}
                                 </div>
-                              </div>
+                              )}
+
+                              {row.motivo_negativo && row.esito === "NEGATIVO" && (
+                                <div className="text-[10px] font-semibold text-rose-600 italic">
+                                  {row.motivo_negativo}
+                                </div>
+                              )}
+
+                              {row.data_risposta && row.esito === "IN ATTESA" && (
+                                <div className="text-[10px] font-semibold text-amber-700">
+                                  Risp: {new Date(row.data_risposta).toLocaleDateString("it-IT")}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleBookAppointment(row)}
-                              className="px-2.5 py-1 rounded-lg border border-dashed border-slate-300 hover:border-cyan-500 hover:text-cyan-600 hover:bg-cyan-50/30 text-slate-500 text-[11px] font-bold transition-all flex items-center gap-1"
+                              onClick={() => handleStepClick(row, "FATTA")}
+                              className="text-[11px] text-slate-400 hover:text-slate-700 italic"
                             >
-                              <span>+ Fissa in Agenda</span>
+                              + Registra esito
                             </button>
-                          )}
-                        </td>
-
-                        {/* 7. Consulenza Fatta (Checkbox) */}
-                        <td className="py-3 px-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateItem(row.id, { consulenza_fatta: !row.consulenza_fatta })}
-                            className={cn(
-                              "w-6 h-6 rounded-lg border flex items-center justify-center transition-all mx-auto",
-                              row.consulenza_fatta
-                                ? "bg-indigo-500 border-indigo-600 text-white shadow-xs"
-                                : "bg-white border-slate-300 hover:border-slate-400 text-transparent"
-                            )}
-                          >
-                            <Check size={14} strokeWidth={3} />
-                          </button>
-                        </td>
-
-                        {/* 8. Esito Rinnovo (Interactive Selector) */}
-                        <td className="py-3 px-3.5">
-                          <select
-                            value={row.esito || ""}
-                            onChange={(e) => updateItem(row.id, { esito: e.target.value || null })}
-                            className={cn(
-                              "text-xs font-bold py-1 px-2.5 rounded-lg border cursor-pointer focus:outline-none transition-all",
-                              row.esito === "RINNOVO"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
-                                : row.esito === "INTEGRAZIONE"
-                                ? "bg-cyan-50 text-cyan-800 border-cyan-300"
-                                : row.esito === "IN ATTESA"
-                                ? "bg-amber-50 text-amber-800 border-amber-300"
-                                : row.esito === "NEGATIVO"
-                                ? "bg-rose-50 text-rose-800 border-rose-300"
-                                : "bg-white text-slate-500 border-slate-200"
-                            )}
-                          >
-                            <option value="">-- Seleziona --</option>
-                            <option value="RINNOVO">RINNOVO</option>
-                            <option value="INTEGRAZIONE">INTEGRAZIONE</option>
-                            <option value="IN ATTESA">IN ATTESA</option>
-                            <option value="NEGATIVO">NEGATIVO</option>
-                          </select>
-
-                          {/* Se Negativo: Motivo */}
-                          {row.esito === "NEGATIVO" && (
-                            <select
-                              value={row.motivo_negativo || ""}
-                              onChange={(e) => updateItem(row.id, { motivo_negativo: e.target.value || null })}
-                              className="text-[10px] mt-1 block w-full py-0.5 px-1.5 rounded border border-rose-200 bg-rose-50/50 text-rose-700 font-semibold"
-                            >
-                              <option value="">-- Motivo Negativo --</option>
-                              {MOTIVI_NEGATIVO.map((m) => (
-                                <option key={m.value} value={m.value}>
-                                  {m.label}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-
-                          {row.nuovo_abbonamento_name && row.esito === "RINNOVO" && (
-                            <div className="text-[10px] font-bold text-emerald-700 mt-0.5">
-                              {row.nuovo_abbonamento_name}
-                            </div>
                           )}
                         </td>
 
@@ -593,13 +1004,13 @@ export default function RinnoviClient() {
                                 setEditingNoteId(row.id);
                                 setNoteDraft(row.note || "");
                               }}
-                              className="cursor-pointer text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 p-1 rounded text-xs min-h-[26px] flex items-center transition-colors max-w-[220px]"
+                              className="cursor-pointer text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 p-1 rounded text-xs min-h-[26px] flex items-center transition-colors max-w-[240px]"
                               title="Clicca per modificare la nota"
                             >
                               {row.note ? (
                                 <span className="italic truncate">{row.note}</span>
                               ) : (
-                                <span className="text-slate-300 italic">+ Aggiungi nota</span>
+                                <span className="text-slate-300 text-[11px]">+ Aggiungi nota</span>
                               )}
                             </div>
                           )}
@@ -614,22 +1025,222 @@ export default function RinnoviClient() {
         </div>
       </div>
 
-      {/* Appointment Drawer */}
+      {/* ACTION MODAL: CONFIRM RESET */}
+      {actionModal.type === "CONFIRM_RESET" && (
+        <ActionModal
+          isOpen={true}
+          title="Attenzione: Reset Stato"
+          confirmLabel="Conferma Reset"
+          confirmColor="red"
+          onClose={() => setActionModal({ type: null, item: null })}
+          onConfirm={confirmActionModal}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-medium">Stai per annullare questo step di avanzamento.</p>
+            </div>
+            <p className="text-slate-600 text-sm">
+              Questa operazione riporterà indietro lo stato di questo cliente cancellando eventuali date o esiti
+              associati a questo step.
+              <br />
+              <br />
+              Sei sicuro di voler procedere?
+            </p>
+          </div>
+        </ActionModal>
+      )}
+
+      {/* ACTION MODAL: SET APPUNTAMENTO */}
+      {actionModal.type === "SET_APPUNTAMENTO" && (
+        <ActionModal
+          isOpen={true}
+          title="Fissa Appuntamento Rinnovo"
+          confirmLabel="Salva Appuntamento"
+          confirmColor="indigo"
+          onClose={() => setActionModal({ type: null, item: null })}
+          onConfirm={confirmActionModal}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Registra l'appuntamento per il rinnovo di{" "}
+              <b>
+                {actionModal.item?.client?.cognome} {actionModal.item?.client?.nome}
+              </b>
+              .
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Data Appuntamento</label>
+              <input
+                type="date"
+                className="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                value={tempDate}
+                onChange={(e) => setTempDate(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <label className="flex items-center gap-3 p-3 rounded-xl border border-indigo-100 bg-indigo-50/50 cursor-pointer hover:bg-indigo-50 transition-colors">
+              <input
+                type="checkbox"
+                className="w-4 h-4 text-indigo-600 rounded border-indigo-300 focus:ring-indigo-500"
+                checked={addToAgenda}
+                onChange={(e) => setAddToAgenda(e.target.checked)}
+              />
+              <span className="text-xs font-bold text-indigo-950">
+                Apri drawer per inserire direttamente in Agenda Giornalone
+              </span>
+            </label>
+          </div>
+        </ActionModal>
+      )}
+
+      {/* ACTION MODAL: SET ESITO */}
+      {actionModal.type === "SET_ESITO" && (
+        <ActionModal
+          isOpen={true}
+          title="Esito Consulenza Rinnovo"
+          confirmLabel="Salva Esito"
+          confirmColor="emerald"
+          onClose={() => setActionModal({ type: null, item: null })}
+          onConfirm={confirmActionModal}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Registra l'esito della consulenza per{" "}
+              <b>
+                {actionModal.item?.client?.cognome} {actionModal.item?.client?.nome}
+              </b>
+              .
+            </p>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 uppercase">Esito Consulenza</label>
+                <CustomSelect
+                  options={ESITI.map((e) => ({ value: e, label: e }))}
+                  value={tempEsito || ""}
+                  onChange={(v) => {
+                    const next = v || null;
+                    setTempEsito(next);
+                    if (next !== "NEGATIVO") setTempMotivoNegativo("");
+                    if (!next || !["RINNOVO", "INTEGRAZIONE"].includes(next)) setTempNuovoAbb("");
+                    if (next !== "IN ATTESA") setTempDataRisp("");
+                  }}
+                  placeholder="— Seleziona Esito —"
+                />
+              </div>
+
+              {tempEsito && ["RINNOVO", "INTEGRAZIONE"].includes(tempEsito) && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase">
+                    Nuovo Abbonamento <span className="text-red-500">*</span>
+                  </label>
+                  <CustomSelect
+                    options={abbOptions.map((o) => ({ value: o, label: o }))}
+                    value={tempNuovoAbb}
+                    onChange={(v) => setTempNuovoAbb(v)}
+                    placeholder="— Seleziona Nuovo Pacchetto (Obbligatorio) —"
+                  />
+                </div>
+              )}
+
+              {tempEsito === "NEGATIVO" && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                  <label className="text-xs font-bold text-rose-700 uppercase flex items-center justify-between">
+                    <span>Motivazione Mancato Rinnovo</span>
+                    <span className="text-[10px] font-normal text-rose-500 lowercase">(opzionale)</span>
+                  </label>
+                  <CustomSelect
+                    options={MOTIVI_NEGATIVO.map((m) => ({ value: m.value, label: m.label }))}
+                    value={tempMotivoNegativo}
+                    onChange={(v) => setTempMotivoNegativo(v)}
+                    placeholder="— Seleziona Motivazione —"
+                  />
+                </div>
+              )}
+
+              {tempEsito === "IN ATTESA" && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Data Risposta / Recall</label>
+                  <input
+                    type="date"
+                    className="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    value={tempDataRisp}
+                    onChange={(e) => setTempDataRisp(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Note Aggiuntive</label>
+                <textarea
+                  className="w-full min-h-[70px] text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 resize-none font-medium text-slate-800"
+                  placeholder="Scrivi qui eventuali note commerciali..."
+                  value={tempNote}
+                  onChange={(e) => setTempNote(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </ActionModal>
+      )}
+
+      {/* MODAL: MOTIVI NEGATIVO BREAKDOWN */}
+      {showNegativiModal && (
+        <ActionModal
+          isOpen={true}
+          title={`Motivazioni Mancati Rinnovi (${formatMonthHuman(mese)})`}
+          confirmLabel="Chiudi"
+          onClose={() => setShowNegativiModal(false)}
+          onConfirm={() => setShowNegativiModal(false)}
+        >
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              Analisi delle motivazioni espresse dai clienti non rinnovati nel mese di {formatMonthHuman(mese)}:
+            </p>
+            <div className="space-y-2 mt-2">
+              {MOTIVI_NEGATIVO.map((m) => {
+                const count = counts.motiviCounts?.[m.value] || 0;
+                const pct = counts.negativi > 0 ? Math.round((count / counts.negativi) * 100) : 0;
+                return (
+                  <div key={m.value} className="bg-slate-50 p-2.5 rounded-xl flex items-center justify-between border border-slate-100">
+                    <span className="text-xs font-bold text-slate-800">{m.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-rose-600">{count}</span>
+                      <span className="text-[11px] text-slate-400 font-semibold">({pct}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {counts.motiviCounts?.["NON SPECIFICATO"] && (
+                <div className="bg-slate-50 p-2.5 rounded-xl flex items-center justify-between border border-slate-100">
+                  <span className="text-xs font-bold text-slate-500">Non specificato</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-slate-600">{counts.motiviCounts["NON SPECIFICATO"]}</span>
+                    <span className="text-[11px] text-slate-400 font-semibold">
+                      ({Math.round((counts.motiviCounts["NON SPECIFICATO"] / counts.negativi) * 100)}%)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </ActionModal>
+      )}
+
+      {/* AGENDA ENTRY DRAWER */}
       <EntryDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        onSaved={handleEntryDrawerSave}
         initialData={drawerInitialData}
-        onSave={() => {
-          setDrawerOpen(false);
-          fetchRinnovi();
-        }}
       />
 
-      {/* Client Detail Drawer */}
+      {/* CLIENT DETAIL DRAWER */}
       <ClientDetailDrawer
         clientId={detailClientId}
+        isOpen={!!detailClientId}
         onClose={() => setDetailClientId(null)}
-        onClientUpdated={fetchRinnovi}
       />
     </div>
   );

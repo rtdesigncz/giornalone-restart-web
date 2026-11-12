@@ -14,7 +14,12 @@ function getMonthBounds(monthStr: string) {
   const lastDay = new Date(y, m, 0).getDate();
   const startDate = `${monthStr}-01`;
   const endDate = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
-  return { startDate, endDate };
+
+  // Time window for renewal appointments: from 45 days before the month starts to 30 days after month ends
+  const wStart = new Date(Date.UTC(y, m - 1, 1 - 45)).toISOString().slice(0, 10);
+  const wEnd = new Date(Date.UTC(y, m, 30)).toISOString().slice(0, 10);
+
+  return { startDate, endDate, wStart, wEnd };
 }
 
 export async function GET(req: Request) {
@@ -26,10 +31,11 @@ export async function GET(req: Request) {
     const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const mese = (searchParams.get("mese") || defaultMonth).trim();
     const q = (searchParams.get("q") || "").trim();
-    const esitoFilter = searchParams.get("esito") || "ALL"; // ALL, RINNOVO, INTEGRAZIONE, IN_ATTESA, NEGATIVO, DA_CONTATTARE, PRESO_APPUNTAMENTO
+    const filtro = searchParams.get("filtro") || "ALL"; // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
     const disciplinaFilter = searchParams.get("disciplina") || "ALL";
+    const motivoFilter = searchParams.get("motivo") || "ALL";
 
-    const { startDate, endDate } = getMonthBounds(mese);
+    const { startDate, endDate, wStart, wEnd } = getMonthBounds(mese);
 
     // 1. Auto-seed / sync clients expiring in this month into rinnovi_items if not already present
     const { data: expiringClients, error: expErr } = await supabase
@@ -75,7 +81,7 @@ export async function GET(req: Request) {
       .select(`
         *,
         client:clients (
-          id, nome, cognome, telefono, email, data_nascita, stato, data_scadenza, ultimo_accesso, accessi_effettuati
+          id, nome, cognome, telefono, email, data_nascita, stato, data_scadenza, ultimo_accesso, accessi_effettuati, pacchetto_originale, disciplina
         )
       `)
       .eq("mese_riferimento", mese)
@@ -84,11 +90,14 @@ export async function GET(req: Request) {
     if (itemsErr) throw itemsErr;
 
     // 3. Real-time enrichment from entries (Agenda)
+    // ONLY match entries that belong to APPUNTAMENTI RINNOVI E INTEGRAZIONI within [wStart, wEnd]
+    // OR matching explicit entry_id
     const clientIds = (items || []).map((it: any) => it.client_id).filter(Boolean);
+    const explicitEntryIds = (items || []).map((it: any) => it.entry_id).filter(Boolean);
     const entriesByClient = new Map<string, any>();
+    const entriesById = new Map<string, any>();
 
     if (clientIds.length > 0) {
-      // Fetch entries for these clients, especially from APPUNTAMENTI RINNOVI E INTEGRAZIONI or matching month
       const { data: agendaEntries } = await supabase
         .from("entries")
         .select(`
@@ -98,6 +107,9 @@ export async function GET(req: Request) {
           tipo_abbonamento:tipi_abbonamento(name)
         `)
         .in("client_id", clientIds)
+        .eq("section", "APPUNTAMENTI RINNOVI E INTEGRAZIONI")
+        .gte("entry_date", wStart)
+        .lte("entry_date", wEnd)
         .order("entry_date", { ascending: false })
         .order("entry_time", { ascending: false });
 
@@ -108,32 +120,48 @@ export async function GET(req: Request) {
       });
     }
 
+    if (explicitEntryIds.length > 0) {
+      const { data: explicitEntries } = await supabase
+        .from("entries")
+        .select(`
+          id, entry_date, entry_time, section, venduto, presentato, assente, miss, note,
+          client_id,
+          consulente:consulenti(name),
+          tipo_abbonamento:tipi_abbonamento(name)
+        `)
+        .in("id", explicitEntryIds);
+
+      (explicitEntries || []).forEach((e: any) => {
+        entriesById.set(e.id, e);
+      });
+    }
+
     // 4. Enrich and calculate live states
     const enrichedList = (items || []).map((it: any) => {
-      const agenda = entriesByClient.get(it.client_id);
-      let presoApp = it.preso_appuntamento;
-      let consulenzaFatta = it.consulenza_fatta;
-      let esito = it.esito;
-      let nuovoAbb = it.nuovo_abbonamento_name;
-      let assente = false;
+      const agenda = (it.entry_id ? entriesById.get(it.entry_id) : null) || entriesByClient.get(it.client_id);
+      
+      let presoApp = !!it.preso_appuntamento || !!agenda;
+      let consulenzaFatta = !!it.consulenza_fatta || (agenda ? (agenda.presentato || agenda.venduto) : false);
+      let esito = it.esito || null;
+      let nuovoAbb = it.nuovo_abbonamento_name || null;
+      let assente = agenda ? !!agenda.assente : false;
 
-      if (agenda) {
-        presoApp = true;
-        if (agenda.presentato || agenda.venduto) consulenzaFatta = true;
-        if (agenda.assente) assente = true;
-
-        if (!esito) {
-          if (agenda.venduto) {
-            esito = "RINNOVO";
-            nuovoAbb = agenda.tipo_abbonamento?.name || "Rinnovato";
-          } else if (agenda.miss) {
-            esito = "IN ATTESA";
-          }
+      // Auto-sync esito from live agenda if not explicitly set manually
+      if (!esito && agenda) {
+        if (agenda.venduto) {
+          esito = "RINNOVO";
+          nuovoAbb = agenda.tipo_abbonamento?.name || "Rinnovato";
+        } else if (agenda.miss) {
+          esito = "IN ATTESA";
         }
       }
 
+      // If appointment is taken or esito is set, contacted is logically true
+      const contattato = !!it.contattato || presoApp || !!esito;
+
       return {
         ...it,
+        contattato,
         preso_appuntamento: presoApp,
         consulenza_fatta: consulenzaFatta,
         esito,
@@ -156,15 +184,14 @@ export async function GET(req: Request) {
       };
     });
 
-    // 5. Filter list by search query and dropdown filters
+    // 5. Filter list by search query and category filters
     let filtered = enrichedList;
 
     if (q) {
       const words = q.toLowerCase().split(/\s+/).filter(Boolean);
       filtered = filtered.filter((it: any) => {
         const c = it.client;
-        if (!c) return false;
-        const text = `${c.cognome || ""} ${c.nome || ""} ${c.telefono || ""} ${c.email || ""}`.toLowerCase();
+        const text = `${c?.cognome || ""} ${c?.nome || ""} ${c?.telefono || ""} ${it.abbonamento_originario || ""} ${it.note || ""}`.toLowerCase();
         return words.every((w: string) => text.includes(w));
       });
     }
@@ -173,46 +200,80 @@ export async function GET(req: Request) {
       filtered = filtered.filter((it: any) => (it.disciplina || "").toUpperCase() === disciplinaFilter.toUpperCase());
     }
 
-    if (esitoFilter && esitoFilter !== "ALL") {
-      if (esitoFilter === "DA_CONTATTARE") {
-        filtered = filtered.filter((it: any) => !it.contattato && !it.preso_appuntamento && !it.esito);
-      } else if (esitoFilter === "PRESO_APPUNTAMENTO") {
-        filtered = filtered.filter((it: any) => it.preso_appuntamento && !it.esito);
-      } else if (esitoFilter === "CONSULENZA_FATTA") {
-        filtered = filtered.filter((it: any) => it.consulenza_fatta);
-      } else {
-        filtered = filtered.filter((it: any) => (it.esito || "").toUpperCase() === esitoFilter.toUpperCase());
+    if (motivoFilter && motivoFilter !== "ALL") {
+      filtered = filtered.filter((it: any) => (it.motivo_negativo || "").toUpperCase() === motivoFilter.toUpperCase());
+    }
+
+    if (filtro && filtro !== "ALL") {
+      switch (filtro) {
+        case "DA_CONTATTARE":
+          filtered = filtered.filter((it: any) => !it.contattato && !it.preso_appuntamento && !it.esito);
+          break;
+        case "CONTATTATI":
+          filtered = filtered.filter((it: any) => it.contattato);
+          break;
+        case "APP_DA_FISSARE":
+          filtered = filtered.filter((it: any) => it.contattato && !it.preso_appuntamento && !it.esito);
+          break;
+        case "APP_DA_FARE":
+          filtered = filtered.filter((it: any) => it.preso_appuntamento && !it.consulenza_fatta && !it.esito);
+          break;
+        case "CONSULENZE_FATTE":
+          filtered = filtered.filter((it: any) => it.consulenza_fatta);
+          break;
+        case "RINNOVO":
+        case "INTEGRAZIONE":
+        case "IN ATTESA":
+        case "NEGATIVO":
+          filtered = filtered.filter((it: any) => (it.esito || "").toUpperCase() === filtro.toUpperCase());
+          break;
       }
     }
 
     // 6. Compute KPI summary for the entire month (unfiltered)
     const total = enrichedList.length;
-    const contattati = enrichedList.filter((x: any) => x.contattato || x.preso_appuntamento || x.esito).length;
-    const appuntamenti = enrichedList.filter((x: any) => x.preso_appuntamento).length;
-    const consulenze = enrichedList.filter((x: any) => x.consulenza_fatta).length;
+    const contattati = enrichedList.filter((x: any) => x.contattato).length;
+    const daContattare = enrichedList.filter((x: any) => !x.contattato && !x.preso_appuntamento && !x.esito).length;
+    const appuntamentiDaFissare = enrichedList.filter((x: any) => x.contattato && !x.preso_appuntamento && !x.esito).length;
+    const appuntamentiDaFare = enrichedList.filter((x: any) => x.preso_appuntamento && !x.consulenza_fatta && !x.esito).length;
+    const appuntamentiTotali = enrichedList.filter((x: any) => x.preso_appuntamento).length;
+    const consulenzeFatte = enrichedList.filter((x: any) => x.consulenza_fatta).length;
     const rinnovati = enrichedList.filter((x: any) => x.esito === "RINNOVO").length;
     const integrazioni = enrichedList.filter((x: any) => x.esito === "INTEGRAZIONE").length;
     const inAttesa = enrichedList.filter((x: any) => x.esito === "IN ATTESA").length;
     const negativi = enrichedList.filter((x: any) => x.esito === "NEGATIVO").length;
-    const tassoChiusura = consulenze > 0 ? Math.round((rinnovati / consulenze) * 100) : 0;
+    const tassoChiusura = consulenzeFatte > 0 ? Math.round((rinnovati / consulenzeFatte) * 100) : 0;
 
-    // 7. Get available months list from database (all months where clients expire + past months)
-    const { data: monthsData } = await supabase
-      .from("clients")
-      .select("data_scadenza")
-      .not("data_scadenza", "is", null)
-      .order("data_scadenza", { ascending: true });
+    // Negativi reasons breakdown
+    const motiviCounts: Record<string, number> = {};
+    enrichedList
+      .filter((x: any) => x.esito === "NEGATIVO")
+      .forEach((x: any) => {
+        const m = x.motivo_negativo || "NON SPECIFICATO";
+        motiviCounts[m] = (motiviCounts[m] || 0) + 1;
+      });
 
-    const availableMonthsSet = new Set<string>();
-    (monthsData || []).forEach((row: any) => {
-      if (row.data_scadenza && row.data_scadenza.length >= 7) {
-        availableMonthsSet.add(row.data_scadenza.slice(0, 7));
-      }
+    // 7. Curated available months list
+    // Get unique months from rinnovi_items + past 2 months + next 6 months
+    const { data: dbMonths } = await supabase
+      .from("rinnovi_items")
+      .select("mese_riferimento");
+
+    const monthsSet = new Set<string>();
+    (dbMonths || []).forEach((r: any) => {
+      if (r.mese_riferimento) monthsSet.add(r.mese_riferimento);
     });
-    // Ensure current month and next month are included
-    availableMonthsSet.add(defaultMonth);
 
-    const availableMonths = Array.from(availableMonthsSet).sort();
+    // Add reasonable window around today: -2 months to +6 months
+    const currYear = now.getFullYear();
+    const currMonth = now.getMonth() + 1;
+    for (let offset = -2; offset <= 6; offset++) {
+      const d = new Date(Date.UTC(currYear, currMonth - 1 + offset, 1));
+      const mStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      monthsSet.add(mStr);
+    }
+
+    const availableMonths = Array.from(monthsSet).sort();
 
     return NextResponse.json({
       mese,
@@ -220,18 +281,22 @@ export async function GET(req: Request) {
       counts: {
         total,
         contattati,
-        appuntamenti,
-        consulenze,
+        daContattare,
+        appuntamentiDaFissare,
+        appuntamentiDaFare,
+        appuntamentiTotali,
+        consulenzeFatte,
         rinnovati,
         integrazioni,
         inAttesa,
         negativi,
         tassoChiusura,
+        motiviCounts,
       },
       availableMonths,
     });
   } catch (err: any) {
-    console.error("Error in GET /api/rinnovi:", err);
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+    console.error("GET /api/rinnovi error:", err);
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }
