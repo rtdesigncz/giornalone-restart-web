@@ -94,6 +94,8 @@ export default function ClientDetailDrawer({
   };
 
   const diffDays = getDaysDiff(client?.data_scadenza);
+  const isExpired = client?.stato === "SCADUTO" || (diffDays !== null && diffDays < 0);
+  const isExpiring = !isExpired && (client?.stato === "IN_SCADENZA" || (diffDays !== null && diffDays <= 15));
 
   const cleanPhone = (p?: string | null) => (p || "").replace(/[^\d]/g, "");
 
@@ -169,11 +171,41 @@ export default function ClientDetailDrawer({
                 )}
 
                 {/* Subscriptions Card */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-4 text-white shadow-lg space-y-3">
-                  <div className="flex items-center justify-between text-xs text-cyan-400 font-semibold tracking-wide uppercase">
+                <div
+                  className={cn(
+                    "rounded-2xl p-4 text-white shadow-lg space-y-3 border transition-colors",
+                    isExpired
+                      ? "bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/40 border-rose-900/40"
+                      : isExpiring
+                      ? "bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/40 border-amber-900/40"
+                      : "bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700/50"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex items-center justify-between text-xs font-semibold tracking-wide uppercase",
+                      isExpired
+                        ? "text-rose-400"
+                        : isExpiring
+                        ? "text-amber-400"
+                        : "text-emerald-400"
+                    )}
+                  >
                     <div className="flex items-center gap-1.5">
-                      <Dumbbell size={14} />
-                      <span>Abbonamento Attivo</span>
+                      {isExpired ? (
+                        <AlertTriangle size={14} className="text-rose-400" />
+                      ) : isExpiring ? (
+                        <Clock size={14} className="text-amber-400" />
+                      ) : (
+                        <Dumbbell size={14} className="text-emerald-400" />
+                      )}
+                      <span>
+                        {isExpired
+                          ? "Abbonamento Scaduto"
+                          : isExpiring
+                          ? "Abbonamento In Scadenza"
+                          : "Abbonamento Attivo"}
+                      </span>
                     </div>
                     {client.disciplina && (
                       <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] text-white font-bold">
@@ -184,7 +216,9 @@ export default function ClientDetailDrawer({
 
                   <div>
                     <div className="text-base font-bold text-white leading-tight">
-                      {client.pacchetto_originale || "Nessun pacchetto registrato"}
+                      {client.pacchetto_originale
+                        ? client.pacchetto_originale.replace(/^=+\s*/, "").trim()
+                        : "Nessun pacchetto registrato"}
                     </div>
                     {client.tipi_abbonamento?.name && (
                       <div className="text-xs text-slate-300 mt-0.5">
@@ -204,7 +238,16 @@ export default function ClientDetailDrawer({
                     </div>
                     <div>
                       <div className="text-slate-400 text-[11px]">Data Scadenza</div>
-                      <div className="font-semibold text-cyan-300 mt-0.5">
+                      <div
+                        className={cn(
+                          "font-semibold mt-0.5",
+                          isExpired
+                            ? "text-rose-300"
+                            : isExpiring
+                            ? "text-amber-300"
+                            : "text-emerald-300"
+                        )}
+                      >
                         {client.data_scadenza
                           ? new Date(client.data_scadenza).toLocaleDateString("it-IT")
                           : "—"}
@@ -214,7 +257,16 @@ export default function ClientDetailDrawer({
 
                   {diffDays !== null && (
                     <div className="text-[11px] font-medium text-slate-300 pt-1 flex items-center gap-1.5">
-                      <Clock size={12} className="text-cyan-400" />
+                      <Clock
+                        size={12}
+                        className={
+                          isExpired
+                            ? "text-rose-400"
+                            : isExpiring
+                            ? "text-amber-400"
+                            : "text-emerald-400"
+                        }
+                      />
                       {diffDays > 0 ? (
                         <span>
                           Scade tra <b>{diffDays} giorni</b>

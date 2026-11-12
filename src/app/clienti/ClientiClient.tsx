@@ -271,7 +271,7 @@ export default function ClientiClient() {
                 <tr>
                   <th className="py-3 px-4">Cliente</th>
                   <th className="py-3 px-4">Recapiti</th>
-                  <th className="py-3 px-4">Abbonamento Attivo</th>
+                  <th className="py-3 px-4">Abbonamento / Pacchetto</th>
                   <th className="py-3 px-4">Scadenza</th>
                   <th className="py-3 px-4">Accessi Tornello</th>
                   <th className="py-3 px-4">Stato</th>
@@ -344,7 +344,7 @@ export default function ClientiClient() {
                         {/* Pacchetto */}
                         <td className="py-3.5 px-4">
                           <div className="font-bold text-slate-800 text-xs">
-                            {c.pacchetto_originale || "Nessuno"}
+                            {c.pacchetto_originale ? c.pacchetto_originale.replace(/^=+\s*/, "").trim() : "Nessuno"}
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
                             {c.tipi_abbonamento?.name && (
