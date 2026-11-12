@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
+import { hasAppointmentSlotChanged } from "@/lib/whatsapp";
 
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import EntryWizard from "./EntryWizard";
@@ -94,7 +95,7 @@ export default function EntryDrawer({
     // Reset form when entry changes
     useEffect(() => {
         if (isOpen) {
-            setTargetSection(isDuplicate ? "" : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)"));
+            setTargetSection(isDuplicate ? "" : (entry?.section || section || initialData?.section || "APPUNTAMENTI (Pianificazione)"));
             if (entry) {
                 if (isDuplicate) {
                     setFormData({
@@ -107,7 +108,7 @@ export default function EntryDrawer({
                         consulente_id: entry.consulente_id || "",
                         tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
                         note: entry.note,
-                        miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
+                        miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false
                     });
                 } else {
                     setFormData({ ...entry });
@@ -123,7 +124,7 @@ export default function EntryDrawer({
                     consulente_id: initialData.consulente_id || "",
                     tipo_abbonamento_id: initialData.tipo_abbonamento_id || "",
                     note: initialData.note || "",
-                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
+                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false
                 });
             } else {
                 setFormData({
@@ -131,7 +132,7 @@ export default function EntryDrawer({
                     entry_date: date || new Date().toISOString().split('T')[0],
                     entry_time: "",
                     nome: "", cognome: "", telefono: "", consulente_id: "", tipo_abbonamento_id: "", note: "",
-                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
+                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false
                 });
             }
         }
@@ -185,6 +186,14 @@ export default function EntryDrawer({
                 payload.entry_time += ":00";
             }
 
+            if (isNew) {
+                // Nuovi inserimenti, duplicazioni e riprogrammazioni partono sempre senza conferma WhatsApp
+                payload.whatsapp_sent = false;
+            } else if (entry && hasAppointmentSlotChanged(entry, payload)) {
+                // Se si sposta data, orario o sezione di un appuntamento esistente, la conferma WhatsApp precedente va azzerata
+                payload.whatsapp_sent = false;
+            }
+
             let savedData: any = payload;
             if (isNew) {
                 const { data, error } = await supabase.from("entries").insert(payload).select().single();
@@ -226,7 +235,7 @@ export default function EntryDrawer({
                     consulente_id: entry.consulente_id || "",
                     tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
                     note: entry.note,
-                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false, whatsapp_sent_date: null
+                    miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false
                 } : { ...entry }) : initialData}
             />
         );

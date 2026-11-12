@@ -448,6 +448,7 @@ export default function EntriesSection({ title }: { title: string }) {
       venduto: false,
       presentato: false,
       contattato: false,
+      whatsapp_sent: false,
     };
 
     const { error } = await supabase.from("entries").insert(payload);

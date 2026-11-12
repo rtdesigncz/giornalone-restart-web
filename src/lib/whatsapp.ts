@@ -23,6 +23,23 @@ export const cleanPhone = (raw?: string | null) => {
 
 export const toHHMM = (t: string | null) => t?.slice(0, 5) || "";
 
+export interface AppointmentSlotLike {
+    entry_date?: string | null;
+    entry_time?: string | null;
+    section?: string | null;
+    [key: string]: any;
+}
+
+export const hasAppointmentSlotChanged = (
+    previous: AppointmentSlotLike,
+    next: AppointmentSlotLike
+) => {
+    const dateChanged = (next.entry_date || null) !== (previous.entry_date || null);
+    const timeChanged = toHHMM(next.entry_time || null) !== toHHMM(previous.entry_time || null);
+    const sectionChanged = (next.section || null) !== (previous.section || null);
+    return dateChanged || timeChanged || sectionChanged;
+};
+
 export const getWhatsAppLink = (row: WhatsAppEntry, emptyMessage: boolean = false) => {
     const tel = cleanPhone(row.telefono);
     if (!tel) return "";

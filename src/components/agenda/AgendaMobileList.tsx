@@ -114,18 +114,21 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
     const handleEdit = (row: any) => {
         setSelectedEntry(row);
         setIsDuplicateMode(false);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
     const handleNewClick = () => {
         setSelectedEntry(null);
         setIsDuplicateMode(false);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
     const handleDuplicate = (row: any) => {
         setSelectedEntry(row);
         setIsDuplicateMode(true);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
@@ -211,7 +214,7 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
             <EntryDrawer
                 // ... existing props ...
                 isOpen={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
+                onClose={() => { setDrawerOpen(false); setIsDuplicateMode(false); setIsMoveMode(false); }}
                 entry={selectedEntry}
                 section={section}
                 date={dateParam}

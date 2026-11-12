@@ -108,8 +108,7 @@ export function useOutcomeManager(onUpdate: () => void) {
                 entry_time: "",
                 note: `Riprogrammato da Miss il ${new Date().toLocaleDateString()}. ${reschedulePopup.entry.note ? `Note prec: ${reschedulePopup.entry.note}` : ""}`,
                 // Reset WhatsApp status
-                whatsapp_sent: false,
-                whatsapp_sent_date: null
+                whatsapp_sent: false
             });
             setRescheduleDrawerOpen(true);
         } else {

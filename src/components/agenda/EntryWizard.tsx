@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
+import { hasAppointmentSlotChanged } from "@/lib/whatsapp";
 
 interface EntryWizardProps {
     isOpen: boolean;
@@ -99,10 +100,14 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
     const handleSave = async (withOutcome = true) => {
         setLoading(true);
         try {
+            const isEditing = Boolean(initialData?.id && initialData.id !== "new");
             const payload = { ...formData };
             delete payload.consulente;
             delete payload.tipo_abbonamento;
             delete payload.id;
+            delete payload.created_at;
+            delete payload.updated_at;
+            delete payload.whatsapp_sent_date;
 
             // Aggressive sanitization for ALL fields
             Object.keys(payload).forEach(key => {
@@ -129,10 +134,26 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                 payload.assente = false;
             }
 
-            const { data: insertedData, error } = await supabase.from("entries").insert(payload).select().single();
-            if (error) throw error;
+            if (isEditing) {
+                if (hasAppointmentSlotChanged(initialData, payload)) {
+                    payload.whatsapp_sent = false;
+                }
 
-            onSave(insertedData || payload);
+                const { data: updatedData, error } = await supabase
+                    .from("entries")
+                    .update(payload)
+                    .eq("id", initialData.id)
+                    .select()
+                    .single();
+                if (error) throw error;
+                onSave(updatedData || payload);
+            } else {
+                payload.whatsapp_sent = false;
+                const { data: insertedData, error } = await supabase.from("entries").insert(payload).select().single();
+                if (error) throw error;
+                onSave(insertedData || payload);
+            }
+
             onClose();
         } catch (e: any) {
             alert("Errore salvataggio: " + e.message);
@@ -144,6 +165,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
     if (!isOpen) return null;
 
     const isTelefonici = formData.section === "APPUNTAMENTI TELEFONICI";
+    const isEditing = Boolean(initialData?.id && initialData.id !== "new");
     const totalSteps = 5;
 
     return createPortal(
@@ -155,7 +177,9 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                         <X size={20} className="text-slate-500" />
                     </button>
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800 leading-none">Nuovo Inserimento</h2>
+                        <h2 className="text-lg font-bold text-slate-800 leading-none">
+                            {isEditing ? "Modifica Appuntamento" : "Nuovo Inserimento"}
+                        </h2>
                         <span className="text-xs text-slate-500 font-medium">Step {step} di {totalSteps}</span>
                     </div>
                 </div>

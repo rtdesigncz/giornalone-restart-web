@@ -122,18 +122,21 @@ export default function AgendaTable({ section }: { section: string }) {
     const handleRowClick = (row: any) => {
         setSelectedEntry(row);
         setIsDuplicateMode(false);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
     const handleNewClick = () => {
         setSelectedEntry(null);
         setIsDuplicateMode(false);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
     const handleDuplicate = (row: any) => {
         setSelectedEntry(row);
         setIsDuplicateMode(true);
+        setIsMoveMode(false);
         setDrawerOpen(true);
     };
 
@@ -298,7 +301,7 @@ export default function AgendaTable({ section }: { section: string }) {
                                                     <MessageCircle size={14} />
                                                 </button>
                                                 <button
-                                                    onClick={() => { setSelectedEntry(row); setIsMoveMode(true); setDrawerOpen(true); }}
+                                                    onClick={() => { setSelectedEntry(row); setIsDuplicateMode(false); setIsMoveMode(true); setDrawerOpen(true); }}
                                                     className="p-2 rounded-lg bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors border border-slate-200"
                                                     title="Sposta Sezione"
                                                 >
