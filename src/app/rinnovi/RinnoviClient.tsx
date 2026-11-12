@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/dateUtils";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ClientDetailDrawer from "@/app/clienti/ClientDetailDrawer";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -35,7 +36,20 @@ export const MOTIVI_NEGATIVO = [
   { value: "ALTRO", label: "Altro" },
 ] as const;
 
-// Visual Step Icon (Same as in Consulenze)
+export const cleanSubscription = (s: string | null | undefined) => {
+  if (!s) return null;
+  const str = s.replace(/^=+\s*/, "").trim();
+  const upper = str.toUpperCase();
+  if (upper.includes("MENSILE")) return "MENSILE";
+  if (upper.includes("QUADRIMESTRALE")) return "QUADRIMESTRALE";
+  if (upper.includes("ANNUALE")) return "ANNUALE";
+  if (upper.includes("SEMESTRALE")) return "SEMESTRALE";
+  if (upper.includes("TRIMESTRALE")) return "TRIMESTRALE";
+  if (upper.includes("BIENNALE")) return "BIENNALE";
+  return str;
+};
+
+// Visual Step Icon (Identical to Consulenze)
 const StepIcon = ({
   completed,
   active,
@@ -48,7 +62,7 @@ const StepIcon = ({
   active?: boolean;
   icon: any;
   onClick: () => void;
-  colorClass?: "emerald" | "amber" | "teal" | "indigo" | "rose";
+  colorClass?: "emerald" | "amber" | "teal" | "cyan" | "blue" | "indigo" | "rose";
   disabled?: boolean;
 }) => {
   const colorStyles: Record<string, { completed: string; active: string }> = {
@@ -63,6 +77,14 @@ const StepIcon = ({
     teal: {
       completed: "bg-teal-500 border-teal-500 text-white shadow-md shadow-teal-200",
       active: "border-teal-500 text-teal-500 bg-white shadow-sm",
+    },
+    cyan: {
+      completed: "bg-cyan-500 border-cyan-500 text-white shadow-md shadow-cyan-200",
+      active: "border-cyan-500 text-cyan-500 bg-white shadow-sm",
+    },
+    blue: {
+      completed: "bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-200",
+      active: "border-blue-500 text-blue-500 bg-white shadow-sm",
     },
     indigo: {
       completed: "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200",
@@ -727,31 +749,28 @@ export default function RinnoviClient() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3 px-3.5 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("cliente")}>
+                  <th className="py-3 pl-4 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("cliente")}>
                     <div className="flex items-center gap-1">
                       <span>Cliente</span>
                       <ArrowUpDown size={12} />
                     </div>
                   </th>
-                  <th className="py-3 px-3.5">Recapito</th>
-                  <th className="py-3 px-3.5 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("scadenza")}>
-                    <div className="flex items-center gap-1">
-                      <span>Scadenza</span>
+                  <th className="py-3 px-3 text-center cursor-pointer hover:text-slate-800" onClick={() => toggleSort("scadenza")}>
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Abbonamento / Scadenza</span>
                       <ArrowUpDown size={12} />
                     </div>
                   </th>
-                  <th className="py-3 px-3.5">Abbonamento Originario</th>
-                  <th className="py-3 px-3.5 text-center">1. Contattato</th>
-                  <th className="py-3 px-3.5 text-center">2. Appuntamento</th>
-                  <th className="py-3 px-3.5 text-center">3. Consulenza</th>
-                  <th className="py-3 px-3.5">Esito Commerciale</th>
-                  <th className="py-3 px-3.5">Note Commerciali</th>
+                  <th className="py-3 px-3 text-center">Stato / Data App.</th>
+                  <th className="py-3 px-3">Esito</th>
+                  <th className="py-3 px-3">Note</th>
+                  <th className="py-3 pr-4 text-right">Azioni</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="py-16 text-center text-slate-400">
+                    <td colSpan={6} className="py-16 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw size={20} className="animate-spin text-cyan-600" />
                         <span>Caricamento campagna rinnovi {formatMonthHuman(mese)}...</span>
@@ -760,7 +779,7 @@ export default function RinnoviClient() {
                   </tr>
                 ) : sortedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-16 text-center text-slate-400">
+                    <td colSpan={6} className="py-16 text-center text-slate-400">
                       Nessun cliente trovato per {formatMonthHuman(mese)} con i filtri selezionati.
                     </td>
                   </tr>
@@ -774,7 +793,7 @@ export default function RinnoviClient() {
                       <tr
                         key={row.id}
                         className={cn(
-                          "hover:bg-slate-50/70 transition-colors",
+                          "hover:bg-slate-50/70 transition-colors border-b border-slate-100 last:border-b-0",
                           row.esito === "RINNOVO"
                             ? "bg-emerald-50/20"
                             : row.esito === "NEGATIVO"
@@ -785,144 +804,194 @@ export default function RinnoviClient() {
                         )}
                       >
                         {/* 1. Cliente */}
-                        <td className="py-3 px-3.5">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              onClick={() => setDetailClientId(row.client_id)}
-                              className="font-bold text-slate-900 text-xs hover:text-cyan-700 cursor-pointer transition-colors"
-                            >
-                              {client ? `${client.cognome} ${client.nome}` : "—"}
-                            </span>
-                            <button
-                              onClick={() => setDetailClientId(row.client_id)}
-                              className="text-slate-300 hover:text-cyan-600 p-0.5 transition-colors"
-                              title="Apri scheda anagrafica cliente"
-                            >
-                              <History size={13} />
-                            </button>
-                          </div>
-                          {row.disciplina && (
-                            <span className="text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-1.5 py-0.2 rounded mt-0.5 inline-block">
-                              {row.disciplina}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 2. Recapito */}
-                        <td className="py-3 px-3.5">
-                          {client?.telefono ? (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-800">{client.telefono}</span>
-                              <a
-                                href={`https://wa.me/39${cleanPhone(client.telefono)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                title="Invia messaggio WhatsApp"
+                        <td className="py-4 pl-4 align-top max-w-[240px]">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                onClick={() => setDetailClientId(row.client_id)}
+                                className="font-bold text-slate-900 text-sm hover:text-cyan-700 cursor-pointer transition-colors"
                               >
-                                <MessageCircle size={15} />
-                              </a>
+                                {client ? `${client.cognome} ${client.nome}` : "—"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setDetailClientId(row.client_id)}
+                                className="text-slate-300 hover:text-cyan-600 p-0.5 transition-colors"
+                                title="Apri scheda anagrafica cliente"
+                              >
+                                <History size={13} />
+                              </button>
                             </div>
-                          ) : (
-                            <span className="text-slate-400 italic">Nessun tel</span>
-                          )}
+                            {client?.telefono ? (
+                              <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded border border-slate-100">
+                                <Phone className="w-3 h-3 text-slate-400" />
+                                <span>{client.telefono}</span>
+                                <a
+                                  href={`https://wa.me/39${cleanPhone(client.telefono)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-600 hover:text-emerald-700 ml-0.5"
+                                  title="Invia WhatsApp"
+                                >
+                                  <MessageCircle size={13} />
+                                </a>
+                              </div>
+                            ) : (
+                              <span className="text-slate-300 text-xs italic mt-1">Nessun telefono</span>
+                            )}
+                            {row.disciplina && (
+                              <span className="text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-1.5 py-0.2 rounded mt-1.5 w-fit">
+                                {row.disciplina}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
-                        {/* 3. Scadenza */}
-                        <td className="py-3 px-3.5">
-                          <div className="font-bold text-slate-900">
-                            {row.scadenza_originaria
-                              ? new Date(row.scadenza_originaria).toLocaleDateString("it-IT")
-                              : "—"}
+                        {/* 2. Abbonamento / Scadenza */}
+                        <td className="py-4 px-3 align-top max-w-[200px] text-center">
+                          <div className="flex flex-col gap-1 items-center">
+                            <div
+                              className="font-bold text-slate-800 text-sm tracking-wide truncate max-w-[190px]"
+                              title={row.abbonamento_originario || ""}
+                            >
+                              {cleanSubscription(row.abbonamento_originario) || <span className="text-slate-300">—</span>}
+                            </div>
+                            <div className="text-xs text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>Scad: {row.scadenza_originaria ? formatDate(row.scadenza_originaria) : "—"}</span>
+                            </div>
+                            {days !== null && (
+                              <div
+                                className={cn(
+                                  "text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block",
+                                  days > 0
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : days === 0
+                                    ? "bg-amber-100 text-amber-800 border border-amber-300 font-bold animate-pulse"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                                )}
+                              >
+                                {days > 0 ? `Tra ${days} gg` : days === 0 ? "Oggi!" : `Scaduto da ${Math.abs(days)} gg`}
+                              </div>
+                            )}
                           </div>
-                          {days !== null && (
+                        </td>
+
+                        {/* 3. Stato (Stepper identico a Consulenze) */}
+                        <td className="py-4 px-3 align-top min-w-[280px]">
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Step 1: Contattato */}
+                            <div className="flex flex-col items-center gap-1 w-20">
+                              <StepIcon
+                                active={!row.contattato}
+                                completed={row.contattato}
+                                icon={MessageCircle}
+                                colorClass="amber"
+                                onClick={() => handleStepClick(row, "CONTATTATO")}
+                              />
+                              <span
+                                className={cn(
+                                  "text-[10px] font-medium uppercase",
+                                  row.contattato ? "text-amber-600 font-semibold" : "text-slate-300"
+                                )}
+                              >
+                                Contattato
+                              </span>
+                            </div>
+
                             <div
                               className={cn(
-                                "text-[10px] font-semibold mt-0.5",
-                                days > 0
-                                  ? "text-amber-600"
-                                  : days === 0
-                                  ? "text-amber-700 font-bold"
-                                  : "text-rose-600"
+                                "w-4 h-0.5 mb-4",
+                                row.contattato && row.preso_appuntamento ? "bg-amber-200" : "bg-slate-100"
                               )}
-                            >
-                              {days > 0 ? `Tra ${days} gg` : days === 0 ? "Oggi!" : `Scaduto da ${Math.abs(days)} gg`}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* 4. Abbonamento Originario */}
-                        <td className="py-3 px-3.5">
-                          <div
-                            className="text-xs font-semibold text-slate-800 max-w-[200px] truncate"
-                            title={row.abbonamento_originario}
-                          >
-                            {row.abbonamento_originario || "—"}
-                          </div>
-                        </td>
-
-                        {/* 5. Step 1: Contattato */}
-                        <td className="py-3 px-3.5 text-center">
-                          <div className="flex justify-center">
-                            <StepIcon
-                              completed={row.contattato}
-                              icon={Phone}
-                              colorClass="cyan"
-                              onClick={() => handleStepClick(row, "CONTATTATO")}
                             />
-                          </div>
-                        </td>
 
-                        {/* 6. Step 2: Appuntamento */}
-                        <td className="py-3 px-3.5">
-                          <div className="flex items-center justify-center gap-2">
-                            <StepIcon
-                              completed={row.preso_appuntamento}
-                              icon={Calendar}
-                              colorClass="indigo"
-                              onClick={() => handleStepClick(row, "APPUNTAMENTO")}
-                            />
-                          </div>
-                          {/* Live Agenda Badge */}
-                          {agenda && (
-                            <div className="mt-1.5 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg px-2 py-0.5 text-[10px] font-semibold flex items-center justify-center gap-1 shadow-2xs">
-                              <CalendarCheck size={11} className="text-indigo-600 shrink-0" />
-                              <span>
-                                {new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                            {/* Step 2: Appuntamento */}
+                            <div className="flex flex-col items-center gap-1 w-20">
+                              <StepIcon
+                                active={row.contattato && !row.preso_appuntamento}
+                                completed={row.preso_appuntamento}
+                                icon={Calendar}
+                                colorClass="teal"
+                                onClick={() => handleStepClick(row, "APPUNTAMENTO")}
+                              />
+                              <span
+                                className={cn(
+                                  "text-[10px] font-medium uppercase",
+                                  row.preso_appuntamento ? "text-teal-600 font-semibold" : "text-slate-300"
+                                )}
+                              >
+                                Appuntam.
                               </span>
-                              {agenda.time && <span>{agenda.time.slice(0, 5)}</span>}
-                              {agenda.consulente_name && (
-                                <span className="text-indigo-600 font-normal">({agenda.consulente_name})</span>
+                            </div>
+
+                            <div
+                              className={cn(
+                                "w-4 h-0.5 mb-4",
+                                row.preso_appuntamento && row.consulenza_fatta ? "bg-teal-200" : "bg-slate-100"
                               )}
+                            />
+
+                            {/* Step 3: Fatta */}
+                            <div className="flex flex-col items-center gap-1 w-20">
+                              <StepIcon
+                                active={row.preso_appuntamento && !row.consulenza_fatta}
+                                completed={row.consulenza_fatta}
+                                icon={CheckCircle2}
+                                colorClass="emerald"
+                                onClick={() => handleStepClick(row, "FATTA")}
+                              />
+                              <span
+                                className={cn(
+                                  "text-[10px] font-medium uppercase",
+                                  row.consulenza_fatta ? "text-emerald-600 font-semibold" : "text-slate-300"
+                                )}
+                              >
+                                Fatta
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Date Info below stepper */}
+                          {(row.preso_appuntamento || agenda) && (
+                            <div className="mt-2.5 flex flex-col items-center gap-1">
+                              <div
+                                className={cn(
+                                  "text-xs flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full font-semibold shadow-2xs",
+                                  agenda
+                                    ? "bg-indigo-50 border border-indigo-200 text-indigo-900"
+                                    : "bg-teal-50 border border-teal-200 text-teal-800"
+                                )}
+                              >
+                                <Calendar className={cn("w-3 h-3", agenda ? "text-indigo-600" : "text-teal-600")} />
+                                <span>
+                                  {agenda
+                                    ? `${new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}${
+                                        agenda.time ? ` ${agenda.time.slice(0, 5)}` : ""
+                                      }`
+                                    : formatDate(row.data_consulenza) || "Data non fissata"}
+                                </span>
+                                {agenda?.consulente_name && (
+                                  <span className="font-normal opacity-80">({agenda.consulente_name})</span>
+                                )}
+                              </div>
                             </div>
                           )}
-                          {!agenda && !row.preso_appuntamento && (
-                            <div className="text-center mt-1">
+                          {!row.preso_appuntamento && !agenda && (
+                            <div className="text-center mt-2">
                               <button
                                 type="button"
                                 onClick={() => handleBookInAgenda(row)}
-                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
+                                className="text-[11px] font-bold text-teal-700 hover:text-teal-900 hover:underline bg-teal-50/80 border border-teal-200/80 px-2.5 py-0.5 rounded-full transition-colors"
                               >
-                                + Agenda
+                                + Fissa in Agenda
                               </button>
                             </div>
                           )}
                         </td>
 
-                        {/* 7. Step 3: Consulenza Fatta */}
-                        <td className="py-3 px-3.5 text-center">
-                          <div className="flex justify-center">
-                            <StepIcon
-                              completed={row.consulenza_fatta}
-                              icon={Check}
-                              colorClass="emerald"
-                              onClick={() => handleStepClick(row, "FATTA")}
-                            />
-                          </div>
-                        </td>
-
-                        {/* 8. Esito Commerciale */}
-                        <td className="py-3 px-3.5">
+                        {/* 4. Esito Commerciale */}
+                        <td className="py-4 px-3 align-top max-w-[170px]">
                           {row.esito ? (
                             <div className="space-y-1">
                               <button
@@ -944,7 +1013,7 @@ export default function RinnoviClient() {
 
                               {row.nuovo_abbonamento_name && row.esito === "RINNOVO" && (
                                 <div className="text-[10px] font-bold text-emerald-700">
-                                  {row.nuovo_abbonamento_name}
+                                  {cleanSubscription(row.nuovo_abbonamento_name)}
                                 </div>
                               )}
 
@@ -955,8 +1024,9 @@ export default function RinnoviClient() {
                               )}
 
                               {row.data_risposta && row.esito === "IN ATTESA" && (
-                                <div className="text-[10px] font-semibold text-amber-700">
-                                  Risp: {new Date(row.data_risposta).toLocaleDateString("it-IT")}
+                                <div className="text-[10px] font-semibold text-amber-700 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Risp: {formatDate(row.data_risposta)}
                                 </div>
                               )}
                             </div>
@@ -964,15 +1034,15 @@ export default function RinnoviClient() {
                             <button
                               type="button"
                               onClick={() => handleStepClick(row, "FATTA")}
-                              className="text-[11px] text-slate-400 hover:text-slate-700 italic"
+                              className="text-[11px] text-slate-400 hover:text-slate-700 italic border border-dashed border-slate-200 hover:border-slate-300 px-2 py-1 rounded-lg transition-colors"
                             >
                               + Registra esito
                             </button>
                           )}
                         </td>
 
-                        {/* 9. Note Commerciali */}
-                        <td className="py-3 px-3.5">
+                        {/* 5. Note Commerciali */}
+                        <td className="py-4 px-3 align-top max-w-[220px]">
                           {editingNoteId === row.id ? (
                             <div className="flex items-center gap-1.5">
                               <input
@@ -1004,7 +1074,7 @@ export default function RinnoviClient() {
                                 setEditingNoteId(row.id);
                                 setNoteDraft(row.note || "");
                               }}
-                              className="cursor-pointer text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 p-1 rounded text-xs min-h-[26px] flex items-center transition-colors max-w-[240px]"
+                              className="cursor-pointer text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 p-1.5 rounded text-xs min-h-[26px] flex items-center transition-colors max-w-[220px]"
                               title="Clicca per modificare la nota"
                             >
                               {row.note ? (
@@ -1014,6 +1084,20 @@ export default function RinnoviClient() {
                               )}
                             </div>
                           )}
+                        </td>
+
+                        {/* 6. Azioni */}
+                        <td className="py-4 pr-4 align-top text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setDetailClientId(row.client_id)}
+                              className="p-1.5 hover:bg-cyan-50 text-slate-400 hover:text-cyan-700 rounded-lg transition-colors"
+                              title="Apri scheda anagrafica cliente"
+                            >
+                              <History size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1232,14 +1316,13 @@ export default function RinnoviClient() {
       <EntryDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSaved={handleEntryDrawerSave}
+        onSave={handleEntryDrawerSave}
         initialData={drawerInitialData}
       />
 
       {/* CLIENT DETAIL DRAWER */}
       <ClientDetailDrawer
         clientId={detailClientId}
-        isOpen={!!detailClientId}
         onClose={() => setDetailClientId(null)}
       />
     </div>

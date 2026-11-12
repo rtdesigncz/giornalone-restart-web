@@ -61,7 +61,7 @@ export async function GET(req: Request) {
           client_id: c.id,
           mese_riferimento: mese,
           scadenza_originaria: c.data_scadenza,
-          abbonamento_originario: c.pacchetto_originale,
+          abbonamento_originario: c.pacchetto_originale ? c.pacchetto_originale.replace(/^=+\s*/, "").trim() : null,
           disciplina: c.disciplina || "ALTRO",
           prezzo_originario: c.prezzo || 0,
           contattato: false,
