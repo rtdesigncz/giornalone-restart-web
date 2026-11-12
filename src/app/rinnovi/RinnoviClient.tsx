@@ -1587,28 +1587,16 @@ export default function RinnoviClient() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                {!noteModal.isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setNoteModal((prev) => ({ ...prev, isEditing: true }))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-all shadow-xs"
-                    title="Modifica nota"
-                  >
-                    <Pencil size={13} />
-                    <span>Modifica</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setNoteModal({ isOpen: false, item: null, isEditing: false, draft: "", isSaving: false })
-                  }
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all ml-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setNoteModal({ isOpen: false, item: null, isEditing: false, draft: "", isSaving: false })
+                }
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all"
+                title="Chiudi"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Content */}
