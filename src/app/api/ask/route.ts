@@ -153,7 +153,7 @@ WITH entries_clean AS (
   SELECT 
     e.id, e.entry_date, e.entry_time, e.section, e.nome, e.cognome, e.telefono,
     e.venduto, e.presentato, e.assente, e.miss, e.negativo, e.note, e.fonte,
-    e.consulente_id, e.tipo_abbonamento_id,
+    e.consulente_id, e.tipo_abbonamento_id, e.created_at,
     RIGHT(regexp_replace(COALESCE(e.telefono, ''), '[^0-9]', '', 'g'), 9) AS clean_phone,
     length(regexp_replace(COALESCE(e.telefono, ''), '[^0-9]', '', 'g')) AS phone_len,
     UPPER(TRIM(COALESCE(e.cognome, ''))) AS clean_cognome,
@@ -165,6 +165,51 @@ WITH entries_clean AS (
    - Includi SEMPRE OBBLIGATORIAMENTE \`e2.id <> e1.id\` (altrimenti la riga di acquisto fa match con se stessa se appartiene alla sezione rinnovi!).
    - Condizione di match persona:
      \`((e1.phone_len >= 9 AND e2.phone_len >= 9 AND e1.clean_phone = e2.clean_phone) OR (length(e1.clean_cognome) >= 2 AND length(e1.clean_nome) >= 2 AND e1.clean_cognome = e2.clean_cognome AND e1.clean_nome = e2.clean_nome))\`
+
+REGOLA TASSATIVA PER I "MISS" / "MISS REALI" / "MISS DI UN PERIODO" (SENZA DUPLICATI):
+Quando l'utente chiede i **miss** di un periodo (elenco, conteggio, recupero miss), NON limitarti a \`WHERE miss = TRUE\`: usa SEMPRE questa definizione esatta di business tramite \`entries_clean\`:
+1. **Sezioni valide ONLY:** \`section IN ('APPUNTAMENTI (Pianificazione)', 'TOUR SPONTANEI', 'MISS CON APPUNTAMENTO')\`. ESCLUDI sempre \`'APPUNTAMENTI RINNOVI E INTEGRAZIONI'\`, \`'APPUNTAMENTI VERIFICHE DEL BISOGNO'\`, \`'APPUNTAMENTI TELEFONICI'\`.
+2. **Almeno un vero MISS:** nel periodo richiesto (e nelle 3 sezioni valide), la persona deve avere almeno una riga con \`miss = TRUE\` (un puro \`assente = TRUE\` che non ha mai avuto \`miss = TRUE\` nel periodo NON è un miss!).
+3. **Nessun esito conclusivo successivo:** da quella data in poi (\`e2.entry_date >= e1.entry_date\` AND \`e2.id <> e1.id\`, ANCHE oltre la fine del periodo chiesto), NON deve esistere nessuna riga della stessa persona con \`venduto = TRUE\` oppure \`negativo = TRUE\`.
+4. **Niente duplicati (1 riga per persona, l'appuntamento più recente tra Miss o Assente):** tra le righe del periodo nelle 3 sezioni valide in cui \`(miss = TRUE OR assente = TRUE)\` per quella persona idonea, restituisci UNA sola riga per persona prendendo quella più recente (\`ORDER BY person_key, entry_date DESC, entry_time DESC NULLS LAST, created_at DESC\` con \`DISTINCT ON (person_key)\`, dove \`person_key\` è \`CASE WHEN phone_len >= 9 THEN 'P:' || clean_phone ELSE 'N:' || clean_cognome || '|' || clean_nome END\`).
+Schema SQL di riferimento da seguire per i Miss di un periodo \`[DATA_INIZIO, DATA_FINE]\`:
+\`\`\`sql
+WITH entries_clean AS (...),
+miss_candidates AS (
+  SELECT e1.*
+  FROM entries_clean e1
+  WHERE e1.entry_date >= 'DATA_INIZIO' AND e1.entry_date <= 'DATA_FINE'
+    AND e1.section IN ('APPUNTAMENTI (Pianificazione)', 'TOUR SPONTANEI', 'MISS CON APPUNTAMENTO')
+    AND (e1.miss = TRUE OR e1.assente = TRUE)
+    AND EXISTS (
+      SELECT 1 FROM entries_clean em
+      WHERE em.entry_date >= 'DATA_INIZIO' AND em.entry_date <= 'DATA_FINE'
+        AND em.section IN ('APPUNTAMENTI (Pianificazione)', 'TOUR SPONTANEI', 'MISS CON APPUNTAMENTO')
+        AND em.miss = TRUE
+        AND ((em.phone_len >= 9 AND e1.phone_len >= 9 AND em.clean_phone = e1.clean_phone)
+          OR (length(em.clean_cognome) >= 2 AND length(em.clean_nome) >= 2 AND em.clean_cognome = e1.clean_cognome AND em.clean_nome = e1.clean_nome))
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM entries_clean e2
+      WHERE e2.id <> e1.id
+        AND (e2.venduto = TRUE OR e2.negativo = TRUE)
+        AND e2.entry_date >= e1.entry_date
+        AND ((e1.phone_len >= 9 AND e2.phone_len >= 9 AND e1.clean_phone = e2.clean_phone)
+          OR (length(e1.clean_cognome) >= 2 AND length(e1.clean_nome) >= 2 AND e1.clean_cognome = e2.clean_cognome AND e1.clean_nome = e2.clean_nome))
+    )
+),
+deduped AS (
+  SELECT DISTINCT ON (CASE WHEN phone_len >= 9 THEN 'P:' || clean_phone ELSE 'N:' || clean_cognome || '|' || clean_nome END) *
+  FROM miss_candidates
+  ORDER BY (CASE WHEN phone_len >= 9 THEN 'P:' || clean_phone ELSE 'N:' || clean_cognome || '|' || clean_nome END),
+    entry_date DESC, entry_time DESC NULLS LAST, created_at DESC
+)
+SELECT d.entry_date AS data_piu_recente, d.section AS sezione, d.nome, d.cognome, d.telefono, d.miss, d.assente, c.name AS consulente, d.note
+FROM deduped d
+LEFT JOIN consulenti c ON d.consulente_id = c.id
+ORDER BY d.entry_date DESC
+LIMIT 500
+\`\`\`
 
 REGOLE TECNICHE DI SICUREZZA:
 - Genera SOLO query SELECT o WITH ... SELECT.
