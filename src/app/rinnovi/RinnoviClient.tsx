@@ -973,12 +973,16 @@ export default function RinnoviClient() {
                               <div
                                 className={cn(
                                   "text-xs flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full font-semibold shadow-2xs",
-                                  agenda
+                                  agenda?.assente
+                                    ? "bg-rose-50 border border-rose-200 text-rose-800"
+                                    : agenda?.miss && !agenda?.presentato
+                                    ? "bg-amber-50 border border-amber-200 text-amber-800"
+                                    : agenda
                                     ? "bg-indigo-50 border border-indigo-200 text-indigo-900"
                                     : "bg-teal-50 border border-teal-200 text-teal-800"
                                 )}
                               >
-                                <Calendar className={cn("w-3 h-3", agenda ? "text-indigo-600" : "text-teal-600")} />
+                                <Calendar className={cn("w-3 h-3", agenda?.assente ? "text-rose-600" : agenda?.miss && !agenda?.presentato ? "text-amber-600" : agenda ? "text-indigo-600" : "text-teal-600")} />
                                 <span>
                                   {agenda
                                     ? `${new Date(agenda.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}${
@@ -990,6 +994,36 @@ export default function RinnoviClient() {
                                   <span className="font-normal opacity-80">({agenda.consulente_name})</span>
                                 )}
                               </div>
+
+                              {/* Flag esplicito se l'appuntamento è saltato o è Miss senza presentazione */}
+                              {agenda?.assente && (
+                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                                    Assente - Da Riprogrammare
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBookInAgenda(row)}
+                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline"
+                                  >
+                                    + Riprogramma
+                                  </button>
+                                </div>
+                              )}
+                              {agenda?.miss && !agenda?.presentato && (
+                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                    Miss - Da Riprogrammare
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBookInAgenda(row)}
+                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline"
+                                  >
+                                    + Riprogramma
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                           {!row.preso_appuntamento && !agenda && (

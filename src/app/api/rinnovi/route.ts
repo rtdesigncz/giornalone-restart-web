@@ -151,8 +151,21 @@ export async function GET(req: Request) {
         if (agenda.venduto) {
           esito = "RINNOVO";
           nuovoAbb = agenda.tipo_abbonamento?.name || "Rinnovato";
-        } else if (agenda.miss) {
+        } else if (agenda.miss && agenda.presentato) {
+          // Cliente PRESENTATO alla consulenza ma NON ha rinnovato subito -> IN ATTESA
           esito = "IN ATTESA";
+        }
+        // NOTA: Se l'appuntamento è MISS e NON presentato, NON è "IN ATTESA", ma va riprogrammato!
+      }
+
+      // If agenda marked assente or miss without presentato, the consultation did NOT take place
+      const daRiprogrammare = agenda ? (agenda.assente || (agenda.miss && !agenda.presentato)) : false;
+      if (daRiprogrammare) {
+        if (esito === "IN ATTESA") {
+          esito = null;
+        }
+        if (!it.consulenza_fatta) {
+          consulenzaFatta = false;
         }
       }
 
@@ -167,6 +180,7 @@ export async function GET(req: Request) {
         esito,
         nuovo_abbonamento_name: nuovoAbb,
         assente,
+        da_riprogrammare: daRiprogrammare,
         agenda_entry: agenda
           ? {
               id: agenda.id,
