@@ -21,6 +21,8 @@ import {
   Sparkles,
   Users,
   ChevronDown,
+  Pencil,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
@@ -239,9 +241,20 @@ export default function RinnoviClient() {
   const [detailClientId, setDetailClientId] = useState<string | null>(null);
   const [pendingAgendaItem, setPendingAgendaItem] = useState<any>(null);
 
-  // Inline Note Editing
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [noteDraft, setNoteDraft] = useState("");
+  // Note Popup Modal & Editor State
+  const [noteModal, setNoteModal] = useState<{
+    isOpen: boolean;
+    item: any | null;
+    isEditing: boolean;
+    draft: string;
+    isSaving: boolean;
+  }>({
+    isOpen: false,
+    item: null,
+    isEditing: false,
+    draft: "",
+    isSaving: false,
+  });
 
   // Action Modals State
   const [actionModal, setActionModal] = useState<{
@@ -959,28 +972,27 @@ export default function RinnoviClient() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3 pl-4 cursor-pointer hover:text-slate-800" onClick={() => toggleSort("cliente")}>
+                  <th className="py-3 pl-4 pr-3 cursor-pointer hover:text-slate-800 w-[22%]" onClick={() => toggleSort("cliente")}>
                     <div className="flex items-center gap-1">
                       <span>Cliente</span>
                       <ArrowUpDown size={12} />
                     </div>
                   </th>
-                  <th className="py-3 px-3 text-center cursor-pointer hover:text-slate-800" onClick={() => toggleSort("scadenza")}>
+                  <th className="py-3 px-3 text-center cursor-pointer hover:text-slate-800 w-[18%]" onClick={() => toggleSort("scadenza")}>
                     <div className="flex items-center justify-center gap-1">
                       <span>Abbonamento / Scadenza</span>
                       <ArrowUpDown size={12} />
                     </div>
                   </th>
-                  <th className="py-3 px-3 text-center">Stato / Data App.</th>
-                  <th className="py-3 px-3">Esito</th>
-                  <th className="py-3 px-3">Note</th>
-                  <th className="py-3 pr-4 text-right">Azioni</th>
+                  <th className="py-3 px-3 text-center w-[28%]">Stato / Data App.</th>
+                  <th className="py-3 px-3 text-center w-[14%]">Esito</th>
+                  <th className="py-3 pl-3 pr-4 w-[18%]">Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-400">
+                    <td colSpan={5} className="py-16 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw size={20} className="animate-spin text-cyan-600" />
                         <span>Caricamento campagna rinnovi {formatMonthHuman(mese)}...</span>
@@ -989,7 +1001,7 @@ export default function RinnoviClient() {
                   </tr>
                 ) : sortedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-400">
+                    <td colSpan={5} className="py-16 text-center text-slate-400">
                       Nessun cliente trovato per {formatMonthHuman(mese)} con i filtri selezionati.
                     </td>
                   </tr>
@@ -1014,7 +1026,7 @@ export default function RinnoviClient() {
                         )}
                       >
                         {/* 1. Cliente */}
-                        <td className="py-4 pl-4 align-top max-w-[240px]">
+                        <td className="py-4 pl-4 pr-3 align-top max-w-[260px]">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5">
                               <span
@@ -1058,10 +1070,10 @@ export default function RinnoviClient() {
                         </td>
 
                         {/* 2. Abbonamento / Scadenza */}
-                        <td className="py-4 px-3 align-top max-w-[200px] text-center">
+                        <td className="py-4 px-3 align-top max-w-[220px] text-center">
                           <div className="flex flex-col gap-1 items-center">
                             <div
-                              className="font-bold text-slate-800 text-sm tracking-wide truncate max-w-[190px]"
+                              className="font-bold text-slate-800 text-sm tracking-wide truncate max-w-[210px]"
                               title={row.abbonamento_originario || ""}
                             >
                               {cleanSubscription(row.abbonamento_originario) || <span className="text-slate-300">—</span>}
@@ -1302,61 +1314,38 @@ export default function RinnoviClient() {
                         </td>
 
                         {/* 5. Note Commerciali */}
-                        <td className="py-4 px-3 align-top max-w-[220px]">
-                          {editingNoteId === row.id ? (
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                autoFocus
-                                value={noteDraft}
-                                onChange={(e) => setNoteDraft(e.target.value)}
-                                className="text-xs p-1 rounded border border-cyan-400 focus:outline-none w-48 text-slate-800"
-                              />
-                              <button
-                                onClick={() => {
-                                  updateItem(row.id, { note: noteDraft });
-                                  setEditingNoteId(null);
-                                }}
-                                className="p-1 rounded bg-slate-900 text-white hover:bg-slate-800"
-                              >
-                                <Check size={12} />
-                              </button>
-                              <button
-                                onClick={() => setEditingNoteId(null)}
-                                className="p-1 rounded text-slate-400 hover:text-slate-600"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              onClick={() => {
-                                setEditingNoteId(row.id);
-                                setNoteDraft(row.note || "");
-                              }}
-                              className="cursor-pointer text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 p-1.5 rounded text-xs min-h-[26px] flex items-center transition-colors max-w-[220px]"
-                              title="Clicca per modificare la nota"
-                            >
-                              {row.note ? (
-                                <span className="italic truncate">{row.note}</span>
-                              ) : (
-                                <span className="text-slate-300 text-[11px]">+ Aggiungi nota</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* 6. Azioni */}
-                        <td className="py-4 pr-4 align-top text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setDetailClientId(row.client_id)}
-                              className="p-1.5 hover:bg-cyan-50 text-slate-400 hover:text-cyan-700 rounded-lg transition-colors"
-                              title="Apri scheda anagrafica cliente"
-                            >
-                              <History size={15} />
-                            </button>
+                        <td className="py-4 pl-3 pr-4 align-top min-w-[190px] max-w-[320px]">
+                          <div
+                            onClick={() => {
+                              setNoteModal({
+                                isOpen: true,
+                                item: row,
+                                isEditing: !row.note,
+                                draft: row.note || "",
+                                isSaving: false,
+                              });
+                            }}
+                            className="group cursor-pointer rounded-xl p-2 transition-all hover:bg-slate-100/80 border border-transparent hover:border-slate-200"
+                            title="Clicca per leggere o modificare la nota"
+                          >
+                            {row.note ? (
+                              <div className="flex items-start justify-between gap-1.5">
+                                <p className="text-xs text-slate-700 leading-relaxed line-clamp-2 italic break-words flex-1 group-hover:text-slate-900">
+                                  {row.note}
+                                </p>
+                                <span
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 group-hover:text-cyan-600 shrink-0 mt-0.5"
+                                  title="Apri o modifica nota"
+                                >
+                                  <Pencil size={12} />
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-slate-300 text-xs italic group-hover:text-cyan-600">
+                                <Pencil size={11} className="text-slate-300 group-hover:text-cyan-500" />
+                                <span>+ Aggiungi nota</span>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1579,6 +1568,169 @@ export default function RinnoviClient() {
         items={items}
         listName={formatMonthHuman(mese)}
       />
+
+      {/* NOTE POPUP MODAL (VIEW & EDIT) */}
+      {noteModal.isOpen && noteModal.item && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-slate-950/20 w-full max-w-lg overflow-hidden flex flex-col border border-slate-200/80 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100/80">
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 tracking-tight">Note Commerciali</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {noteModal.item.client?.cognome} {noteModal.item.client?.nome}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {!noteModal.isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => setNoteModal((prev) => ({ ...prev, isEditing: true }))}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-all shadow-xs"
+                    title="Modifica nota"
+                  >
+                    <Pencil size={13} />
+                    <span>Modifica</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNoteModal({ isOpen: false, item: null, isEditing: false, draft: "", isSaving: false })
+                  }
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-all ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 font-sans">
+              {noteModal.isEditing ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span>Modifica nota cliente</span>
+                    <span className="text-[11px] font-normal normal-case text-slate-400">
+                      {noteModal.draft.length} caratteri
+                    </span>
+                  </div>
+                  <textarea
+                    value={noteModal.draft}
+                    onChange={(e) => setNoteModal((prev) => ({ ...prev, draft: e.target.value }))}
+                    placeholder="Inserisci note commerciali, dettagli o promemoria..."
+                    rows={6}
+                    autoFocus
+                    className="w-full text-sm p-4 rounded-2xl border border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 text-slate-800 placeholder:text-slate-400 resize-y leading-relaxed bg-slate-50/50 shadow-inner"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span>Contenuto della nota</span>
+                    {noteModal.item.note && (
+                      <span className="text-[11px] font-normal normal-case text-slate-400">
+                        {noteModal.item.note.length} caratteri
+                      </span>
+                    )}
+                  </div>
+                  {noteModal.item.note ? (
+                    <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-sm text-slate-800 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto font-normal">
+                      {noteModal.item.note}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setNoteModal((prev) => ({ ...prev, isEditing: true }))}
+                      className="bg-slate-50 border border-dashed border-slate-200 hover:border-cyan-300 hover:bg-cyan-50/30 rounded-2xl p-8 text-center text-sm text-slate-400 italic cursor-pointer transition-all"
+                    >
+                      Nessuna nota inserita per questo cliente.
+                      <div className="text-xs text-cyan-600 font-bold not-italic mt-2 flex items-center justify-center gap-1">
+                        <Pencil size={12} /> Clicca qui per aggiungerne una
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end gap-3 font-sans">
+              {noteModal.isEditing ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={noteModal.isSaving}
+                    onClick={() =>
+                      setNoteModal((prev) => ({
+                        ...prev,
+                        isEditing: false,
+                        draft: prev.item?.note || "",
+                      }))
+                    }
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    disabled={noteModal.isSaving}
+                    onClick={async () => {
+                      const newNote = noteModal.draft.trim();
+                      setNoteModal((prev) => ({ ...prev, isSaving: true }));
+                      await updateItem(noteModal.item.id, { note: newNote || null });
+                      setNoteModal((prev) => ({
+                        ...prev,
+                        isSaving: false,
+                        isEditing: false,
+                        item: { ...prev.item, note: newNote || null },
+                      }));
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 shadow-md shadow-cyan-200 transition-all flex items-center gap-1.5"
+                  >
+                    {noteModal.isSaving ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Salvataggio...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={13} />
+                        <span>Salva Nota</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setNoteModal((prev) => ({ ...prev, isEditing: true }))}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition-colors flex items-center gap-1.5"
+                  >
+                    <Pencil size={13} />
+                    <span>Modifica Nota</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNoteModal({ isOpen: false, item: null, isEditing: false, draft: "", isSaving: false })
+                    }
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    Chiudi
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AGENDA ENTRY DRAWER */}
       <EntryDrawer
