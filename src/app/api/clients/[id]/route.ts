@@ -31,30 +31,57 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // 2. Fetch linked agenda entries
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, entry_date, entry_time, section, venduto, presentato, contattato, note, assente, comeback, miss, consulenti(nome)")
+      .select("id, entry_date, entry_time, section, venduto, presentato, contattato, note, assente, comeback, miss, consulente:consulenti(name)")
       .eq("client_id", id)
       .order("entry_date", { ascending: false })
       .order("entry_time", { ascending: false });
 
-    // Also look for matching unlinked entries by phone or name
-    let unlinkedMatches: any[] = [];
-    if (client.telefono) {
-      const { data: phoneEntries } = await supabase
-        .from("entries")
-        .select("id, entry_date, entry_time, section, venduto, presentato, contattato, note, assente, comeback, miss, consulenti(nome)")
-        .is("client_id", null)
-        .eq("telefono", client.telefono)
-        .order("entry_date", { ascending: false });
-      unlinkedMatches = phoneEntries || [];
+    if (entriesErr) {
+      console.error("Error fetching linked entries:", entriesErr);
     }
 
-    const allEntries = [...(entries || []), ...unlinkedMatches];
+    // Also look for matching unlinked entries by phone or name
+    let unlinkedMatches: any[] = [];
+    const cleanPhone = (client.telefono || "").replace(/[^\d]/g, "");
+
+    let unlinkedQuery = supabase
+      .from("entries")
+      .select("id, entry_date, entry_time, section, venduto, presentato, contattato, note, assente, comeback, miss, consulente:consulenti(name)")
+      .is("client_id", null);
+
+    if (cleanPhone && cleanPhone.length >= 6) {
+      unlinkedQuery = unlinkedQuery.or(
+        `telefono.ilike.%${cleanPhone}%,and(cognome.ilike.${client.cognome},nome.ilike.${client.nome})`
+      );
+    } else if (client.cognome && client.nome) {
+      unlinkedQuery = unlinkedQuery.ilike("cognome", client.cognome).ilike("nome", client.nome);
+    }
+
+    const { data: unlinkedData } = await unlinkedQuery.order("entry_date", { ascending: false });
+    unlinkedMatches = unlinkedData || [];
+
+    // Deduplicate and combine
+    const seenIds = new Set<string>();
+    const allEntries: any[] = [];
+    for (const e of [...(entries || []), ...unlinkedMatches]) {
+      if (!seenIds.has(e.id)) {
+        seenIds.add(e.id);
+        allEntries.push(e);
+      }
+    }
+
+    // Auto-link any newly matched unlinked entries
+    if (unlinkedMatches.length > 0) {
+      const idsToLink = unlinkedMatches.map((x) => x.id);
+      await supabase.from("entries").update({ client_id: id }).in("id", idsToLink);
+    }
 
     return NextResponse.json({
       client,
       entries: allEntries,
     });
   } catch (err: any) {
+    console.error("Error in get client detail:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }

@@ -339,10 +339,10 @@ export default function ClientDetailDrawer({
                           </div>
 
                           <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                            {entry.consulenti?.nome && (
+                            {(entry.consulente?.name || entry.consulenti?.name || entry.consulenti?.nome) && (
                               <span className="flex items-center gap-1">
                                 <User size={11} className="text-slate-400" />
-                                <b>{entry.consulenti.nome}</b>
+                                <b>{entry.consulente?.name || entry.consulenti?.name || entry.consulenti?.nome}</b>
                               </span>
                             )}
                             {entry.venduto && (
