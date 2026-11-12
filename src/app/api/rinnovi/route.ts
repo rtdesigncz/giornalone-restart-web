@@ -31,9 +31,10 @@ export async function GET(req: Request) {
     const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const mese = (searchParams.get("mese") || defaultMonth).trim();
     const q = (searchParams.get("q") || "").trim();
-    const filtro = searchParams.get("filtro") || "ALL"; // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
+    const filtro = searchParams.get("filtro") || "ALL"; // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, VENDUTI, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
     const disciplinaFilter = searchParams.get("disciplina") || "ALL";
     const motivoFilter = searchParams.get("motivo") || "ALL";
+    const abbonamentoFilter = (searchParams.get("abbonamento") || "").trim();
 
     const { startDate, endDate, wStart, wEnd } = getMonthBounds(mese);
 
@@ -254,6 +255,12 @@ export async function GET(req: Request) {
       filtered = filtered.filter((it: any) => (it.motivo_negativo || "").toUpperCase() === motivoFilter.toUpperCase());
     }
 
+    if (abbonamentoFilter && abbonamentoFilter !== "ALL") {
+      filtered = filtered.filter((it: any) =>
+        (it.nuovo_abbonamento_name || "").toUpperCase().includes(abbonamentoFilter.toUpperCase())
+      );
+    }
+
     if (filtro && filtro !== "ALL") {
       switch (filtro) {
         case "DA_CONTATTARE":
@@ -270,6 +277,9 @@ export async function GET(req: Request) {
           break;
         case "CONSULENZE_FATTE":
           filtered = filtered.filter((it: any) => it.consulenza_fatta);
+          break;
+        case "VENDUTI":
+          filtered = filtered.filter((it: any) => ["RINNOVO", "INTEGRAZIONE"].includes((it.esito || "").toUpperCase()));
           break;
         case "RINNOVO":
         case "INTEGRAZIONE":
@@ -292,16 +302,40 @@ export async function GET(req: Request) {
     const integrazioni = enrichedList.filter((x: any) => x.esito === "INTEGRAZIONE").length;
     const inAttesa = enrichedList.filter((x: any) => x.esito === "IN ATTESA").length;
     const negativi = enrichedList.filter((x: any) => x.esito === "NEGATIVO").length;
+    const venduti = rinnovati + integrazioni;
     const tassoChiusura = consulenzeFatte > 0 ? Math.round((rinnovati / consulenzeFatte) * 100) : 0;
+
+    // Breakdown nuovi abbonamenti
+    const abbMap = new Map<string, number>();
+    enrichedList.forEach((r: any) => {
+      const n = r.nuovo_abbonamento_name?.trim();
+      if (!n) return;
+      const clean = n.replace(/^=+\s*/, "").trim().toUpperCase();
+      abbMap.set(clean, (abbMap.get(clean) || 0) + 1);
+    });
+    const nuoviAbb = Array.from(abbMap.entries()).map(([name, cnt]) => ({ name, cnt }));
 
     // Negativi reasons breakdown
     const motiviCounts: Record<string, number> = {};
     enrichedList
       .filter((x: any) => x.esito === "NEGATIVO")
       .forEach((x: any) => {
-        const m = x.motivo_negativo || "NON SPECIFICATO";
+        const m = (x.motivo_negativo || "ALTRO").toUpperCase();
         motiviCounts[m] = (motiviCounts[m] || 0) + 1;
       });
+
+    const MOTIVI_STANDARD = [
+      { value: "INSODDISFATTO", label: "Insoddisfatto" },
+      { value: "NON FREQUENTA", label: "Non frequenta" },
+      { value: "TRASFERIMENTO", label: "Trasferimento" },
+      { value: "INFORTUNIO", label: "Infortunio" },
+      { value: "ALTRO", label: "Altro" },
+    ];
+    const motiviNegativo = MOTIVI_STANDARD.map((m) => {
+      const cnt = motiviCounts[m.value] || 0;
+      const pct = negativi > 0 ? Math.round((cnt / negativi) * 100) : 0;
+      return { value: m.value, label: m.label, cnt, pct };
+    });
 
     // 7. Curated available months list
     // Get unique months from rinnovi_items + past 2 months + next 6 months
@@ -338,10 +372,13 @@ export async function GET(req: Request) {
         consulenzeFatte,
         rinnovati,
         integrazioni,
+        venduti,
         inAttesa,
         negativi,
         tassoChiusura,
         motiviCounts,
+        motiviNegativo,
+        nuoviAbb,
       },
       availableMonths,
     });

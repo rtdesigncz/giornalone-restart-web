@@ -19,6 +19,8 @@ import {
   Check,
   ArrowUpDown,
   Sparkles,
+  Users,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
@@ -212,10 +214,20 @@ export default function RinnoviClient() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [filtro, setFiltro] = useState("ALL"); // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
+  const [filtro, setFiltro] = useState("ALL"); // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, VENDUTI, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
   const [disciplinaFilter, setDisciplinaFilter] = useState("ALL");
+  const [selectedAbb, setSelectedAbb] = useState<string | null>(null);
+  const [selectedMotivoNegativo, setSelectedMotivoNegativo] = useState<string | null>(null);
+  const [showNegativiKpi, setShowNegativiKpi] = useState(false);
   const [showNegativiModal, setShowNegativiModal] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+
+  const resetFiltri = () => {
+    setFiltro("ALL");
+    setSelectedAbb(null);
+    setSelectedMotivoNegativo(null);
+    setShowNegativiKpi(false);
+  };
 
   // Sorting
   const [sortKey, setSortKey] = useState<"scadenza" | "cliente">("scadenza");
@@ -266,6 +278,8 @@ export default function RinnoviClient() {
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
       if (filtro !== "ALL") params.set("filtro", filtro);
       if (disciplinaFilter !== "ALL") params.set("disciplina", disciplinaFilter);
+      if (selectedAbb) params.set("abbonamento", selectedAbb);
+      if (selectedMotivoNegativo) params.set("motivo", selectedMotivoNegativo);
 
       const res = await fetch(`/api/rinnovi?${params.toString()}`);
       const data = await res.json();
@@ -282,7 +296,7 @@ export default function RinnoviClient() {
     } finally {
       setLoading(false);
     }
-  }, [mese, searchQuery, filtro, disciplinaFilter]);
+  }, [mese, searchQuery, filtro, disciplinaFilter, selectedAbb, selectedMotivoNegativo]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -548,213 +562,394 @@ export default function RinnoviClient() {
         </div>
       </div>
 
-      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-5 space-y-5">
-        {/* KPI Cards Banner */}
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-          {/* 1. Totale In Scadenza */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span>Totale</span>
-              <Calendar size={14} className="text-slate-400" />
+      {/* NEW KPI SAAS CARDS - IDENTICAL TO CONSULENZE */}
+      <div className="bg-slate-50 border-b border-slate-200 py-5 sm:py-6 px-4 sm:px-6">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4 max-w-[1700px] mx-auto">
+          {/* 1. Totale */}
+          <div
+            onClick={() => resetFiltri()}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "ALL" && !selectedAbb && !selectedMotivoNegativo
+                ? "ring-2 ring-slate-400 border-transparent shadow-sm"
+                : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Totale
+              </h3>
+              <Users className="w-4 h-4 text-slate-400" />
             </div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{counts.total}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">{formatMonthHuman(mese)}</div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.total || 0}</p>
           </div>
 
-          {/* 2. Contattati */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span>Contattati</span>
-              <Phone size={14} className="text-cyan-600" />
+          {/* 2. Da Contattare */}
+          <div
+            onClick={() => {
+              const next = filtro === "DA_CONTATTARE" ? "ALL" : "DA_CONTATTARE";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "DA_CONTATTARE" ? "ring-2 ring-amber-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Da Contattare
+              </h3>
+              <AlertCircle className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-black text-cyan-600 mt-1">{counts.contattati}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">
-              {counts.total > 0 ? `${Math.round((counts.contattati / counts.total) * 100)}%` : "0%"} su {counts.total}
-            </div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.daContattare || 0}</p>
           </div>
 
-          {/* 3. Appuntamenti Da Fare */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-indigo-700 uppercase tracking-wider">
-              <span>App. Da Fare</span>
-              <CalendarCheck size={14} className="text-indigo-600" />
+          {/* 3. Contattati */}
+          <div
+            onClick={() => {
+              const next = filtro === "CONTATTATI" ? "ALL" : "CONTATTATI";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "CONTATTATI" ? "ring-2 ring-cyan-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Contattati
+              </h3>
+              <MessageCircle className="w-4 h-4 text-blue-500" />
             </div>
-            <div className="text-2xl font-black text-indigo-600 mt-1">{counts.appuntamentiDaFare}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Tot. fissati: {counts.appuntamentiTotali}</div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.contattati || 0}</p>
           </div>
 
-          {/* 4. Consulenze Fatte */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-teal-700 uppercase tracking-wider">
-              <span>Consulenze</span>
-              <CheckCircle2 size={14} className="text-teal-600" />
+          {/* 4. Da Fissare */}
+          <div
+            onClick={() => {
+              const next = filtro === "APP_DA_FISSARE" ? "ALL" : "APP_DA_FISSARE";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "APP_DA_FISSARE" ? "ring-2 ring-orange-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Da Fissare
+              </h3>
+              <Phone className="w-4 h-4 text-orange-500" />
             </div>
-            <div className="text-2xl font-black text-teal-600 mt-1">{counts.consulenzeFatte}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Colloqui eseguiti</div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.appuntamentiDaFissare || 0}</p>
           </div>
 
-          {/* 5. Rinnovati */}
-          <div className="bg-emerald-50/60 rounded-2xl border border-emerald-300 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-emerald-800 uppercase tracking-wider">
-              <span>Rinnovati</span>
-              <CheckCircle2 size={14} className="text-emerald-500" />
+          {/* 5. Fissati */}
+          <div
+            onClick={() => {
+              const next = filtro === "APP_DA_FARE" ? "ALL" : "APP_DA_FARE";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "APP_DA_FARE" ? "ring-2 ring-teal-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Fissati
+              </h3>
+              <Calendar className="w-4 h-4 text-teal-500" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 mt-1">{counts.rinnovati}</div>
-            <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-              Chiusura: <b>{counts.tassoChiusura}%</b>
-            </div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.appuntamentiDaFare || 0}</p>
           </div>
 
-          {/* 6. In Attesa */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-amber-700 uppercase tracking-wider">
-              <span>In Attesa</span>
-              <Clock size={14} className="text-amber-500" />
+          {/* 6. Consulenze Fatte */}
+          <div
+            onClick={() => {
+              const next = filtro === "CONSULENZE_FATTE" ? "ALL" : "CONSULENZE_FATTE";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "CONSULENZE_FATTE" ? "ring-2 ring-emerald-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Consulenze Fatte
+              </h3>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
-            <div className="text-2xl font-black text-amber-600 mt-1">{counts.inAttesa}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5 font-medium">Da ricontattare</div>
+            <p className="text-2xl font-extrabold text-slate-900">{counts.consulenzeFatte || 0}</p>
           </div>
 
-          {/* 7. Negativi */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold text-rose-700 uppercase tracking-wider">
-                <span>Negativi</span>
-                <button
-                  type="button"
-                  onClick={() => setShowNegativiModal(true)}
-                  className="text-rose-400 hover:text-rose-600"
-                  title="Vedi motivazioni"
-                >
-                  <PieChart size={14} />
-                </button>
-              </div>
-              <div className="text-2xl font-black text-rose-600 mt-1">{counts.negativi}</div>
+          {/* 7. Venduti */}
+          <div
+            onClick={() => {
+              const next = filtro === "VENDUTI" ? "ALL" : "VENDUTI";
+              resetFiltri();
+              setFiltro(next);
+            }}
+            className={cn(
+              "saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group",
+              filtro === "VENDUTI" ? "ring-2 ring-indigo-500 border-transparent shadow-sm" : ""
+            )}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">
+                Venduti
+              </h3>
+              <Check className="w-4 h-4 text-indigo-500" />
             </div>
-            <button
-              type="button"
-              onClick={() => setShowNegativiModal(true)}
-              className="text-[11px] text-rose-600 font-bold hover:underline flex items-center gap-1 mt-0.5"
-            >
-              <span>Vedi motivi</span>
-            </button>
+            <div className="flex items-end gap-2">
+              <p className="text-2xl font-extrabold text-slate-900">
+                {counts.venduti ?? (counts.rinnovati + (counts.integrazioni || 0))}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Filter Bar with Consulenze workflow pills */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs space-y-3">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-            {/* Search */}
-            <div className="relative w-full lg:w-80">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cerca cliente, telefono, note..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] text-slate-800 placeholder-slate-400 font-medium"
-              />
+        {/* Esiti & Abbonamenti Break-down */}
+        <div className="mt-5 max-w-[1700px] mx-auto">
+          <div className="bg-white/90 border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-xs flex flex-col md:flex-row gap-4 items-center justify-center">
+            {/* Esiti Breakdown */}
+            <div className="flex gap-2.5 flex-wrap justify-center items-center py-0.5">
+              {/* RINNOVO */}
+              <div
+                onClick={() => {
+                  const next = filtro === "RINNOVO" ? "ALL" : "RINNOVO";
+                  resetFiltri();
+                  setFiltro(next);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]",
+                  filtro === "RINNOVO"
+                    ? "bg-teal-100 text-teal-800 border-teal-300 ring-2 ring-teal-400 shadow-xs"
+                    : "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
+                )}
+              >
+                <span>RINNOVO</span>
+                <span className="bg-white px-2 py-0.5 rounded-md shadow-xs text-xs font-black text-teal-900">
+                  {counts.rinnovati || 0}
+                </span>
+              </div>
+
+              {/* INTEGRAZIONE */}
+              <div
+                onClick={() => {
+                  const next = filtro === "INTEGRAZIONE" ? "ALL" : "INTEGRAZIONE";
+                  resetFiltri();
+                  setFiltro(next);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]",
+                  filtro === "INTEGRAZIONE"
+                    ? "bg-cyan-100 text-cyan-800 border-cyan-300 ring-2 ring-cyan-400 shadow-xs"
+                    : "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"
+                )}
+              >
+                <span>INTEGRAZIONE</span>
+                <span className="bg-white px-2 py-0.5 rounded-md shadow-xs text-xs font-black text-cyan-900">
+                  {counts.integrazioni || 0}
+                </span>
+              </div>
+
+              {/* IN ATTESA */}
+              <div
+                onClick={() => {
+                  const next = filtro === "IN ATTESA" ? "ALL" : "IN ATTESA";
+                  resetFiltri();
+                  setFiltro(next);
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]",
+                  filtro === "IN ATTESA"
+                    ? "bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400 shadow-xs"
+                    : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                )}
+              >
+                <span>IN ATTESA</span>
+                <span className="bg-white px-2 py-0.5 rounded-md shadow-xs text-xs font-black text-amber-900">
+                  {counts.inAttesa || 0}
+                </span>
+              </div>
+
+              {/* NEGATIVO */}
+              <div
+                onClick={() => {
+                  if (filtro === "NEGATIVO") {
+                    resetFiltri();
+                  } else {
+                    resetFiltri();
+                    setFiltro("NEGATIVO");
+                    setShowNegativiKpi(true);
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]",
+                  filtro === "NEGATIVO" || showNegativiKpi || selectedMotivoNegativo
+                    ? "bg-red-100 text-red-800 border-red-300 ring-2 ring-red-400 shadow-xs"
+                    : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                )}
+              >
+                <span>NEGATIVO</span>
+                <span className="bg-white px-2 py-0.5 rounded-md shadow-xs text-xs font-black text-red-900">
+                  {counts.negativi || 0}
+                </span>
+                {(counts.negativi || 0) > 0 && (
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 text-red-500 transition-transform ml-0.5",
+                      (showNegativiKpi || filtro === "NEGATIVO" || selectedMotivoNegativo) && "rotate-180"
+                    )}
+                  />
+                )}
+              </div>
             </div>
 
-            {/* Discipline Selector */}
-            <div className="flex items-center gap-2 w-full lg:w-auto">
+            {/* Abbonamenti Nuovi Breakdown */}
+            {counts.nuoviAbb && counts.nuoviAbb.length > 0 && (
+              <>
+                <div className="w-px h-6 bg-slate-200 hidden md:block"></div>
+                <div className="flex gap-2.5 flex-wrap justify-center items-center py-0.5">
+                  {counts.nuoviAbb.map((abb: any) => {
+                    const isSelected = selectedAbb === abb.name;
+                    return (
+                      <div
+                        key={abb.name}
+                        onClick={() => {
+                          const next = isSelected ? null : abb.name;
+                          resetFiltri();
+                          setSelectedAbb(next);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold cursor-pointer transition-all shadow-xs hover:scale-[1.02]",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-700 ring-2 ring-indigo-400"
+                            : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
+                        )}
+                      >
+                        <span>{cleanSubscription(abb.name)}</span>
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-md shadow-xs text-xs font-black",
+                            isSelected ? "bg-indigo-800 text-white" : "bg-white text-indigo-900"
+                          )}
+                        >
+                          {abb.cnt}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* KPI A COMPARSA - MOTIVAZIONI NEGATIVI */}
+        {(showNegativiKpi || filtro === "NEGATIVO" || selectedMotivoNegativo) && (counts.negativi || 0) > 0 && (
+          <div className="mt-4 pt-3.5 border-t border-rose-200/70 max-w-[1700px] mx-auto animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-gradient-to-r from-rose-50/90 via-white to-rose-50/90 border border-rose-200 rounded-2xl p-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-200 animate-pulse"></span>
+                <span className="text-xs font-black uppercase tracking-wider text-rose-800">
+                  Motivazioni Negativi ({counts.negativi})
+                </span>
+                {selectedMotivoNegativo && (
+                  <button
+                    onClick={() => setSelectedMotivoNegativo(null)}
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline ml-2 cursor-pointer"
+                  >
+                    Tutti i negativi
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap justify-center items-center">
+                {(counts.motiviNegativo || []).map((m: any) => {
+                  const isSelected = selectedMotivoNegativo === m.value;
+                  return (
+                    <button
+                      key={m.value}
+                      onClick={() => {
+                        if (filtro !== "NEGATIVO") setFiltro("NEGATIVO");
+                        setSelectedMotivoNegativo(isSelected ? null : m.value);
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-all shadow-sm",
+                        isSelected
+                          ? "bg-rose-600 text-white border-rose-700 ring-2 ring-rose-400 ring-offset-1 shadow-rose-200 scale-[1.02]"
+                          : "bg-white text-slate-700 border-rose-200/80 hover:bg-rose-50/80 hover:border-rose-300 hover:scale-[1.01]"
+                      )}
+                    >
+                      <span>{m.label}</span>
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] font-black",
+                          isSelected ? "bg-rose-700 text-white" : "bg-rose-100 text-rose-800"
+                        )}
+                      >
+                        {m.cnt}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-5 space-y-5">
+        {/* Search & Discipline Filter Bar */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="relative w-full md:w-96">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cerca cliente, telefono, abbonamento, note..."
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] text-slate-800 placeholder-slate-400 font-medium"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-400 uppercase">Disciplina:</span>
               <select
                 value={disciplinaFilter}
                 onChange={(e) => setDisciplinaFilter(e.target.value)}
-                className="text-xs py-1.5 px-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:border-[#21b5ba] cursor-pointer"
+                className="text-xs py-2 px-3 rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:border-[#21b5ba] cursor-pointer shadow-xs"
               >
                 <option value="ALL">Tutte le discipline</option>
                 <option value="CORSI">Corsi</option>
                 <option value="SALA">Sala</option>
                 <option value="SALA+CORSI">Open (Sala+Corsi)</option>
+                <option value="ALTRO">Altro</option>
               </select>
             </div>
-          </div>
 
-          {/* Workflow Status Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100 text-xs font-bold">
-            <button
-              onClick={() => setFiltro("ALL")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "ALL" ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              )}
-            >
-              Tutti ({counts.total})
-            </button>
-            <button
-              onClick={() => setFiltro("DA_CONTATTARE")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "DA_CONTATTARE" ? "bg-slate-800 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              )}
-            >
-              Da Contattare ({counts.daContattare})
-            </button>
-            <button
-              onClick={() => setFiltro("CONTATTATI")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "CONTATTATI" ? "bg-cyan-600 text-white shadow-xs" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
-              )}
-            >
-              Contattati ({counts.contattati})
-            </button>
-            <button
-              onClick={() => setFiltro("APP_DA_FISSARE")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "APP_DA_FISSARE" ? "bg-indigo-600 text-white shadow-xs" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-              )}
-            >
-              App. da fissare ({counts.appuntamentiDaFissare})
-            </button>
-            <button
-              onClick={() => setFiltro("APP_DA_FARE")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "APP_DA_FARE" ? "bg-indigo-700 text-white shadow-xs" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-              )}
-            >
-              App. da fare ({counts.appuntamentiDaFare})
-            </button>
-            <button
-              onClick={() => setFiltro("CONSULENZE_FATTE")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "CONSULENZE_FATTE" ? "bg-teal-600 text-white shadow-xs" : "bg-teal-50 text-teal-700 hover:bg-teal-100"
-              )}
-            >
-              Consulenze Fatte ({counts.consulenzeFatte})
-            </button>
-            <button
-              onClick={() => setFiltro("RINNOVO")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "RINNOVO" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              )}
-            >
-              Rinnovati ({counts.rinnovati})
-            </button>
-            <button
-              onClick={() => setFiltro("IN ATTESA")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "IN ATTESA" ? "bg-amber-500 text-white shadow-xs" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-              )}
-            >
-              In Attesa ({counts.inAttesa})
-            </button>
-            <button
-              onClick={() => setFiltro("NEGATIVO")}
-              className={cn(
-                "px-3 py-1 rounded-xl transition-all whitespace-nowrap",
-                filtro === "NEGATIVO" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
-              )}
-            >
-              Negativi ({counts.negativi})
-            </button>
+            {(filtro !== "ALL" || selectedAbb || selectedMotivoNegativo || searchQuery || disciplinaFilter !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => {
+                  resetFiltri();
+                  setSearchQuery("");
+                  setDisciplinaFilter("ALL");
+                }}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 underline px-2 py-1"
+              >
+                Reset filtri
+              </button>
+            )}
           </div>
         </div>
 
