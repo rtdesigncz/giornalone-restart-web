@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
 import EntryDrawer from "@/components/agenda/EntryDrawer";
 import ClientDetailDrawer from "@/app/clienti/ClientDetailDrawer";
+import RinnoviReportModal from "./RinnoviReportModal";
 import CustomSelect from "@/components/ui/CustomSelect";
 
 export const ESITI = ["RINNOVO", "INTEGRAZIONE", "IN ATTESA", "NEGATIVO"] as const;
@@ -214,6 +215,7 @@ export default function RinnoviClient() {
   const [filtro, setFiltro] = useState("ALL"); // ALL, DA_CONTATTARE, CONTATTATI, APP_DA_FISSARE, APP_DA_FARE, CONSULENZE_FATTE, RINNOVO, INTEGRAZIONE, IN ATTESA, NEGATIVO
   const [disciplinaFilter, setDisciplinaFilter] = useState("ALL");
   const [showNegativiModal, setShowNegativiModal] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Sorting
   const [sortKey, setSortKey] = useState<"scadenza" | "cliente">("scadenza");
@@ -515,20 +517,33 @@ export default function RinnoviClient() {
             </div>
           </div>
 
-          {/* Month Selector */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Campagna Mese:</span>
-            <select
-              value={mese}
-              onChange={(e) => setMese(e.target.value)}
-              className="text-xs font-bold py-2 px-3.5 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] cursor-pointer"
+          {/* Actions: Month Selector + Report Button */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Campagna:</span>
+              <select
+                value={mese}
+                onChange={(e) => setMese(e.target.value)}
+                className="text-xs font-bold py-2 px-3.5 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] cursor-pointer"
+              >
+                {availableMonths.map((m) => (
+                  <option key={m} value={m}>
+                    {formatMonthHuman(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              disabled={items.length === 0}
+              className="btn btn-outline gap-2 bg-white text-[#21b5ba] border-[#21b5ba] hover:bg-[#21b5ba] hover:text-white transition-all disabled:opacity-50 whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center"
+              title="Vedi Report Lista Rinnovi"
             >
-              {availableMonths.map((m) => (
-                <option key={m} value={m}>
-                  {formatMonthHuman(m)}
-                </option>
-              ))}
-            </select>
+              <PieChart className="w-4 h-4" />
+              <span>Report</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1311,6 +1326,14 @@ export default function RinnoviClient() {
           </div>
         </ActionModal>
       )}
+
+      {/* REPORT MODAL (IDENTICAL TO CONSULENZE) */}
+      <RinnoviReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        items={items}
+        listName={formatMonthHuman(mese)}
+      />
 
       {/* AGENDA ENTRY DRAWER */}
       <EntryDrawer
