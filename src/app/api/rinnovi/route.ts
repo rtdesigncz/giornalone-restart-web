@@ -95,7 +95,22 @@ export async function GET(req: Request) {
     const clientIds = (items || []).map((it: any) => it.client_id).filter(Boolean);
     const explicitEntryIds = (items || []).map((it: any) => it.entry_id).filter(Boolean);
     const clientEntriesMap = new Map<string, any[]>();
+    const clientRinnoviItemsMap = new Map<string, any[]>();
     const entriesById = new Map<string, any>();
+
+    // Fetch all renewal items for these clients to isolate monthly drawers and prevent cross-month leakage
+    if (clientIds.length > 0) {
+      const { data: allRinItems } = await supabase
+        .from("rinnovi_items")
+        .select("id, client_id, mese_riferimento, scadenza_originaria, data_consulenza, data_risposta, entry_id, esito")
+        .in("client_id", clientIds);
+
+      (allRinItems || []).forEach((ri: any) => {
+        const arr = clientRinnoviItemsMap.get(ri.client_id) || [];
+        arr.push(ri);
+        clientRinnoviItemsMap.set(ri.client_id, arr);
+      });
+    }
 
     // Phone and Name mappings for fallback matching when agenda entry has client_id == null
     const phoneToClientId = new Map<string, string>();
@@ -208,19 +223,58 @@ export async function GET(req: Request) {
 
     const todayStr = new Date().toISOString().split("T")[0];
 
-    function isEntryPertinentToMonth(entry: any, targetMonth: string, client: any, isExplicitEntry: boolean) {
+    function isEntryPertinentToMonth(
+      entry: any,
+      targetMonth: string,
+      client: any,
+      it: any,
+      otherRenewalItems: any[],
+      isExplicitEntry: boolean
+    ) {
       if (isExplicitEntry) return true;
       const entryDate = entry.entry_date;
       if (!entryDate) return false;
 
-      // If client contract has a known start date, an appointment before that start date belongs to an older contract
-      if (client?.data_inizio && entryDate < client.data_inizio) {
+      // 1. Cross-month isolation against other renewal items for the same client:
+      for (const other of otherRenewalItems) {
+        if (other.id !== it.id) {
+          // If explicitly tied to another month's item
+          if (other.entry_id === entry.id) return false;
+
+          // If recorded as consultation date for another month and not for this one
+          if (other.data_consulenza === entryDate && it.data_consulenza !== entryDate) {
+            return false;
+          }
+
+          // If recorded as response date for another month and not for this one
+          if (other.data_risposta === entryDate && it.data_risposta !== entryDate) {
+            return false;
+          }
+
+          // If entry is sold and belongs to another month's campaign
+          if (entry.venduto && entryDate.slice(0, 7) === other.mese_riferimento && other.mese_riferimento !== targetMonth) {
+            return false;
+          }
+        }
+      }
+
+      // 2. Contract start date boundary:
+      // If client contract started on client.data_inizio, and this campaign is for a later month (e.g. Dec > Nov),
+      // an appointment on or before data_inizio belongs to the prior contract cycle that sold/created it
+      if (client?.data_inizio && targetMonth > client.data_inizio.slice(0, 7) && entryDate <= client.data_inizio) {
         return false;
       }
 
-      // Calculate target month boundaries
+      // 3. Concluded renewal in this campaign:
+      // If this item already has a concluded renewal (venduto) in this month, any subsequent appointment
+      // belongs to the next contract cycle, not this one
+      if (it.esito === "RINNOVO" && it.data_consulenza && entryDate > it.data_consulenza) {
+        return false;
+      }
+
+      // 4. Target month boundaries:
       const [tYear, tMonth] = targetMonth.split("-").map(Number);
-      const windowStart = new Date(Date.UTC(tYear, tMonth - 1, 1 - 60)).toISOString().split("T")[0];
+      const windowStart = new Date(Date.UTC(tYear, tMonth - 1, 1 - 30)).toISOString().split("T")[0];
       const windowEnd = new Date(Date.UTC(tYear, tMonth, 30)).toISOString().split("T")[0];
 
       const isUpcoming = entryDate >= todayStr;
@@ -279,8 +333,11 @@ export async function GET(req: Request) {
     const enrichedList = (items || []).map((it: any) => {
       const explicitEntry = it.entry_id ? entriesById.get(it.entry_id) : null;
       const clientEntries = clientEntriesMap.get(it.client_id) || [];
+      const allClientItems = clientRinnoviItemsMap.get(it.client_id) || [];
+      const otherRenewalItems = allClientItems.filter((x: any) => x.id !== it.id);
+
       const pertinentEntries = clientEntries.filter((e: any) =>
-        isEntryPertinentToMonth(e, mese, it.client, explicitEntry?.id === e.id)
+        isEntryPertinentToMonth(e, mese, it.client, it, otherRenewalItems, explicitEntry?.id === e.id)
       );
 
       // If explicitEntry is present and wasn't in clientEntries, include it
@@ -330,7 +387,7 @@ export async function GET(req: Request) {
 
       // If appointment is taken or esito is set, contacted is logically true
       const contattato = !!it.contattato || presoApp || !!esito;
-      const dataConsulenza = agenda?.entry_date || it.data_consulenza || null;
+      const dataConsulenza = (it.consulenza_fatta && it.data_consulenza) ? it.data_consulenza : (agenda?.entry_date || it.data_consulenza || null);
 
       return {
         ...it,
