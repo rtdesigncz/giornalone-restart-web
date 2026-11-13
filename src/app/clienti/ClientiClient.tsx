@@ -305,7 +305,7 @@ export default function ClientiClient() {
                       >
                         {/* Nome & Cognome */}
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm group-hover:text-cyan-700 transition-colors">
+                          <div className="font-bold text-slate-900 text-sm group-hover:text-cyan-700 transition-colors uppercase">
                             {c.cognome} {c.nome}
                           </div>
                           <div className="text-[11px] text-slate-400 mt-0.5">

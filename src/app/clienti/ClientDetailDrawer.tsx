@@ -107,7 +107,7 @@ export default function ClientDetailDrawer({
           <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/70">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900 uppercase">
                   {client ? `${client.cognome} ${client.nome}` : "Caricamento..."}
                 </h2>
                 {client?.stato && (

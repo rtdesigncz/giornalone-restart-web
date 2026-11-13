@@ -93,12 +93,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
-    const allowedFields = ["note", "email", "telefono", "telefono_secondario", "tags"];
+    const allowedFields = ["nome", "cognome", "note", "email", "telefono", "telefono_secondario", "tags"];
     const updateData: Record<string, any> = {};
 
     for (const key of allowedFields) {
       if (key in body) {
-        updateData[key] = body[key];
+        if (key === "nome" || key === "cognome") {
+          updateData[key] = String(body[key] || "").trim().toUpperCase();
+        } else {
+          updateData[key] = body[key];
+        }
       }
     }
 

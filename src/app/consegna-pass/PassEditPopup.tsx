@@ -135,9 +135,9 @@ export default function PassEditPopup({
         };
 
         onConfirm({
-            referral_nome: nome,
-            referral_cognome: cognome,
-            referral_telefono: telefono,
+            referral_nome: nome.trim().toUpperCase(),
+            referral_cognome: cognome.trim().toUpperCase(),
+            referral_telefono: telefono.trim(),
             iscritto,
             tipo_abbonamento: iscritto ? tipoAbbonamento : null,
             note: serializePassItemMeta(nextMeta),
@@ -177,9 +177,9 @@ export default function PassEditPopup({
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 uppercase font-semibold"
                                     value={nome}
-                                    onChange={(e) => setNome(e.target.value)}
+                                    onChange={(e) => setNome(e.target.value.toUpperCase())}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -187,9 +187,9 @@ export default function PassEditPopup({
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 uppercase font-semibold"
                                     value={cognome}
-                                    onChange={(e) => setCognome(e.target.value)}
+                                    onChange={(e) => setCognome(e.target.value.toUpperCase())}
                                 />
                             </div>
                         </div>

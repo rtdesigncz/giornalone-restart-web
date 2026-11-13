@@ -89,7 +89,8 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
     }, []);
 
     const handleChange = (field: string, value: any) => {
-        setFormData((prev: any) => ({ ...prev, [field]: value }));
+        const val = (field === "nome" || field === "cognome") && typeof value === "string" ? value.toUpperCase() : value;
+        setFormData((prev: any) => ({ ...prev, [field]: val }));
     };
 
     const handleSectionSelect = (s: string) => {
@@ -141,6 +142,9 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                 payload.negativo = false;
                 payload.assente = false;
             }
+
+            if (payload.nome) payload.nome = String(payload.nome).trim().toUpperCase();
+            if (payload.cognome) payload.cognome = String(payload.cognome).trim().toUpperCase();
 
             let savedRecord = payload;
             if (isEditing) {
@@ -319,8 +323,8 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                             <div>
                                 <label className="label">Nome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border"
-                                    placeholder="Nome"
+                                    className="input w-full h-12 text-lg box-border uppercase font-semibold"
+                                    placeholder="NOME"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleChange("nome", e.target.value)}
                                 />
@@ -328,8 +332,8 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                             <div>
                                 <label className="label">Cognome</label>
                                 <input
-                                    className="input w-full h-12 text-lg box-border"
-                                    placeholder="Cognome"
+                                    className="input w-full h-12 text-lg box-border uppercase font-semibold"
+                                    placeholder="COGNOME"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleChange("cognome", e.target.value)}
                                 />

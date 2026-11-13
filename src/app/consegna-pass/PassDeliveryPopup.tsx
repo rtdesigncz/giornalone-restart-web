@@ -40,7 +40,11 @@ export default function PassDeliveryPopup({ isOpen, onClose, onConfirm, initialD
         e.preventDefault();
         if (!nome || !cognome || !telefono) return;
 
-        onConfirm({ nome, cognome, telefono });
+        onConfirm({
+            nome: nome.trim().toUpperCase(),
+            cognome: cognome.trim().toUpperCase(),
+            telefono: telefono.trim(),
+        });
         onClose();
     };
 
@@ -73,10 +77,10 @@ export default function PassDeliveryPopup({ isOpen, onClose, onConfirm, initialD
                             <input
                                 type="text"
                                 required
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                                placeholder="Mario"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all uppercase font-semibold"
+                                placeholder="MARIO"
                                 value={nome}
-                                onChange={e => setNome(e.target.value)}
+                                onChange={e => setNome(e.target.value.toUpperCase())}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -84,10 +88,10 @@ export default function PassDeliveryPopup({ isOpen, onClose, onConfirm, initialD
                             <input
                                 type="text"
                                 required
-                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
-                                placeholder="Rossi"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all uppercase font-semibold"
+                                placeholder="ROSSI"
                                 value={cognome}
-                                onChange={e => setCognome(e.target.value)}
+                                onChange={e => setCognome(e.target.value.toUpperCase())}
                             />
                         </div>
                     </div>

@@ -316,6 +316,11 @@ export async function POST(req: Request) {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
     const body = await req.json();
+    if (body.cliente_nome) body.cliente_nome = String(body.cliente_nome).trim().toUpperCase();
+    if (body.cliente_cognome) body.cliente_cognome = String(body.cliente_cognome).trim().toUpperCase();
+    if (body.referral_nome) body.referral_nome = String(body.referral_nome).trim().toUpperCase();
+    if (body.referral_cognome) body.referral_cognome = String(body.referral_cognome).trim().toUpperCase();
+
     const { data: row, error } = await supabase.from('pass_items').insert(body).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ row });
@@ -328,6 +333,11 @@ export async function PATCH(req: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const body = await req.json();
+    if (body.cliente_nome) body.cliente_nome = String(body.cliente_nome).trim().toUpperCase();
+    if (body.cliente_cognome) body.cliente_cognome = String(body.cliente_cognome).trim().toUpperCase();
+    if (body.referral_nome) body.referral_nome = String(body.referral_nome).trim().toUpperCase();
+    if (body.referral_cognome) body.referral_cognome = String(body.referral_cognome).trim().toUpperCase();
+
     const { error } = await supabase.from('pass_items').update(body).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });

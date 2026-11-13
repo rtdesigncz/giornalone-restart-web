@@ -260,10 +260,11 @@ export default function EntryDrawer({
     }, [selectedClient, tipi]);
 
     const handleClientSearch = (field: string, val: string) => {
-        handleChange(field, val);
-        const nextNome = field === "nome" ? val : formData.nome || "";
-        const nextCognome = field === "cognome" ? val : formData.cognome || "";
-        const nextPhone = field === "telefono" ? val : formData.telefono || "";
+        const formattedVal = (field === "nome" || field === "cognome") ? val.toUpperCase() : val;
+        handleChange(field, formattedVal);
+        const nextNome = field === "nome" ? formattedVal : formData.nome || "";
+        const nextCognome = field === "cognome" ? formattedVal : formData.cognome || "";
+        const nextPhone = field === "telefono" ? formattedVal : formData.telefono || "";
         const query = (field === "telefono" ? nextPhone : `${nextCognome} ${nextNome}`).trim();
 
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -420,7 +421,8 @@ export default function EntryDrawer({
     }, [isOpen, entry, section, date, isDuplicate, initialData]);
 
     const handleChange = (field: string, value: any) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        const val = (field === "nome" || field === "cognome") && typeof value === "string" ? value.toUpperCase() : value;
+        setFormData((prev) => ({ ...prev, [field]: val }));
     };
 
     const handleSave = async () => {
@@ -504,8 +506,8 @@ export default function EntryDrawer({
                 section: targetSection,
                 entry_date: formData.entry_date,
                 entry_time: formData.entry_time || null,
-                nome: formData.nome || "",
-                cognome: formData.cognome || "",
+                nome: (formData.nome || "").trim().toUpperCase(),
+                cognome: (formData.cognome || "").trim().toUpperCase(),
                 telefono: formData.telefono || "",
                 client_id: resolvedClientId,
                 consulente_id: formData.consulente_id || null,
@@ -731,8 +733,8 @@ export default function EntryDrawer({
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">Nome</label>
                                 <input
-                                    className="input-modern"
-                                    placeholder="Mario"
+                                    className="input-modern uppercase font-semibold"
+                                    placeholder="MARIO"
                                     value={formData.nome || ""}
                                     onChange={(e) => handleClientSearch("nome", e.target.value)}
                                     onFocus={() => handleFocusSearch("nome")}
@@ -741,8 +743,8 @@ export default function EntryDrawer({
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">Cognome</label>
                                 <input
-                                    className="input-modern"
-                                    placeholder="Rossi"
+                                    className="input-modern uppercase font-semibold"
+                                    placeholder="ROSSI"
                                     value={formData.cognome || ""}
                                     onChange={(e) => handleClientSearch("cognome", e.target.value)}
                                     onFocus={() => handleFocusSearch("cognome")}

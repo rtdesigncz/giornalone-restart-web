@@ -318,10 +318,13 @@ export default function ConsegnaPassClient() {
                 return;
             }
 
+            const upperNome = (data.nome || "").trim().toUpperCase();
+            const upperCognome = (data.cognome || "").trim().toUpperCase();
+
             if (editingPassItem) {
                 await updatePassItem(editingPassItem.id, {
-                    cliente_nome: data.nome,
-                    cliente_cognome: data.cognome,
+                    cliente_nome: upperNome,
+                    cliente_cognome: upperCognome,
                     cliente_telefono: data.telefono,
                 });
             } else {
@@ -331,8 +334,8 @@ export default function ConsegnaPassClient() {
                     body: JSON.stringify({
                         gestione_id: selectedGestioneId,
                         data_consegna: new Date().toISOString().split("T")[0],
-                        cliente_nome: data.nome,
-                        cliente_cognome: data.cognome,
+                        cliente_nome: upperNome,
+                        cliente_cognome: upperCognome,
                         cliente_telefono: data.telefono,
                         source_type: "pass",
                     }),
