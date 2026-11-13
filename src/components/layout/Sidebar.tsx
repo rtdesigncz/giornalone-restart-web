@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, Settings, BarChart3, X, LogOut, CalendarCheck, Ticket, Stethoscope, ChevronRight, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Contact2, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users, UserPlus, Settings, BarChart3, X, LogOut, CalendarCheck, Ticket, Stethoscope, ChevronRight, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Contact2, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
     { label: "Rinnovi", href: "/rinnovi", icon: RefreshCw },
     { label: "Clienti", href: "/clienti", icon: Contact2 },
-    { label: "Consulenze", href: "/consulenze", icon: Users },
+    { label: "Leads", href: "/leads", icon: UserPlus },
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },

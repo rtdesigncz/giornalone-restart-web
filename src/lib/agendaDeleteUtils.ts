@@ -110,7 +110,10 @@ export async function deleteEntryWithRinnoviSync(
         .eq("entry_id", id);
     }
 
-    // 6. Delete the appointment from entries table
+    // 6. Clear dangling entry_id in gestione_items (Leads)
+    await supabase.from("gestione_items").update({ entry_id: null }).eq("entry_id", id);
+
+    // 7. Delete the appointment from entries table
     const { error: delErr } = await supabase.from("entries").delete().eq("id", id);
     if (delErr) {
       alert("Errore durante l'eliminazione dell'appuntamento: " + delErr.message);

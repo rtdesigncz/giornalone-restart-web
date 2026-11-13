@@ -96,10 +96,10 @@ export default function CommandPalette() {
 
                             } else if (r.type === 'consulenze') {
                                 icon = Users;
-                                action = () => router.push(`/consulenze?gestione=${r.raw.gestione_id}&highlight=${r.id}`);
+                                action = () => router.push(`/leads?gestione=${r.raw.gestione_id}&highlight=${r.id}`);
                                 
                                 const listName = r.raw.gestioni?.nome || "Lista";
-                                tags.push({ label: `Consulenze: ${listName}`, icon: MapPin });
+                                tags.push({ label: `Leads: ${listName}`, icon: MapPin });
 
                             } else if (r.type === 'medical') {
                                 icon = Activity;

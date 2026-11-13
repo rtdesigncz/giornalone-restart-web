@@ -181,11 +181,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             Reportistica
           </Link>
           <Link
-            href="/consulenze"
+            href="/leads"
             className="block px-4 py-2 hover:bg-slate-100"
             onClick={() => setOpen(false)}
           >
-            Consulenze
+            Leads
           </Link>
           <Link
             href="/settings"

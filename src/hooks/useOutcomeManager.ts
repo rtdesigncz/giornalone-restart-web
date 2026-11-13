@@ -52,22 +52,26 @@ export function useOutcomeManager(onUpdate: () => void) {
         }
     };
 
-    const updateEntry = async (id: string, updates: any) => {
+    const updateEntry = async (id: string, updates: any, subTypeName?: string) => {
         // If setting a positive status, clear conflicting ones
         if (updates.venduto) { updates.negativo = false; updates.miss = false; updates.assente = false; }
         if (updates.negativo) { updates.venduto = false; } // Negativo can coexist with Presentato? Yes.
         if (updates.miss) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.assente = false; }
         if (updates.assente) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.miss = false; }
 
-        const { data: updatedEntry } = await supabase.from("entries").update(updates).eq("id", id).select("id, client_id, section").maybeSingle();
+        const { data: updatedEntry } = await supabase.from("entries").update(updates).eq("id", id).select("id, client_id, section, nome, cognome, telefono").maybeSingle();
 
-        if (updatedEntry && updatedEntry.client_id) {
+        if (updatedEntry) {
             const entrySec = (updatedEntry.section || "").toUpperCase();
-            if (entrySec.includes("RINNOV") || entrySec.includes("INTEGRAZION")) {
+            const isRinnoviSec = entrySec.includes("RINNOV") || entrySec.includes("INTEGRAZION");
+
+            // 1. SYNC RINNOVI
+            if (updatedEntry.client_id && isRinnoviSec) {
                 const rinUpdates: any = {};
                 if (updates.venduto) {
                     rinUpdates.esito = "RINNOVO";
                     rinUpdates.consulenza_fatta = true;
+                    if (subTypeName) rinUpdates.nuovo_abbonamento_name = subTypeName;
                 } else if (updates.negativo) {
                     rinUpdates.esito = "NEGATIVO";
                     rinUpdates.consulenza_fatta = true;
@@ -87,6 +91,50 @@ export function useOutcomeManager(onUpdate: () => void) {
                     await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", updatedEntry.client_id);
                 }
             }
+
+            // 2. SYNC LEADS (gestione_items)
+            // Appuntamenti Pianificazione, Miss con Appuntamento, Tour Spontanei
+            if (!isRinnoviSec) {
+                let leadMatchIds: string[] = [];
+                const { data: byEntryId } = await supabase.from("gestione_items").select("id").eq("entry_id", updatedEntry.id);
+                if (byEntryId && byEntryId.length > 0) {
+                    leadMatchIds = byEntryId.map((x: any) => x.id);
+                } else if (updatedEntry.telefono) {
+                    const { data: byTel } = await supabase.from("gestione_items").select("id").eq("telefono", updatedEntry.telefono);
+                    if (byTel && byTel.length > 0) {
+                        leadMatchIds = byTel.map((x: any) => x.id);
+                    }
+                }
+
+                if (leadMatchIds.length > 0) {
+                    const leadUpdates: any = {};
+                    if (updates.venduto) {
+                        leadUpdates.esito = "ISCRIZIONE";
+                        leadUpdates.consulenza_fatta = true;
+                        if (subTypeName) leadUpdates.nuovo_abbonamento_name = subTypeName;
+                    } else if (updates.negativo) {
+                        leadUpdates.esito = "NEGATIVO";
+                        leadUpdates.consulenza_fatta = true;
+                    } else if (updates.miss) {
+                        if (updates.presentato) {
+                            leadUpdates.esito = "IN ATTESA";
+                            leadUpdates.consulenza_fatta = true;
+                        } else {
+                            leadUpdates.consulenza_fatta = false;
+                            leadUpdates.esito = null;
+                        }
+                    } else if (updates.assente) {
+                        leadUpdates.consulenza_fatta = false;
+                        leadUpdates.esito = null;
+                    } else if (updates.presentato) {
+                        leadUpdates.consulenza_fatta = true;
+                    }
+
+                    if (Object.keys(leadUpdates).length > 0) {
+                        await supabase.from("gestione_items").update(leadUpdates).in("id", leadMatchIds);
+                    }
+                }
+            }
         }
 
         onUpdate();
@@ -103,7 +151,7 @@ export function useOutcomeManager(onUpdate: () => void) {
         if (!salePopup.entry) return;
 
         // Find ID of subscription type
-        const { data: types } = await supabase.from("tipi_abbonamento").select("id").eq("name", subscriptionType).single();
+        const { data: types } = await supabase.from("tipi_abbonamento").select("id, name").eq("name", subscriptionType).single();
 
         await updateEntry(salePopup.entry.id, {
             venduto: true,
@@ -112,7 +160,7 @@ export function useOutcomeManager(onUpdate: () => void) {
             miss: false,
             assente: false,
             presentato: true // Sale implies presence
-        });
+        }, types?.name || subscriptionType);
         setSalePopup({ open: false, entry: null });
     };
 
@@ -170,7 +218,9 @@ export function useOutcomeManager(onUpdate: () => void) {
                 negativo: false
             }).eq("id", entryToMiss.id);
 
-            if (entryToMiss.client_id) {
+            const isRinSec = ((entryToMiss.section || "").toUpperCase()).includes("RINNOV") || ((entryToMiss.section || "").toUpperCase()).includes("INTEGRAZION");
+
+            if (entryToMiss.client_id && isRinSec) {
                 const rinUpdates: any = {};
                 if (entryToMiss.wasPresent) {
                     rinUpdates.esito = "IN ATTESA";
@@ -180,6 +230,29 @@ export function useOutcomeManager(onUpdate: () => void) {
                     rinUpdates.esito = null;
                 }
                 await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", entryToMiss.client_id);
+            }
+
+            // Sync with Leads (gestione_items) when rescheduling non-Rinnovi appointments
+            if (!isRinSec) {
+                const leadUpdates: any = {};
+                if (entryToMiss.wasPresent) {
+                    leadUpdates.esito = "IN ATTESA";
+                    leadUpdates.consulenza_fatta = true;
+                } else {
+                    leadUpdates.consulenza_fatta = false;
+                    leadUpdates.esito = null;
+                }
+                let leadIds: string[] = [];
+                const { data: gByEntry } = await supabase.from("gestione_items").select("id").eq("entry_id", entryToMiss.id);
+                if (gByEntry && gByEntry.length > 0) {
+                    leadIds = gByEntry.map((x: any) => x.id);
+                } else if (entryToMiss.telefono) {
+                    const { data: gByTel } = await supabase.from("gestione_items").select("id").eq("telefono", entryToMiss.telefono);
+                    if (gByTel && gByTel.length > 0) leadIds = gByTel.map((x: any) => x.id);
+                }
+                if (leadIds.length > 0) {
+                    await supabase.from("gestione_items").update(leadUpdates).in("id", leadIds);
+                }
             }
 
             setEntryToMiss(null);
