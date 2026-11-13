@@ -9,6 +9,7 @@ import EntryCard from "./EntryCard";
 import { useOutcomeManager } from "@/hooks/useOutcomeManager";
 import OutcomeButtons from "./outcomes/OutcomeButtons";
 import EntryDrawer from "./agenda/EntryDrawer";
+import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 
 // ... imports ...
 
@@ -370,10 +371,10 @@ export default function EntriesSection({ title }: { title: string }) {
 
   // ---- DELETE
   const handleDelete = async (row: Entry) => {
-    if (!confirm("Eliminare questa riga?")) return;
-    const { error } = await supabase.from("entries").delete().eq("id", row.id);
-    if (error) return alert("Errore eliminazione: " + error.message);
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    const success = await deleteEntryWithRinnoviSync(row, supabase);
+    if (success) {
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+    }
   };
 
   // ---- WA / CALL

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
 import { Loader2, Plus } from "lucide-react";
 import EntryDrawer from "./EntryDrawer";
+import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 import { useSearchParams } from "next/navigation";
 import { getLocalDateISO } from "@/lib/dateUtils";
 
@@ -169,10 +170,12 @@ export default function AgendaCalendar({ section }: { section: string }) {
                     setDrawerOpen(false);
                 }}
                 onDelete={async (id) => {
-                    if (!confirm("Eliminare?")) return;
-                    await supabase.from("entries").delete().eq("id", id);
-                    fetchWeekEntries();
-                    setDrawerOpen(false);
+                    const row = entries.find(r => r.id === id) || (selectedEntry?.id === id ? selectedEntry : null);
+                    const success = await deleteEntryWithRinnoviSync(row || id, supabase, selectedEntry);
+                    if (success) {
+                        fetchWeekEntries();
+                        setDrawerOpen(false);
+                    }
                 }}
             />
         </div>

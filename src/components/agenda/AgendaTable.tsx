@@ -10,6 +10,7 @@ import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
 import EntryDrawer from "./EntryDrawer";
+import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 
 export default function AgendaTable({ section }: { section: string }) {
     const router = useRouter();
@@ -141,10 +142,12 @@ export default function AgendaTable({ section }: { section: string }) {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Sei sicuro di voler eliminare questa riga?")) return;
-        await supabase.from("entries").delete().eq("id", id);
-        setDrawerOpen(false);
-        fetchRows();
+        const row = rows.find(r => r.id === id) || (selectedEntry?.id === id ? selectedEntry : null);
+        const success = await deleteEntryWithRinnoviSync(row || id, supabase, selectedEntry);
+        if (success) {
+            setDrawerOpen(false);
+            fetchRows();
+        }
     };
 
     const handlePhoneToggle = async (row: any) => {

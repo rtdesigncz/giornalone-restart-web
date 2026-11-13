@@ -9,6 +9,7 @@ import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
 import EntryDrawer from "./EntryDrawer";
 import EntryCard from "../EntryCard";
+import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 
 import AgendaMobileBar from "./AgendaMobileBar";
 
@@ -132,10 +133,14 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
         setDrawerOpen(true);
     };
 
-    const handleDelete = async (row: any) => {
-        if (!confirm("Sei sicuro di voler eliminare questa riga?")) return;
-        await supabase.from("entries").delete().eq("id", row.id);
-        fetchRows();
+    const handleDelete = async (rowOrId: any) => {
+        const id = typeof rowOrId === "string" ? rowOrId : rowOrId?.id;
+        const row = rows.find(r => r.id === id) || (typeof rowOrId === "object" && rowOrId.nome ? rowOrId : null) || (selectedEntry?.id === id ? selectedEntry : null);
+        const success = await deleteEntryWithRinnoviSync(row || id, supabase, selectedEntry);
+        if (success) {
+            setDrawerOpen(false);
+            fetchRows();
+        }
     };
 
     const handlePhoneToggle = async (row: any) => {

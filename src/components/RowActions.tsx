@@ -4,6 +4,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { MessageCircle, Phone, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 
 function cleanPhone(num?: string | null) {
   if (!num) return "";
@@ -54,12 +55,12 @@ Restart Fitness Club`;
   const callHref = tel ? `tel:${tel}` : undefined;
 
   const onDelete = async () => {
-    if (!confirm("Eliminare questa riga?")) return;
     setDeleting(true);
     try {
-      const { error } = await supabase.from("entries").delete().eq("id", id);
-      if (error) alert("Errore eliminazione: " + error.message);
-      else window.location.reload();
+      const success = await deleteEntryWithRinnoviSync({ id, nome, telefono, entry_date }, supabase);
+      if (success) {
+        window.location.reload();
+      }
     } finally {
       setDeleting(false);
     }
