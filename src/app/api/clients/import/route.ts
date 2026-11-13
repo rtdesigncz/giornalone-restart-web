@@ -44,12 +44,16 @@ function parsePrice(val: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-function normalizePhone(val: string): string | null {
+function normName(s: any): string {
+  return String(s || "").trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+function normalizePhone(val: any): string | null {
   if (!val) return null;
-  const upper = val.toUpperCase().trim();
+  const upper = String(val).toUpperCase().trim();
   if (["NO", "/", "NONE", "NULL", "-", "0"].includes(upper)) return null;
-  const digits = val.replace(/[^\d+]/g, "").trim();
-  return digits.length >= 6 ? digits : null;
+  const digits = String(val).replace(/[^\d]/g, "").trim();
+  return digits.length >= 6 ? digits.slice(-10) : null;
 }
 
 export async function POST(req: Request) {
@@ -152,7 +156,13 @@ export async function POST(req: Request) {
       ultimo_accesso: string | null;
     }
 
-    const consolidatedMap = new Map<string, ClientConsolidated>();
+    // 3. Multi-tier in-memory consolidation (handles multi-row files across long date ranges)
+    const consolidatedList: ClientConsolidated[] = [];
+    const inMemByNameBirth = new Map<string, ClientConsolidated>();
+    const inMemByNamePhone = new Map<string, ClientConsolidated>();
+    const inMemByName = new Map<string, ClientConsolidated[]>();
+    const inMemByPhone = new Map<string, ClientConsolidated>();
+
     const todayStr = new Date().toISOString().slice(0, 10);
     const thirtyDaysAhead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -160,8 +170,10 @@ export async function POST(req: Request) {
       const cells = lines[r].split(delim).map(cleanCell);
       if (cells.length < 2) continue;
 
-      const cognome = cleanCell(cells[colIdx.cognome] || "");
-      const nome = cleanCell(cells[colIdx.nome] || "");
+      const rawCognome = cleanCell(cells[colIdx.cognome] || "");
+      const rawNome = cleanCell(cells[colIdx.nome] || "");
+      const cognome = normName(rawCognome);
+      const nome = normName(rawNome);
       if (!cognome && !nome) continue;
 
       const dataNascita = colIdx.data_nascita !== undefined ? parseDateDDMMYYYY(cells[colIdx.data_nascita]) : null;
@@ -180,9 +192,6 @@ export async function POST(req: Request) {
       const cap = colIdx.cap !== undefined ? cleanCell(cells[colIdx.cap]) || null : null;
       const citta = colIdx.citta !== undefined ? cleanCell(cells[colIdx.citta]) || null : null;
       const provincia = colIdx.provincia !== undefined ? cleanCell(cells[colIdx.provincia]) || null : null;
-
-      // Composite identity key: Cognome + Nome + DataNascita (fallback Phone)
-      const key = `${cognome.toUpperCase()}_${nome.toUpperCase()}_${dataNascita || phone || ""}`;
 
       // Resolve macro-subscription ID
       let macroTipoId: string | null = null;
@@ -211,9 +220,35 @@ export async function POST(req: Request) {
         else stato = "ATTIVO";
       }
 
-      const existing = consolidatedMap.get(key);
+      // Multi-tier in-memory lookup
+      let existing: ClientConsolidated | undefined;
+
+      if (dataNascita) {
+        existing = inMemByNameBirth.get(`${cognome}_${nome}_${dataNascita}`);
+      }
+      if (!existing && phone) {
+        existing = inMemByNamePhone.get(`${cognome}_${nome}_${phone}`);
+      }
       if (!existing) {
-        consolidatedMap.set(key, {
+        const nameCandidates = inMemByName.get(`${cognome}_${nome}`) || [];
+        if (nameCandidates.length === 1) {
+          const cand = nameCandidates[0];
+          const phoneCompatible = !cand.telefono || !phone || cand.telefono === phone;
+          const birthCompatible = !cand.data_nascita || !dataNascita || cand.data_nascita === dataNascita;
+          if (phoneCompatible && birthCompatible) {
+            existing = cand;
+          }
+        }
+      }
+      if (!existing && phone) {
+        const phoneMatch = inMemByPhone.get(phone);
+        if (phoneMatch && phoneMatch.cognome === cognome) {
+          existing = phoneMatch;
+        }
+      }
+
+      if (!existing) {
+        const newClient: ClientConsolidated = {
           cognome,
           nome,
           data_nascita: dataNascita,
@@ -233,61 +268,133 @@ export async function POST(req: Request) {
           prezzo,
           accessi_effettuati: accessi,
           ultimo_accesso: ultimoAcc,
-        });
+        };
+        consolidatedList.push(newClient);
+
+        // Index in memory
+        if (dataNascita) inMemByNameBirth.set(`${cognome}_${nome}_${dataNascita}`, newClient);
+        if (phone) {
+          inMemByNamePhone.set(`${cognome}_${nome}_${phone}`, newClient);
+          inMemByPhone.set(phone, newClient);
+        }
+        const nameKey = `${cognome}_${nome}`;
+        if (!inMemByName.has(nameKey)) inMemByName.set(nameKey, []);
+        inMemByName.get(nameKey)!.push(newClient);
       } else {
-        // Person already exists: consolidate!
-        // If current row expiration is further in the future, take current subscription!
-        if (fineAb && (!existing.data_scadenza || fineAb > existing.data_scadenza)) {
+        // Merge!
+        if (fineAb && (!existing.data_scadenza || fineAb >= existing.data_scadenza)) {
           existing.data_scadenza = fineAb;
           existing.data_inizio = inizioAb || existing.data_inizio;
           existing.pacchetto_originale = pacchetto || existing.pacchetto_originale;
           existing.tipo_abbonamento_id = macroTipoId || existing.tipo_abbonamento_id;
           existing.disciplina = disciplina || existing.disciplina;
-          existing.prezzo = prezzo;
+          existing.prezzo = prezzo || existing.prezzo;
           existing.stato = stato;
         }
-        if (accessi > existing.accessi_effettuati) {
-          existing.accessi_effettuati = accessi;
+        if (dataNascita && !existing.data_nascita) {
+          existing.data_nascita = dataNascita;
+          inMemByNameBirth.set(`${cognome}_${nome}_${dataNascita}`, existing);
         }
+        if (phone && !existing.telefono) {
+          existing.telefono = phone;
+          inMemByNamePhone.set(`${cognome}_${nome}_${phone}`, existing);
+          inMemByPhone.set(phone, existing);
+        }
+        if (email && !existing.email) existing.email = email;
+        if (indirizzo && !existing.indirizzo) existing.indirizzo = indirizzo;
+        if (civico && !existing.civico) existing.civico = civico;
+        if (cap && !existing.cap) existing.cap = cap;
+        if (citta && !existing.citta) existing.citta = citta;
+        if (provincia && !existing.provincia) existing.provincia = provincia;
+        if (accessi > existing.accessi_effettuati) existing.accessi_effettuati = accessi;
         if (ultimoAcc && (!existing.ultimo_accesso || ultimoAcc > existing.ultimo_accesso)) {
           existing.ultimo_accesso = ultimoAcc;
         }
-        if (!existing.telefono && phone) existing.telefono = phone;
-        if (!existing.email && email) existing.email = email;
-        if (!existing.indirizzo && indirizzo) existing.indirizzo = indirizzo;
       }
     }
 
-    const uniqueClients = Array.from(consolidatedMap.values());
+    const uniqueClients = consolidatedList;
 
-    // 4. Upsert clients in batch
-    // First, fetch existing clients from DB to know whether to insert or update
-    const { data: dbClients, error: fetchErr } = await supabase
-      .from("clients")
-      .select("id, nome, cognome, data_nascita, telefono");
-    if (fetchErr) throw fetchErr;
+    // 4. Fetch ALL existing clients from DB using pagination (bypassing Supabase 1000 limit)
+    const dbClients: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data: batch, error: bErr } = await supabase
+        .from("clients")
+        .select("id, nome, cognome, data_nascita, telefono, email, data_scadenza, accessi_effettuati, ultimo_accesso, indirizzo, civico, cap, citta, provincia")
+        .range(from, from + 999);
+      if (bErr) throw bErr;
+      if (!batch || batch.length === 0) break;
+      dbClients.push(...batch);
+      if (batch.length < 1000) break;
+      from += 1000;
+    }
 
-    const dbMapByComposite = new Map<string, string>(); // compositeKey -> id
-    const dbMapByPhone = new Map<string, string>(); // phone -> id
+    const dbByNameBirth = new Map<string, any>();
+    const dbByNamePhone = new Map<string, any>();
+    const dbByName = new Map<string, any[]>();
+    const dbByPhone = new Map<string, any[]>();
 
-    (dbClients || []).forEach((c: any) => {
-      const nKey = `${(c.cognome || "").trim().toUpperCase()}_${(c.nome || "").trim().toUpperCase()}_${c.data_nascita || ""}`;
-      dbMapByComposite.set(nKey, c.id);
-      if (c.telefono) {
-        dbMapByPhone.set(c.telefono.trim(), c.id);
+    dbClients.forEach((c: any) => {
+      const cNom = normName(c.nome);
+      const cCog = normName(c.cognome);
+      const cBirth = c.data_nascita || "";
+      const cPhone = normalizePhone(c.telefono);
+
+      if (cCog && cNom) {
+        if (cBirth) dbByNameBirth.set(`${cCog}_${cNom}_${cBirth}`, c);
+        if (cPhone) dbByNamePhone.set(`${cCog}_${cNom}_${cPhone}`, c);
+
+        const nameKey = `${cCog}_${cNom}`;
+        if (!dbByName.has(nameKey)) dbByName.set(nameKey, []);
+        dbByName.get(nameKey)!.push(c);
+      }
+
+      if (cPhone) {
+        if (!dbByPhone.has(cPhone)) dbByPhone.set(cPhone, []);
+        dbByPhone.get(cPhone)!.push(c);
       }
     });
 
     const toInsert: any[] = [];
     const toUpdate: any[] = [];
-
     const now = new Date().toISOString();
 
     for (const c of uniqueClients) {
-      const compKeyWithBirth = `${c.cognome.toUpperCase()}_${c.nome.toUpperCase()}_${c.data_nascita || ""}`;
-      const compKeyWithPhone = `${c.cognome.toUpperCase()}_${c.nome.toUpperCase()}_${c.telefono || ""}`;
+      let existingRecord: any = null;
 
-      let existingId = dbMapByComposite.get(compKeyWithBirth) || dbMapByComposite.get(compKeyWithPhone);
+      // Tier 1: Name + Surname + Birthdate
+      if (c.data_nascita) {
+        existingRecord = dbByNameBirth.get(`${c.cognome}_${c.nome}_${c.data_nascita}`);
+      }
+
+      // Tier 2: Name + Surname + Phone
+      if (!existingRecord && c.telefono) {
+        existingRecord = dbByNamePhone.get(`${c.cognome}_${c.nome}_${c.telefono}`);
+      }
+
+      // Tier 3: Name + Surname (compatible candidates without conflict)
+      if (!existingRecord) {
+        const candidates = dbByName.get(`${c.cognome}_${c.nome}`) || [];
+        if (candidates.length === 1) {
+          const cand = candidates[0];
+          const candPhone = normalizePhone(cand.telefono);
+          const phoneCompatible = !c.telefono || !candPhone || c.telefono === candPhone;
+          const birthCompatible = !c.data_nascita || !cand.data_nascita || c.data_nascita === cand.data_nascita;
+          if (phoneCompatible && birthCompatible) {
+            existingRecord = cand;
+          }
+        }
+      }
+
+      // Tier 4: Direct Phone match (if exact same surname)
+      if (!existingRecord && c.telefono) {
+        const phoneCandidates = dbByPhone.get(c.telefono) || [];
+        const sameSurname = phoneCandidates.filter(pc => normName(pc.cognome) === c.cognome);
+        if (sameSurname.length === 1) {
+          existingRecord = sameSurname[0];
+        }
+      }
 
       const clientPayload = {
         cognome: c.cognome,
@@ -312,8 +419,34 @@ export async function POST(req: Request) {
         last_synced_at: now,
       };
 
-      if (existingId) {
-        toUpdate.push({ id: existingId, ...clientPayload });
+      if (existingRecord) {
+        // Enriched merge payload
+        const mergedPayload: any = {
+          ...clientPayload,
+          data_nascita: c.data_nascita || existingRecord.data_nascita,
+          telefono: c.telefono || existingRecord.telefono,
+          email: c.email || existingRecord.email,
+          indirizzo: c.indirizzo || existingRecord.indirizzo,
+          civico: c.civico || existingRecord.civico,
+          cap: c.cap || existingRecord.cap,
+          citta: c.citta || existingRecord.citta,
+          provincia: c.provincia || existingRecord.provincia,
+          accessi_effettuati: Math.max(existingRecord.accessi_effettuati || 0, c.accessi_effettuati || 0),
+          ultimo_accesso: (c.ultimo_accesso && (!existingRecord.ultimo_accesso || c.ultimo_accesso > existingRecord.ultimo_accesso)) ? c.ultimo_accesso : existingRecord.ultimo_accesso,
+        };
+
+        // Subscription: only overwrite if CSV is newer or equal
+        if (existingRecord.data_scadenza && c.data_scadenza && existingRecord.data_scadenza > c.data_scadenza) {
+          delete mergedPayload.data_scadenza;
+          delete mergedPayload.data_inizio;
+          delete mergedPayload.pacchetto_originale;
+          delete mergedPayload.tipo_abbonamento_id;
+          delete mergedPayload.disciplina;
+          delete mergedPayload.stato;
+          delete mergedPayload.prezzo;
+        }
+
+        toUpdate.push({ id: existingRecord.id, ...mergedPayload });
       } else {
         toInsert.push(clientPayload);
       }
@@ -333,11 +466,18 @@ export async function POST(req: Request) {
       if (insErr) throw insErr;
       insertedCount += (insData || []).length;
 
-      // Update local dbMap
+      // Update local db maps
       (insData || []).forEach((c: any) => {
-        const nKey = `${(c.cognome || "").trim().toUpperCase()}_${(c.nome || "").trim().toUpperCase()}_${c.data_nascita || ""}`;
-        dbMapByComposite.set(nKey, c.id);
-        if (c.telefono) dbMapByPhone.set(c.telefono.trim(), c.id);
+        const cNom = normName(c.nome);
+        const cCog = normName(c.cognome);
+        const cBirth = c.data_nascita || "";
+        const cPhone = normalizePhone(c.telefono);
+        if (cCog && cNom && cBirth) dbByNameBirth.set(`${cCog}_${cNom}_${cBirth}`, c);
+        if (cCog && cNom && cPhone) dbByNamePhone.set(`${cCog}_${cNom}_${cPhone}`, c);
+        if (cPhone) {
+          if (!dbByPhone.has(cPhone)) dbByPhone.set(cPhone, []);
+          dbByPhone.get(cPhone)!.push(c);
+        }
       });
     }
 
@@ -349,7 +489,6 @@ export async function POST(req: Request) {
     }
 
     // 5. Auto-link unlinked entries in Agenda to clients
-    // Find unlinked entries where client_id is null
     const { data: unlinkedEntries } = await supabase
       .from("entries")
       .select("id, nome, cognome, telefono")
@@ -359,24 +498,25 @@ export async function POST(req: Request) {
     let linkedEntriesCount = 0;
     if (unlinkedEntries && unlinkedEntries.length > 0) {
       for (const ent of unlinkedEntries) {
-        const eCognome = (ent.cognome || "").trim().toUpperCase();
-        const eNome = (ent.nome || "").trim().toUpperCase();
+        const eCognome = normName(ent.cognome);
+        const eNome = normName(ent.nome);
         const ePhone = normalizePhone(ent.telefono);
 
         let matchedClientId: string | undefined;
 
-        if (eCognome && eNome) {
-          // Check by name and phone first
-          for (const [k, cid] of dbMapByComposite.entries()) {
-            if (k.startsWith(`${eCognome}_${eNome}_`)) {
-              matchedClientId = cid;
-              break;
-            }
-          }
+        if (eCognome && eNome && ePhone) {
+          const m = dbByNamePhone.get(`${eCognome}_${eNome}_${ePhone}`);
+          if (m) matchedClientId = m.id;
+        }
+
+        if (!matchedClientId && eCognome && eNome) {
+          const list = dbByName.get(`${eCognome}_${eNome}`) || [];
+          if (list.length === 1) matchedClientId = list[0].id;
         }
 
         if (!matchedClientId && ePhone) {
-          matchedClientId = dbMapByPhone.get(ePhone);
+          const list = dbByPhone.get(ePhone) || [];
+          if (list.length === 1) matchedClientId = list[0].id;
         }
 
         if (matchedClientId) {
