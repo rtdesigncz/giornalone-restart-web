@@ -17,18 +17,28 @@ import {
     Sparkles,
     Contact2,
     RefreshCw,
+    BarChart3,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
-const NAV_ITEMS = [
+type NavItem = 
+  | { type?: "link"; label: string; href: string; icon: any }
+  | { type: "divider"; id: string };
+
+const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
-    { label: "Rinnovi", href: "/rinnovi", icon: RefreshCw },
+    { type: "divider", id: "mdiv-1" },
     { label: "Clienti", href: "/clienti", icon: Contact2 },
+    { label: "Rinnovi", href: "/rinnovi", icon: RefreshCw },
+    { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
     { label: "Leads", href: "/leads", icon: UserPlus },
-    { label: "Pass", href: "/consegna-pass", icon: Ticket },
-    { label: "Visite", href: "/visite-mediche", icon: Stethoscope },
+    { type: "divider", id: "mdiv-2" },
+    { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
     { label: "Chiedi ai Dati", href: "/ask", icon: Sparkles },
+    { type: "divider", id: "mdiv-3" },
+    { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
+    { type: "divider", id: "mdiv-4" },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
@@ -105,6 +115,10 @@ export default function MobileNav() {
 
                         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                             {NAV_ITEMS.map((item) => {
+                                if (item.type === "divider") {
+                                    return <div key={item.id} className="my-2 border-t border-slate-100 mx-2" />;
+                                }
+
                                 const isActive = item.href === "/"
                                     ? pathname === "/"
                                     : pathname?.startsWith(item.href);

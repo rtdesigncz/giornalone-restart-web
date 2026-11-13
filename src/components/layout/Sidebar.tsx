@@ -6,16 +6,24 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, Users, UserPlus, Settings, BarChart3, X, LogOut, CalendarCheck, Ticket, Stethoscope, ChevronRight, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Contact2, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 
-const NAV_ITEMS = [
+type NavItem = 
+  | { type?: "link"; label: string; href: string; icon: any }
+  | { type: "divider"; id: string };
+
+const NAV_ITEMS: NavItem[] = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Agenda", href: "/agenda", icon: CalendarCheck },
-    { label: "Rinnovi", href: "/rinnovi", icon: RefreshCw },
+    { type: "divider", id: "div-1" },
     { label: "Clienti", href: "/clienti", icon: Contact2 },
-    { label: "Leads", href: "/leads", icon: UserPlus },
+    { label: "Rinnovi", href: "/rinnovi", icon: RefreshCw },
     { label: "Consegna Pass", href: "/consegna-pass", icon: Ticket },
-    { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
+    { label: "Leads", href: "/leads", icon: UserPlus },
+    { type: "divider", id: "div-2" },
     { label: "Reportistica", href: "/reportistica", icon: BarChart3 },
     { label: "Chiedi ai Dati", href: "/ask", icon: Sparkles },
+    { type: "divider", id: "div-3" },
+    { label: "Visite Mediche", href: "/visite-mediche", icon: Stethoscope },
+    { type: "divider", id: "div-4" },
     { label: "Impostazioni", href: "/settings", icon: Settings },
 ];
 
@@ -75,6 +83,15 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
                 <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-1.5 custom-scrollbar">
                     {NAV_ITEMS.map((item) => {
+                        if (item.type === "divider") {
+                            return (
+                                <div 
+                                    key={item.id} 
+                                    className="my-3 border-t border-slate-200/80 mx-2"
+                                />
+                            );
+                        }
+
                         const isActive = pathname === item.href;
                         return (
                             <Link key={item.href} href={item.href} onClick={() => onClose()} title={collapsed ? item.label : ""} className={cn(
