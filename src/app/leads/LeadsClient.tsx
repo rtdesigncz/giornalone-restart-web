@@ -724,7 +724,7 @@ export default function LeadsClient() {
                     onConfirm={confirmAction}
                 >
                     <div className="space-y-4">
-                        <p className="text-sm text-slate-600">Registra l'esito della visita per <b>{actionModal.item?.nome} {actionModal.item?.cognome}</b>.</p>
+                        <p className="text-sm text-slate-600">Registra l'esito per <b>{actionModal.item?.nome} {actionModal.item?.cognome}</b>.</p>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2 space-y-1">
@@ -789,7 +789,7 @@ export default function LeadsClient() {
                                 <label className="text-xs font-bold text-slate-500 uppercase">Note Aggiuntive</label>
                                 <textarea
                                     className="input w-full min-h-[80px] resize-none text-sm"
-                                    placeholder="Scrivi qui eventuali note sulla visita o feedback..."
+                                    placeholder="Scrivi qui eventuali note o feedback..."
                                     value={tempNote}
                                     onChange={e => setTempNote(e.target.value)}
                                 />
@@ -1226,7 +1226,7 @@ export default function LeadsClient() {
                                                                 disabled={isEditing}
                                                                 onClick={() => handleStepClick(r, 'FATTA')}
                                                             />
-                                                            <span className={cn("text-[10px] font-bold uppercase", r.consulenza_fatta ? "text-emerald-600" : "text-slate-300")}>Visita Fatta</span>
+                                                            <span className={cn("text-[10px] font-bold uppercase", r.consulenza_fatta ? "text-emerald-600" : "text-slate-300")}>Fatta</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1268,7 +1268,7 @@ export default function LeadsClient() {
                                                     )}
                                                     {r.data_consulenza && (
                                                         <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-center gap-1">
-                                                            <Calendar size={11} /> Visita: {formatDate(r.data_consulenza)}
+                                                            <Calendar size={11} /> App: {formatDate(r.data_consulenza)}
                                                         </div>
                                                     )}
                                                 </td>
