@@ -8,6 +8,7 @@ import OutcomeButtons from "../outcomes/OutcomeButtons";
 import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 import { hasAppointmentSlotChanged } from "@/lib/whatsapp";
+import { isRenewalOrVerifiche } from "./EntryDrawer";
 
 interface EntryWizardProps {
     isOpen: boolean;
@@ -124,6 +125,13 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
 
             if (!payload.entry_time) payload.entry_time = null;
             else if (payload.entry_time.length === 5) payload.entry_time += ":00";
+
+            const isSubReq = isRenewalOrVerifiche(payload.section);
+            if (isSubReq && (!payload.tipo_abbonamento_id || payload.tipo_abbonamento_id === "null")) {
+                alert("ATTENZIONE: La Tipologia di Abbonamento è obbligatoria per le sezioni Rinnovi e Integrazioni e Verifiche del Bisogno.");
+                setLoading(false);
+                return;
+            }
 
             // If "Save without outcome", ensure all outcomes are false
             if (!withOutcome) {
@@ -313,9 +321,21 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                                         />
                                     </div>
                                     <div>
-                                        <label className="label">Tipo Abbonamento</label>
+                                        <label className="label flex items-center justify-between">
+                                            <span>
+                                                Tipo Abbonamento
+                                                {isRenewalOrVerifiche(formData.section) && (
+                                                    <span className="text-rose-600 font-bold ml-1">*</span>
+                                                )}
+                                            </span>
+                                            {isRenewalOrVerifiche(formData.section) && (
+                                                <span className="text-xs text-amber-600 font-bold uppercase">
+                                                    Obbligatorio
+                                                </span>
+                                            )}
+                                        </label>
                                         <select
-                                            className="input w-full h-12 text-lg box-border"
+                                            className={cn("input w-full h-12 text-lg box-border", isRenewalOrVerifiche(formData.section) && !formData.tipo_abbonamento_id && "border-amber-400")}
                                             value={formData.tipo_abbonamento_id || ""}
                                             onChange={(e) => handleChange("tipo_abbonamento_id", e.target.value)}
                                         >

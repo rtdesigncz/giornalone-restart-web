@@ -28,6 +28,77 @@ interface EntryDrawerProps {
     initialData?: Partial<Entry>;
 }
 
+export const isRenewalOrVerifiche = (sec: string | undefined | null) => {
+    if (!sec) return false;
+    const upper = sec.toUpperCase();
+    return (
+        upper === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" ||
+        upper === "APPUNTAMENTI VERIFICHE DEL BISOGNO" ||
+        upper.includes("RINNOV") ||
+        upper.includes("INTEGRAZION") ||
+        upper.includes("VERIFICH") ||
+        upper.includes("BISOGNO")
+    );
+};
+
+export const matchTipoAbbonamentoId = (client: AnyObj | null | undefined, tipiList: AnyObj[]): string => {
+    if (!client || !tipiList || tipiList.length === 0) return "";
+
+    // 1. Direct ID match
+    if (client.tipo_abbonamento_id) {
+        const found = tipiList.find(t => t.id === client.tipo_abbonamento_id);
+        if (found) return found.id;
+    }
+
+    // 2. Name match with pacchetto_originale or clean subscription
+    const raw = (client.pacchetto_originale || client.abbonamento || "").replace(/^=+\s*/, "").trim().toLowerCase();
+    if (!raw) return "";
+
+    // Exact name match
+    const exact = tipiList.find(t => t.name?.trim().toLowerCase() === raw);
+    if (exact) return exact.id;
+
+    // Substring matches
+    if (raw.includes("annuale")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("annuale"));
+        if (f) return f.id;
+    }
+    if (raw.includes("quadrimestrale")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("quadrimestrale"));
+        if (f) return f.id;
+    }
+    if (raw.includes("semestrale")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("semestrale"));
+        if (f) return f.id;
+    }
+    if (raw.includes("trimestrale")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("trimestrale"));
+        if (f) return f.id;
+    }
+    if (raw.includes("mensile")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("mensile"));
+        if (f) return f.id;
+    }
+    if (raw.includes("reformer")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("reformer"));
+        if (f) return f.id;
+    }
+    if (raw.includes("personal")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("personal"));
+        if (f) return f.id;
+    }
+    if (raw.includes("10 ingressi") || raw.includes("ingressi")) {
+        const f = tipiList.find(t => t.name?.toLowerCase().includes("ingressi"));
+        if (f) return f.id;
+    }
+
+    // Generic match
+    const partial = tipiList.find(t => t.name && (raw.includes(t.name.toLowerCase()) || t.name.toLowerCase().includes(raw)));
+    if (partial) return partial.id;
+
+    return "";
+};
+
 export default function EntryDrawer({
     isOpen,
     onClose,
@@ -58,6 +129,7 @@ export default function EntryDrawer({
         ? targetSection
         : (section || initialData?.section || "APPUNTAMENTI (Pianificazione)");
     const isTelefonici = effectiveSection === "APPUNTAMENTI TELEFONICI";
+    const isSubscriptionRequired = isRenewalOrVerifiche(effectiveSection);
 
     const [isMobile, setIsMobile] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -110,6 +182,21 @@ export default function EntryDrawer({
         }
     }, [isOpen, entry, initialData]);
 
+    // Auto-sync tipo_abbonamento_id when client or tipi is loaded/matched
+    useEffect(() => {
+        if (selectedClient && tipi.length > 0) {
+            setFormData(prev => {
+                if (!prev.tipo_abbonamento_id) {
+                    const matchedTipoId = matchTipoAbbonamentoId(selectedClient, tipi);
+                    if (matchedTipoId) {
+                        return { ...prev, tipo_abbonamento_id: matchedTipoId };
+                    }
+                }
+                return prev;
+            });
+        }
+    }, [selectedClient, tipi]);
+
     const handleClientSearch = (field: string, val: string) => {
         handleChange(field, val);
         const nextNome = field === "nome" ? val : formData.nome || "";
@@ -127,6 +214,23 @@ export default function EntryDrawer({
                         if (data.clients && data.clients.length > 0) {
                             setClientSuggestions(data.clients);
                             setShowSuggestions(true);
+
+                            // If exact match found while typing, auto-sync client and subscription
+                            const exact = data.clients.find((c: any) =>
+                                (nextPhone && nextPhone.length >= 6 && c.telefono === nextPhone) ||
+                                (nextCognome && nextNome && c.cognome?.toLowerCase().trim() === nextCognome.toLowerCase().trim() && c.nome?.toLowerCase().trim() === nextNome.toLowerCase().trim())
+                            );
+                            if (exact) {
+                                setSelectedClient(exact);
+                                setFormData(prev => {
+                                    const matchedTipo = matchTipoAbbonamentoId(exact, tipi);
+                                    return {
+                                        ...prev,
+                                        client_id: exact.id,
+                                        tipo_abbonamento_id: prev.tipo_abbonamento_id || matchedTipo || ""
+                                    };
+                                });
+                            }
                         } else {
                             setClientSuggestions([]);
                             setShowSuggestions(false);
@@ -159,12 +263,14 @@ export default function EntryDrawer({
     };
 
     const handleSelectClient = (client: AnyObj) => {
+        const matchedTipoId = matchTipoAbbonamentoId(client, tipi);
         setFormData(prev => ({
             ...prev,
             nome: client.nome || prev.nome,
             cognome: client.cognome || prev.cognome,
             telefono: client.telefono || prev.telefono,
             client_id: client.id,
+            tipo_abbonamento_id: prev.tipo_abbonamento_id || matchedTipoId || "",
         }));
         setSelectedClient(client);
         setShowSuggestions(false);
@@ -304,6 +410,29 @@ export default function EntryDrawer({
             }
 
             const targetSection = isDuplicate || allowSectionChange ? effectiveSection : formData.section;
+            const isSubRequired = isRenewalOrVerifiche(targetSection);
+
+            // Auto-resolve subscription from client if missing
+            let resolvedTipoId = formData.tipo_abbonamento_id || null;
+            if ((!resolvedTipoId || resolvedTipoId === "null") && selectedClient && tipi.length > 0) {
+                resolvedTipoId = matchTipoAbbonamentoId(selectedClient, tipi) || null;
+            }
+            if ((!resolvedTipoId || resolvedTipoId === "null") && resolvedClientId && tipi.length > 0) {
+                const { data: cl } = await supabase
+                    .from("clients")
+                    .select("id, tipo_abbonamento_id, pacchetto_originale")
+                    .eq("id", resolvedClientId)
+                    .maybeSingle();
+                if (cl) {
+                    resolvedTipoId = matchTipoAbbonamentoId(cl, tipi) || null;
+                }
+            }
+
+            if (isSubRequired && (!resolvedTipoId || resolvedTipoId === "null")) {
+                alert("ATTENZIONE: La Tipologia di Abbonamento è obbligatoria per le sezioni Rinnovi e Integrazioni e Verifiche del Bisogno.");
+                setLoading(false);
+                return;
+            }
 
             const payload: AnyObj = {
                 section: targetSection,
@@ -314,7 +443,7 @@ export default function EntryDrawer({
                 telefono: formData.telefono || "",
                 client_id: resolvedClientId,
                 consulente_id: formData.consulente_id || null,
-                tipo_abbonamento_id: formData.tipo_abbonamento_id || null,
+                tipo_abbonamento_id: resolvedTipoId,
                 note: formData.note || "",
                 miss: !!formData.miss,
                 venduto: !!formData.venduto,
@@ -669,14 +798,31 @@ export default function EntryDrawer({
 
                         {!isTelefonici ? (
                             <div>
-                                <label className="block text-xs font-bold text-slate-800 mb-1">Tipo Abbonamento</label>
+                                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                                    <span>
+                                        Tipo Abbonamento
+                                        {isSubscriptionRequired && (
+                                            <span className="text-rose-600 font-extrabold ml-1" title="Obbligatorio per questa sezione">*</span>
+                                        )}
+                                    </span>
+                                    {isSubscriptionRequired && (
+                                        <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                            Obbligatorio
+                                        </span>
+                                    )}
+                                </label>
                                 <CustomSelect
                                     options={tipi.map(t => ({ value: t.id, label: t.name }))}
                                     value={formData.tipo_abbonamento_id || ""}
                                     onChange={(val) => handleChange("tipo_abbonamento_id", val)}
                                     placeholder="-- Seleziona Abbonamento --"
-                                    
+                                    className={isSubscriptionRequired && !formData.tipo_abbonamento_id ? "border-amber-400 ring-2 ring-amber-400/30" : ""}
                                 />
+                                {isSubscriptionRequired && !formData.tipo_abbonamento_id && (
+                                    <p className="text-[10px] text-amber-600 font-medium mt-1">
+                                        * Seleziona la tipologia di abbonamento per proseguire.
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             <div></div>
