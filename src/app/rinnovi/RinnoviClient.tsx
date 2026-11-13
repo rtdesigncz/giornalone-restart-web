@@ -548,17 +548,16 @@ export default function RinnoviClient() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Campagna:</span>
-              <select
+              <CustomSelect
+                options={availableMonths.map((m) => ({
+                  value: m,
+                  label: formatMonthHuman(m),
+                }))}
                 value={mese}
-                onChange={(e) => setMese(e.target.value)}
-                className="text-xs font-bold py-2 px-3.5 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#21b5ba]/20 focus:border-[#21b5ba] cursor-pointer"
-              >
-                {availableMonths.map((m) => (
-                  <option key={m} value={m}>
-                    {formatMonthHuman(m)}
-                  </option>
-                ))}
-              </select>
+                onChange={setMese}
+                placeholder="Seleziona campagna..."
+                className="w-[180px] sm:w-[210px]"
+              />
             </div>
 
             <button
