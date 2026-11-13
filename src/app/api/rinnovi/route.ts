@@ -82,7 +82,7 @@ export async function GET(req: Request) {
       .select(`
         *,
         client:clients (
-          id, nome, cognome, telefono, email, data_nascita, stato, data_scadenza, ultimo_accesso, accessi_effettuati, pacchetto_originale, disciplina
+          id, nome, cognome, telefono, email, data_nascita, stato, data_inizio, data_scadenza, ultimo_accesso, accessi_effettuati, pacchetto_originale, disciplina
         )
       `)
       .eq("mese_riferimento", mese)
@@ -206,6 +206,43 @@ export async function GET(req: Request) {
       });
     }
 
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    function isEntryPertinentToMonth(entry: any, targetMonth: string, client: any, isExplicitEntry: boolean) {
+      if (isExplicitEntry) return true;
+      const entryDate = entry.entry_date;
+      if (!entryDate) return false;
+
+      // If client contract has a known start date, an appointment before that start date belongs to an older contract
+      if (client?.data_inizio && entryDate < client.data_inizio) {
+        return false;
+      }
+
+      // Calculate target month boundaries
+      const [tYear, tMonth] = targetMonth.split("-").map(Number);
+      const windowStart = new Date(Date.UTC(tYear, tMonth - 1, 1 - 60)).toISOString().split("T")[0];
+      const windowEnd = new Date(Date.UTC(tYear, tMonth, 30)).toISOString().split("T")[0];
+
+      const isUpcoming = entryDate >= todayStr;
+
+      if (!isUpcoming) {
+        // Past appointments belong strictly to the campaign window of their time
+        return entryDate >= windowStart && entryDate <= windowEnd;
+      }
+
+      // Upcoming appointments (today onwards):
+      // Belongs to targetMonth if:
+      // 1. targetMonth matches the client's next active expiration (data_scadenza starts with targetMonth)
+      //    AND targetMonth is current or future
+      // 2. OR the upcoming entryDate falls within the window of targetMonth
+      const isClientNextExpiration = client?.data_scadenza && client.data_scadenza.startsWith(targetMonth);
+      if (isClientNextExpiration && targetMonth >= todayStr.slice(0, 7)) {
+        return true;
+      }
+
+      return entryDate >= windowStart && entryDate <= windowEnd;
+    }
+
     function resolveClientAgenda(entries: any[] | undefined) {
       if (!entries || entries.length === 0) return null;
       // Sort descending by entry_date, entry_time
@@ -240,9 +277,19 @@ export async function GET(req: Request) {
 
     // 4. Enrich and calculate live states
     const enrichedList = (items || []).map((it: any) => {
-      const clientEntries = clientEntriesMap.get(it.client_id);
-      const resolved = resolveClientAgenda(clientEntries);
-      const agenda = resolved?.entry || (it.entry_id ? entriesById.get(it.entry_id) : null);
+      const explicitEntry = it.entry_id ? entriesById.get(it.entry_id) : null;
+      const clientEntries = clientEntriesMap.get(it.client_id) || [];
+      const pertinentEntries = clientEntries.filter((e: any) =>
+        isEntryPertinentToMonth(e, mese, it.client, explicitEntry?.id === e.id)
+      );
+
+      // If explicitEntry is present and wasn't in clientEntries, include it
+      if (explicitEntry && !pertinentEntries.some((e: any) => e.id === explicitEntry.id)) {
+        pertinentEntries.unshift(explicitEntry);
+      }
+
+      const resolved = resolveClientAgenda(pertinentEntries);
+      const agenda = explicitEntry || resolved?.entry || null;
       
       const riprogrammato = resolved?.riprogrammato || false;
       const daRiprogrammare = resolved?.daRiprogrammare || false;

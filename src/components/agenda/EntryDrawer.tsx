@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Save, Trash2, Calendar, Clock, User, Phone, Tag, FileText, ChevronDown, Check, Dumbbell, Sparkles } from "lucide-react";
+import { X, Save, Trash2, Calendar, Clock, User, Phone, Tag, FileText, ChevronDown, Check, Dumbbell, Sparkles, CalendarCheck } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -99,6 +99,21 @@ export const matchTipoAbbonamentoId = (client: AnyObj | null | undefined, tipiLi
     return "";
 };
 
+export const formatMonthHuman = (monthStr: string) => {
+    if (!monthStr) return "";
+    const [y, m] = monthStr.split("-").map(Number);
+    const months = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
+    return `${months[m - 1] || ""} ${y}`;
+};
+
+export const cleanSubscription = (s: string | null | undefined) => {
+    if (!s) return null;
+    return s.replace(/^=+\s*/, "").trim();
+};
+
 export default function EntryDrawer({
     isOpen,
     onClose,
@@ -138,8 +153,55 @@ export default function EntryDrawer({
     const [clientSuggestions, setClientSuggestions] = useState<AnyObj[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedClient, setSelectedClient] = useState<AnyObj | null>(null);
+    const [selectedMeseRiferimento, setSelectedMeseRiferimento] = useState<string>("");
+    const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autocompleteContainerRef = useRef<HTMLDivElement>(null);
+
+    // Compute available months for renewal reference
+    useEffect(() => {
+        const now = new Date();
+        const currYear = now.getFullYear();
+        const currMonth = now.getMonth() + 1;
+        const set = new Set<string>();
+        for (let i = -3; i <= 14; i++) {
+            const d = new Date(Date.UTC(currYear, currMonth - 1 + i, 1));
+            set.add(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+        }
+        if (selectedClient?.data_scadenza) {
+            set.add(selectedClient.data_scadenza.slice(0, 7));
+        }
+        setAvailableMonths(Array.from(set).sort());
+    }, [selectedClient]);
+
+    // Pre-select default renewal reference month from client's active expiration
+    useEffect(() => {
+        if (selectedClient?.data_scadenza) {
+            const defMese = selectedClient.data_scadenza.slice(0, 7);
+            setSelectedMeseRiferimento(defMese);
+            setFormData(prev => ({ ...prev, mese_riferimento: defMese }));
+        } else if (initialData?.mese_riferimento) {
+            setSelectedMeseRiferimento(initialData.mese_riferimento);
+        }
+    }, [selectedClient, initialData]);
+
+    // Fetch linked renewal month if editing an existing entry
+    useEffect(() => {
+        if (!isOpen) return;
+        if (entry?.id && entry.id !== "new") {
+            supabase
+                .from("rinnovi_items")
+                .select("mese_riferimento")
+                .eq("entry_id", entry.id)
+                .maybeSingle()
+                .then(({ data }) => {
+                    if (data?.mese_riferimento) {
+                        setSelectedMeseRiferimento(data.mese_riferimento);
+                        setFormData(prev => ({ ...prev, mese_riferimento: data.mese_riferimento }));
+                    }
+                });
+        }
+    }, [isOpen, entry]);
 
     // Close autocomplete on click outside
     useEffect(() => {
@@ -264,6 +326,9 @@ export default function EntryDrawer({
 
     const handleSelectClient = (client: AnyObj) => {
         const matchedTipoId = matchTipoAbbonamentoId(client, tipi);
+        const defMese = client.data_scadenza ? client.data_scadenza.slice(0, 7) : "";
+        if (defMese) setSelectedMeseRiferimento(defMese);
+
         setFormData(prev => ({
             ...prev,
             nome: client.nome || prev.nome,
@@ -271,6 +336,7 @@ export default function EntryDrawer({
             telefono: client.telefono || prev.telefono,
             client_id: client.id,
             tipo_abbonamento_id: prev.tipo_abbonamento_id || matchedTipoId || "",
+            mese_riferimento: defMese || prev.mese_riferimento || "",
         }));
         setSelectedClient(client);
         setShowSuggestions(false);
@@ -490,8 +556,8 @@ export default function EntryDrawer({
                         .eq("id", resolvedClientId)
                         .maybeSingle();
 
-                    if (cl && cl.data_scadenza) {
-                        const meseRef = cl.data_scadenza.slice(0, 7);
+                    const meseRef = selectedMeseRiferimento || (cl?.data_scadenza ? cl.data_scadenza.slice(0, 7) : null);
+                    if (meseRef) {
                         const { data: existingRin } = await supabase
                             .from("rinnovi_items")
                             .select("id")
@@ -499,28 +565,50 @@ export default function EntryDrawer({
                             .eq("mese_riferimento", meseRef)
                             .maybeSingle();
 
+                        const hasOutcome = !!(formData.venduto || formData.presentato || formData.negativo || formData.assente || formData.miss);
+                        const esitoVal = formData.venduto
+                            ? "venduto"
+                            : formData.presentato
+                            ? "presentato"
+                            : formData.negativo
+                            ? "negativo"
+                            : formData.assente
+                            ? "assente"
+                            : formData.miss
+                            ? "miss"
+                            : null;
+
                         if (existingRin) {
                             await supabase.from("rinnovi_items").update({
                                 preso_appuntamento: true,
                                 data_consulenza: formData.entry_date,
                                 contattato: true,
                                 entry_id: savedData.id,
+                                ...(hasOutcome ? { consulenza_fatta: true, esito: esitoVal } : {}),
                             }).eq("id", existingRin.id);
                         } else {
                             await supabase.from("rinnovi_items").insert({
-                                client_id: cl.id,
+                                client_id: resolvedClientId,
                                 mese_riferimento: meseRef,
-                                scadenza_originaria: cl.data_scadenza,
-                                abbonamento_originario: cl.pacchetto_originale ? cl.pacchetto_originale.replace(/^=+\s*/, "").trim() : null,
-                                disciplina: cl.disciplina || "ALTRO",
-                                prezzo_originario: cl.prezzo || 0,
+                                scadenza_originaria: cl?.data_scadenza || `${meseRef}-01`,
+                                abbonamento_originario: cl?.pacchetto_originale ? cleanSubscription(cl.pacchetto_originale) : null,
+                                disciplina: cl?.disciplina || "ALTRO",
+                                prezzo_originario: cl?.prezzo || 0,
                                 contattato: true,
                                 preso_appuntamento: true,
                                 data_consulenza: formData.entry_date,
                                 entry_id: savedData.id,
-                                consulenza_fatta: false,
+                                consulenza_fatta: hasOutcome,
+                                esito: esitoVal,
                             });
                         }
+
+                        // Disassociate any other renewal item previously attached to this entry_id
+                        await supabase
+                            .from("rinnovi_items")
+                            .update({ entry_id: null, preso_appuntamento: false })
+                            .eq("entry_id", savedData.id)
+                            .neq("mese_riferimento", meseRef);
                     }
                 } catch (rinErr) {
                     console.error("Error auto-syncing rinnovi_item from EntryDrawer:", rinErr);
@@ -753,6 +841,77 @@ export default function EntryDrawer({
                                 >
                                     {selectedClient.stato?.replace("_", " ")}
                                 </span>
+                            </div>
+                        )}
+
+                        {/* Alternative 3: Scadenza di Riferimento Rinnovo */}
+                        {isRenewalOrVerifiche(effectiveSection) && (
+                            <div className="mt-3 p-3.5 rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40 shadow-xs animate-in fade-in">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                                            <CalendarCheck size={14} strokeWidth={2.5} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs font-black text-indigo-950 uppercase tracking-tight">
+                                                    Scadenza di Riferimento Rinnovo
+                                                </span>
+                                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700">
+                                                    Campagna Rinnovi
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 font-medium">
+                                                L&apos;appuntamento sarà collegato alla lista del mese selezionato
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {selectedMeseRiferimento && (
+                                        <span className="text-xs font-black px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow-xs">
+                                            {formatMonthHuman(selectedMeseRiferimento)}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                    <div className="flex-1">
+                                        <CustomSelect
+                                            options={availableMonths.map((m) => {
+                                                const isClientExp = selectedClient?.data_scadenza?.startsWith(m);
+                                                return {
+                                                    value: m,
+                                                    label: `${formatMonthHuman(m)}${isClientExp ? " (Scadenza Attuale)" : ""}`,
+                                                };
+                                            })}
+                                            value={selectedMeseRiferimento || ""}
+                                            onChange={(val) => {
+                                                setSelectedMeseRiferimento(val);
+                                                handleChange("mese_riferimento", val);
+                                            }}
+                                            placeholder="-- Seleziona Mese di Scadenza --"
+                                        />
+                                    </div>
+                                    {selectedClient?.data_scadenza && selectedMeseRiferimento !== selectedClient.data_scadenza.slice(0, 7) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const defMese = selectedClient.data_scadenza.slice(0, 7);
+                                                setSelectedMeseRiferimento(defMese);
+                                                handleChange("mese_riferimento", defMese);
+                                            }}
+                                            className="text-[10px] font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-2 rounded-xl transition-colors whitespace-nowrap shadow-2xs"
+                                        >
+                                            Usa scadenza cliente
+                                        </button>
+                                    )}
+                                </div>
+
+                                {selectedClient?.data_scadenza && (
+                                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 px-2 font-medium bg-white/80 py-1.5 rounded-xl border border-indigo-100/70">
+                                        <span>Abbonamento attivo: <b className="text-slate-800">{cleanSubscription(selectedClient.pacchetto_originale) || "—"}</b></span>
+                                        <span>Data scadenza: <b className="text-indigo-900">{new Date(selectedClient.data_scadenza).toLocaleDateString("it-IT")}</b></span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

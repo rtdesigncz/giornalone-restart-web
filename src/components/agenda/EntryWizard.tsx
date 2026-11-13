@@ -142,6 +142,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                 payload.assente = false;
             }
 
+            let savedRecord = payload;
             if (isEditing) {
                 if (hasAppointmentSlotChanged(initialData, payload)) {
                     payload.whatsapp_sent = false;
@@ -154,12 +155,66 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                     .select()
                     .single();
                 if (error) throw error;
-                onSave(updatedData || payload);
+                savedRecord = updatedData || payload;
+                onSave(savedRecord);
             } else {
                 payload.whatsapp_sent = false;
                 const { data: insertedData, error } = await supabase.from("entries").insert(payload).select().single();
                 if (error) throw error;
-                onSave(insertedData || payload);
+                savedRecord = insertedData || payload;
+                onSave(savedRecord);
+            }
+
+            // Sync with rinnovi_items if this appointment is in Rinnovi section and linked to a client
+            const isRenewal = payload.section === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" || payload.section?.includes("RINNOV");
+            if (payload.client_id && isRenewal && savedRecord?.id) {
+                try {
+                    const { data: cl } = await supabase
+                        .from("clients")
+                        .select("id, data_scadenza, pacchetto_originale, disciplina, prezzo")
+                        .eq("id", payload.client_id)
+                        .maybeSingle();
+
+                    const meseRef = cl?.data_scadenza ? cl.data_scadenza.slice(0, 7) : null;
+                    if (meseRef) {
+                        const { data: existingRin } = await supabase
+                            .from("rinnovi_items")
+                            .select("id")
+                            .eq("client_id", payload.client_id)
+                            .eq("mese_riferimento", meseRef)
+                            .maybeSingle();
+
+                        const hasOutcome = !!(payload.venduto || payload.presentato || payload.negativo || payload.assente || payload.miss);
+                        const esitoVal = payload.venduto ? "venduto" : payload.presentato ? "presentato" : payload.negativo ? "negativo" : payload.assente ? "assente" : payload.miss ? "miss" : null;
+
+                        if (existingRin) {
+                            await supabase.from("rinnovi_items").update({
+                                preso_appuntamento: true,
+                                data_consulenza: payload.entry_date,
+                                contattato: true,
+                                entry_id: savedRecord.id,
+                                ...(hasOutcome ? { consulenza_fatta: true, esito: esitoVal } : {}),
+                            }).eq("id", existingRin.id);
+                        } else {
+                            await supabase.from("rinnovi_items").insert({
+                                client_id: payload.client_id,
+                                mese_riferimento: meseRef,
+                                scadenza_originaria: cl?.data_scadenza || `${meseRef}-01`,
+                                abbonamento_originario: cl?.pacchetto_originale ? cl.pacchetto_originale.replace(/^=+\s*/, "").trim() : null,
+                                disciplina: cl?.disciplina || "ALTRO",
+                                prezzo_originario: cl?.prezzo || 0,
+                                contattato: true,
+                                preso_appuntamento: true,
+                                data_consulenza: payload.entry_date,
+                                entry_id: savedRecord.id,
+                                consulenza_fatta: hasOutcome,
+                                esito: esitoVal,
+                            });
+                        }
+                    }
+                } catch (rinErr) {
+                    console.error("Error auto-syncing rinnovi_item from EntryWizard:", rinErr);
+                }
             }
 
             onClose();
