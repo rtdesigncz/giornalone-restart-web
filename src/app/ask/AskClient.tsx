@@ -472,27 +472,26 @@ export default function AskClient() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-20">
       {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-6 shadow-sm">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+              <Sparkles size={20} />
+            </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#1ea2a7] to-[#2cd4da] flex items-center justify-center text-white shadow-md shadow-cyan-500/20">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-                    Chiedi ai Dati
-                    <span className="text-xs font-bold uppercase tracking-wider bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full">
-                      AI Assistant
-                    </span>
-                  </h1>
-                </div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Chiedi ai Dati</span>
+                  <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full">
+                    AI Assistant
+                  </span>
+                </h1>
               </div>
-              <p className="text-sm text-slate-500 mt-1">
-                Fai qualsiasi domanda in linguaggio naturale: l&apos;AI traduce la tua richiesta in query ed estrae i dati in tempo reale.
+              <p className="text-xs text-slate-500 font-medium">
+                Fai qualsiasi domanda in linguaggio naturale: l&apos;AI traduce la tua richiesta in query ed estrae i dati in tempo reale
               </p>
             </div>
+          </div>
 
             {/* Header Badges */}
             <div className="flex items-center gap-2">
@@ -522,9 +521,8 @@ export default function AskClient() {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-6 space-y-6">
         {/* Search & Prompt Box */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-6 transition-all focus-within:border-cyan-400 focus-within:shadow-md">
           <div className="relative">

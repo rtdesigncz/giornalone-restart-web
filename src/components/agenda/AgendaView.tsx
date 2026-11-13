@@ -6,7 +6,7 @@ import AgendaTable from "@/components/agenda/AgendaTable";
 import AgendaCalendar from "@/components/agenda/AgendaCalendar";
 import AgendaMobileList from "@/components/agenda/AgendaMobileList";
 import { useSearchParams, useRouter } from "next/navigation";
-import { LayoutList, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutList, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { getLocalDateISO } from "@/lib/dateUtils";
 
 import { DB_SECTIONS, getSectionLabel } from "@/lib/sections";
@@ -32,14 +32,28 @@ export default function AgendaView() {
     }, [sectionParam]);
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-6 lg:p-8 animate-in-up space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Agenda</h1>
-                    <p className="text-slate-500 mt-1">Gestisci appuntamenti e attività.</p>
-                </div>
+        <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans pb-12">
+            {/* Top Navbar */}
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+                <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+                            <CalendarIcon size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">Agenda Giornalone</h1>
+                                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={11} /> Pianificazione Live
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Gestisci appuntamenti, consulenze, verifiche del bisogno e rinnovi
+                            </p>
+                        </div>
+                    </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
                     {/* Date Selector */}
                     {/* Date Selector */}
                     <div className="flex items-center justify-between gap-2 w-full md:w-auto">
@@ -154,9 +168,9 @@ export default function AgendaView() {
                     </div>
                 </div>
             </div>
+        </div>
 
-
-
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-5 space-y-5 w-full flex-1 flex flex-col">
             {/* Tabs (Desktop Only) */}
             <div className="hidden md:block border-b border-slate-200 flex-shrink-0">
                 <div className="flex flex-wrap space-x-2 px-1">
@@ -203,5 +217,6 @@ export default function AgendaView() {
                 )}
             </div>
         </div>
+    </div>
     );
 }

@@ -30,6 +30,7 @@ import {
     Award,
     Sparkles,
     MessageSquare,
+    Ticket,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -1196,30 +1197,39 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
     };
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 min-h-[101vh]">
-            {/* Header & Gestioni / Strategia Selector */}
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-                        <span>Consegna Pass</span>
-                        {unsyncedUpdates.length > 0 && (
-                            <button
-                                onClick={handleSyncAllToDb}
-                                disabled={syncing}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-100 transition-colors shadow-xs"
-                                title="Ci sono esiti o iscrizioni rilevati in Agenda da salvare nei Pass"
-                            >
-                                <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
-                                <span>Sincronizza {unsyncedUpdates.length} aggiornamenti dall&apos;Agenda</span>
-                            </button>
-                        )}
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Monitora consegna pass, prove sincronizzate con l&apos;Agenda e proposte commerciali
-                    </p>
-                </div>
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+            {/* Top Navbar */}
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+                <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+                            <Ticket size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">Consegna Pass</h1>
+                                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={11} /> Campagne Referral
+                                </span>
+                                {unsyncedUpdates.length > 0 && (
+                                    <button
+                                        onClick={handleSyncAllToDb}
+                                        disabled={syncing}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors shadow-2xs"
+                                        title="Ci sono esiti o iscrizioni rilevati in Agenda da salvare nei Pass"
+                                    >
+                                        <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                                        <span>Sincronizza {unsyncedUpdates.length} aggiornamenti</span>
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Monitora consegna pass, prove sincronizzate con l&apos;Agenda e proposte commerciali
+                            </p>
+                        </div>
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto relative">
+                    <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto relative">
                     {/* Gestione Dropdown */}
                     <div className="relative flex-1 sm:flex-none">
                         <button
@@ -1344,7 +1354,9 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                     )}
                 </div>
             </div>
+        </div>
 
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-6 space-y-6">
             {/* Strategy Banner */}
             {selectedGestione && (
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-purple-50 via-white to-cyan-50/60 border border-purple-100 rounded-2xl px-4 py-3 shadow-xs">
@@ -2282,6 +2294,7 @@ Che ne pensi? Facci sapere, grazie di cuore!`;
                     </>,
                     document.body
                 )}
+            </div>
         </div>
     );
 }

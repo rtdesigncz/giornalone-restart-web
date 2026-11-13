@@ -14,7 +14,8 @@ import {
     Calendar,
     BarChart3,
     ArrowRight,
-    RefreshCw
+    RefreshCw,
+    Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ClientTimelineDrawer from "@/components/ui/ClientTimelineDrawer";
@@ -363,77 +364,89 @@ export default function ReportisticaClientV2() {
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans">
             {/* TOP HEADER */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-                <div className="max-w-[1800px] mx-auto px-4 py-3">
-                    <div className="flex flex-col gap-4">
-                        {/* Row 1: Title + Date + PDF */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                                <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">Reportistica</h1>
-                                <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-
-                                {/* Date Controls */}
-                                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                                    <button
-                                        onClick={() => setModePeriodo("giorno")}
-                                        className={cn(
-                                            "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
-                                            modePeriodo === "giorno" ? "bg-white text-cyan-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        Giorno
-                                    </button>
-                                    <button
-                                        onClick={() => setModePeriodo("periodo")}
-                                        className={cn(
-                                            "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
-                                            modePeriodo === "periodo" ? "bg-white text-cyan-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        Periodo
-                                    </button>
-                                </div>
-
-                                {modePeriodo === "giorno" ? (
-                                    <input
-                                        type="date"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                        className="input py-1.5 h-9 text-sm bg-white border-slate-200 w-auto font-medium text-slate-700"
-                                    />
-                                ) : (
-                                    <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-3 py-1.5 h-9 shadow-sm">
-                                        <input
-                                            type="date"
-                                            value={from}
-                                            onChange={(e) => setFrom(e.target.value)}
-                                            className="text-sm border-none focus:ring-0 p-0 text-slate-700 w-28 bg-transparent font-medium"
-                                        />
-                                        <ArrowRight className="w-3 h-3 text-slate-400" />
-                                        <input
-                                            type="date"
-                                            value={to}
-                                            onChange={(e) => setTo(e.target.value)}
-                                            className="text-sm border-none focus:ring-0 p-0 text-slate-700 w-28 bg-transparent font-medium"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+                <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+                            <BarChart3 size={20} />
+                        </div>
+                        <div>
                             <div className="flex items-center gap-2">
-                                <a
-                                    href={pdfHref}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-2 px-4 py-2 h-10 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors shadow-sm"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Scarica PDF</span>
-                                </a>
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">Reportistica</h1>
+                                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={11} /> Analytics &amp; KPI
+                                </span>
                             </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Statistiche commerciali, conversioni lead, pass e presenze
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Date Controls + PDF */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Date Controls */}
+                        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                            <button
+                                onClick={() => setModePeriodo("giorno")}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                                    modePeriodo === "giorno" ? "bg-white text-cyan-700 shadow-xs" : "text-slate-500 hover:text-slate-700"
+                                )}
+                            >
+                                Giorno
+                            </button>
+                            <button
+                                onClick={() => setModePeriodo("periodo")}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                                    modePeriodo === "periodo" ? "bg-white text-cyan-700 shadow-xs" : "text-slate-500 hover:text-slate-700"
+                                )}
+                            >
+                                Periodo
+                            </button>
                         </div>
 
-                        {/* Row 2: Filters */}
+                        {modePeriodo === "giorno" ? (
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="input py-1.5 h-9 text-xs bg-white border-slate-200 rounded-xl font-bold text-slate-700 shadow-2xs"
+                            />
+                        ) : (
+                            <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-1.5 h-9 shadow-2xs">
+                                <input
+                                    type="date"
+                                    value={from}
+                                    onChange={(e) => setFrom(e.target.value)}
+                                    className="text-xs border-none focus:ring-0 p-0 text-slate-700 w-28 bg-transparent font-bold"
+                                />
+                                <ArrowRight className="w-3 h-3 text-slate-400" />
+                                <input
+                                    type="date"
+                                    value={to}
+                                    onChange={(e) => setTo(e.target.value)}
+                                    className="text-xs border-none focus:ring-0 p-0 text-slate-700 w-28 bg-transparent font-bold"
+                                />
+                            </div>
+                        )}
+
+                        <a
+                            href={pdfHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Scarica PDF</span>
+                        </a>
+                    </div>
+                </div>
+
+                {/* Row 2: Filters & KPIs */}
+                <div className="border-t border-slate-100 bg-slate-50/50 px-4 md:px-8 py-2.5">
+                    <div className="max-w-[1700px] mx-auto space-y-3">
                         <div className="flex flex-wrap items-center gap-2 w-full">
                             <div className="relative group w-full sm:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
@@ -489,7 +502,7 @@ export default function ReportisticaClientV2() {
                         </div>
 
                         {/* Row 3: KPI Cards (Clickable) */}
-                        <div className="flex flex-wrap items-center gap-4 pb-4">
+                        <div className="flex flex-wrap items-center gap-4 pb-2">
                             {/* Totale */}
                             <div onClick={resetFilters} className={cn("bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-all cursor-pointer group shadow-sm hover:shadow-md w-[140px] shrink-0", (selectedEsiti.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
                                 <div className="flex items-center justify-between mb-3"><h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide group-hover:text-slate-700">Totale</h3><div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center"><BarChart3 className="w-3.5 h-3.5 text-slate-400" /></div></div>
@@ -551,8 +564,8 @@ export default function ReportisticaClientV2() {
             </div>
 
             {/* MAIN TABLE AREA */}
-            <div className="flex-1 overflow-auto relative bg-slate-50 p-4">
-                <div className="max-w-[1800px] mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="flex-1 overflow-auto relative bg-slate-50 px-4 md:px-8 py-5">
+                <div className="max-w-[1700px] mx-auto bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
                     {loading && (
                         <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm">
                             <div className="flex flex-col items-center gap-3">

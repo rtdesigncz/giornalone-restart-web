@@ -93,7 +93,7 @@ export default function ClientiClient() {
     <div className="min-h-screen bg-slate-50/50 pb-12">
       {/* Top Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner">
@@ -125,7 +125,7 @@ export default function ClientiClient() {
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-6">
+      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-6 space-y-6">
         {/* KPI Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           {/* Total Card */}

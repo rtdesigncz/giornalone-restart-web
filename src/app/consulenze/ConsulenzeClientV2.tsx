@@ -8,7 +8,7 @@ import {
     Search, Filter, Plus, ChevronDown,
     Users, CheckCircle2, AlertCircle,
     Clock, AlertTriangle, Phone, Calendar, FileText,
-    MoreHorizontal, ArrowRight, XCircle
+    MoreHorizontal, ArrowRight, XCircle, Headphones, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
@@ -918,101 +918,104 @@ export default function ConsulenzeClientV2() {
             )}
 
             {/* TOP HEADER */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-                <div className="max-w-[1600px] mx-auto px-4 py-3">
-                    <div className="flex flex-col gap-3">
-                        {/* Top Bar: Title + Gestione + Search + Main Actions */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center justify-between sm:justify-start gap-4">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-2xl font-bold text-slate-900 hidden sm:block">Consulenze</h1>
-                                </div>
-
-                                <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-
-                                {/* Gestione Selector */}
-                                <div className="flex items-center gap-2 w-full sm:w-auto">
-                                    <CustomSelect
-                                        options={gestioni.map(g => ({ value: g.id, label: g.nome }))}
-                                        value={gestioneId}
-                                        onChange={setGestioneId}
-                                        placeholder="Seleziona gestione..."
-                                        className="w-full sm:w-[220px]"
-                                    />
-
-                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm shrink-0">
-                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Nuova Gestione" onClick={creaGestione}>
-                                            <Plus className="w-3.5 h-3.5" />
-                                        </button>
-                                        <div className="w-px h-3.5 bg-slate-200 mx-0.5"></div>
-                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-cyan-600 transition-colors" title="Rinomina" onClick={rinominaGestione} disabled={!gestioneId}>
-                                            <Pencil className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button className="p-1.5 hover:bg-slate-50 rounded-md text-slate-400 hover:text-red-600 transition-colors" title="Elimina" onClick={eliminaGestione} disabled={!gestioneId}>
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </div>
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+                <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+                            <Headphones size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">Consulenze</h1>
+                                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={11} /> Pipeline Vendite
+                                </span>
                             </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Gestione lead, verifiche del bisogno e conversioni commerciali
+                            </p>
+                        </div>
+                    </div>
 
-                            <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 sm:justify-end">
-                                <div className="flex-1 sm:max-w-md relative group">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
-                                    <input
-                                        type="text"
-                                        placeholder="Cerca cliente..."
-                                        className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
-                                        value={q}
-                                        onChange={e => setQ(e.target.value)}
-                                    />
-                                    {q && (
-                                        <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Gestione Selector */}
+                        <div className="flex items-center gap-2">
+                            <CustomSelect
+                                options={gestioni.map(g => ({ value: g.id, label: g.nome }))}
+                                value={gestioneId}
+                                onChange={setGestioneId}
+                                placeholder="Seleziona gestione..."
+                                className="w-[180px] sm:w-[210px]"
+                            />
 
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {(fDaContattare || fContattati || fAppDaFissare || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0 || fMotiviNegativo.length > 0) && (
-                                        <button 
-                                            onClick={resetFiltri}
-                                            className="hidden sm:flex items-center gap-2 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-100 transition-colors"
-                                        >
-                                            <Filter className="w-4 h-4" /> Reset Filtri
-                                        </button>
-                                    )}
-                                    
-                                    <button
-                                        onClick={() => setShowImport(true)}
-                                        className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-                                    >
-                                        <Upload className="w-4 h-4" /> Importa
-                                    </button>
-                                    <button 
-                                        className="btn btn-outline gap-2 bg-white text-[#21b5ba] border-[#21b5ba] hover:bg-[#21b5ba] hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
-                                        onClick={() => setReportOpen(true)}
-                                        disabled={!gestioneId || items.length === 0}
-                                        title="Vedi Report Lista"
-                                    >
-                                        <PieChart className="w-4 h-4" />
-                                        <span className="hidden sm:inline">Report</span>
-                                    </button>
-                                    <button
-                                        onClick={aggiungiRiga}
-                                        className="btn btn-brand whitespace-nowrap"
-                                    >
-                                        <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nuovo</span><span className="sm:hidden">Nuovo</span>
-                                    </button>
-                                </div>
+                            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                                <button className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-cyan-600 transition-colors cursor-pointer" title="Nuova Gestione" onClick={creaGestione}>
+                                    <Plus className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="w-px h-3.5 bg-slate-200 mx-0.5"></div>
+                                <button className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-cyan-600 transition-colors cursor-pointer" title="Rinomina" onClick={rinominaGestione} disabled={!gestioneId}>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors cursor-pointer" title="Elimina" onClick={eliminaGestione} disabled={!gestioneId}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                             </div>
                         </div>
 
+                        {/* Search Input */}
+                        <div className="relative group min-w-[160px] sm:min-w-[200px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-cyan-600 transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="Cerca cliente..."
+                                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all"
+                                value={q}
+                                onChange={e => setQ(e.target.value)}
+                            />
+                            {q && (
+                                <button onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Reset Filter Button */}
+                        {(fDaContattare || fContattati || fAppDaFissare || fAppDaFare || fConsFatte || fEsiti.length > 0 || fAbb.length > 0 || fMotiviNegativo.length > 0) && (
+                            <button 
+                                onClick={resetFiltri}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                                <Filter className="w-3.5 h-3.5" /> Reset
+                            </button>
+                        )}
+                        
+                        <button
+                            onClick={() => setShowImport(true)}
+                            className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+                        >
+                            <Upload className="w-3.5 h-3.5" /> Importa
+                        </button>
+                        <button 
+                            className="btn btn-outline gap-1.5 bg-white text-[#21b5ba] border-[#21b5ba] hover:bg-[#21b5ba] hover:text-white transition-all disabled:opacity-50 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer flex items-center"
+                            onClick={() => setReportOpen(true)}
+                            disabled={!gestioneId || items.length === 0}
+                            title="Vedi Report Lista"
+                        >
+                            <PieChart className="w-3.5 h-3.5" />
+                            <span>Report</span>
+                        </button>
+                        <button
+                            onClick={aggiungiRiga}
+                            className="btn btn-brand whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                            <Plus className="w-4 h-4" /> <span>Nuovo</span>
+                        </button>
                     </div>
                 </div>
             </div>                
             {/* NEW KPI SAAS CARDS */}
-            <div className="bg-slate-50 border-b border-slate-200 py-5 sm:py-6 px-4 sm:px-6">
-                <div className="grid grid-cols-2 md:grid-cols-7 gap-4 max-w-[1600px] mx-auto">
+            <div className="bg-slate-50 border-b border-slate-200 py-5 sm:py-6 px-4 md:px-8">
+                <div className="grid grid-cols-2 md:grid-cols-7 gap-4 max-w-[1700px] mx-auto">
                     {/* Totale */}
                     <div onClick={() => { resetFiltri(); }} className={cn("saas-panel p-4 cursor-pointer hover:border-slate-300 hover:shadow-md transition-all group", (!fDaContattare && !fContattati && !fAppDaFissare && !fAppDaFare && !fConsFatte && fEsiti.length === 0 && fAbb.length === 0 && fMotiviNegativo.length === 0) ? "ring-2 ring-slate-400 border-transparent" : "")}>
                         <div className="flex items-center justify-between mb-1">
@@ -1079,7 +1082,7 @@ export default function ConsulenzeClientV2() {
                 </div>
                 
                 {/* Esiti & Abbonamenti Break-down */}
-                <div className="mt-5 max-w-[1600px] mx-auto">
+                <div className="mt-5 max-w-[1700px] mx-auto">
                     <div className="bg-white/90 border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-xs flex flex-col md:flex-row gap-4 items-center justify-center">
                         {/* Esiti Breakdown */}
                         <div className="flex gap-2.5 flex-wrap justify-center items-center py-0.5">
@@ -1144,7 +1147,7 @@ export default function ConsulenzeClientV2() {
 
                 {/* KPI A COMPARSA - MOTIVAZIONI NEGATIVI */}
                 {(showNegativiKpi || fEsiti.includes("NEGATIVO") || fMotiviNegativo.length > 0) && kpi.negativiTotali > 0 && (
-                    <div className="mt-4 pt-3.5 border-t border-rose-200/70 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="mt-4 pt-3.5 border-t border-rose-200/70 max-w-[1700px] mx-auto animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="bg-gradient-to-r from-rose-50/90 via-white to-rose-50/90 border border-rose-200 rounded-2xl p-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                                 <span className="flex h-2 w-2 rounded-full bg-rose-500 ring-4 ring-rose-200 animate-pulse"></span>
@@ -1247,7 +1250,7 @@ export default function ConsulenzeClientV2() {
 
                 {
                     !err && (
-                        <div className="w-full max-w-[1600px] mx-auto">
+                        <div className="w-full max-w-[1700px] mx-auto">
                             {/* DESKTOP TABLE */}
                             <div className="hidden md:block">
                                 <table className="w-full border-separate border-spacing-y-3">

@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, Send, Loader2, Pencil, Check, X } from "lucide-react";
+import { GripVertical, Plus, Trash2, Send, Loader2, Pencil, Check, X, Sliders, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Consulente = {
@@ -304,11 +304,36 @@ export default function SettingsPage() {
   const tipiIds = useMemo(() => tipi.map((t) => t.id), [tipi]);
 
   return (
-    <div className="space-y-6 p-6 max-w-5xl mx-auto w-full pb-20">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-slate-900">Impostazioni</h1>
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+      {/* Top Navbar */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs backdrop-blur-md bg-white/95">
+        <div className="max-w-[1700px] mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#21b5ba]/10 text-[#21b5ba] flex items-center justify-center font-bold shadow-inner shrink-0">
+              <Sliders size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black text-slate-900 tracking-tight">Impostazioni di Sistema</h1>
+                <span className="text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles size={11} /> Configurazione
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Gestione consulenti, tipologie di abbonamento e preferenze globali
+              </p>
+            </div>
+          </div>
+          {loading && (
+            <div className="flex items-center gap-2 text-xs font-bold text-[#21b5ba] bg-cyan-50 border border-cyan-200 px-3 py-1.5 rounded-xl shadow-2xs">
+              <Loader2 size={14} className="animate-spin" />
+              Aggiornamento in corso...
+            </div>
+          )}
+        </div>
       </div>
+
+      <div className="max-w-[1700px] mx-auto px-4 md:px-8 pt-6 space-y-6">
 
       {/* CONSULENTI */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -559,5 +584,6 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
