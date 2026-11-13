@@ -348,10 +348,7 @@ export default function RinnoviClient() {
       if (item.preso_appuntamento) {
         setActionModal({ type: "CONFIRM_RESET", item, step: "APPUNTAMENTO" });
       } else {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        setTempDate(item.data_consulenza || todayStr);
-        setAddToAgenda(false);
-        setActionModal({ type: "SET_APPUNTAMENTO", item });
+        handleBookInAgenda(item);
       }
     } else if (step === "FATTA") {
       if (item.consulenza_fatta) {
@@ -464,13 +461,14 @@ export default function RinnoviClient() {
   };
 
   // Callback when entry is saved in EntryDrawer
-  const handleEntryDrawerSave = () => {
+  const handleEntryDrawerSave = (savedData?: any) => {
     setDrawerOpen(false);
     if (pendingAgendaItem) {
       updateItem(pendingAgendaItem.item.id, {
         contattato: true,
         preso_appuntamento: true,
-        data_consulenza: pendingAgendaItem.date,
+        data_consulenza: savedData?.entry_date || pendingAgendaItem.date,
+        entry_id: savedData?.id || null,
       });
       setPendingAgendaItem(null);
     }
