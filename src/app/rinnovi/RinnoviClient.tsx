@@ -62,13 +62,17 @@ const StepIcon = ({
   onClick,
   colorClass = "emerald",
   disabled,
+  pulse = false,
+  className: customClassName,
 }: {
   completed?: boolean;
   active?: boolean;
   icon: any;
   onClick: () => void;
-  colorClass?: "emerald" | "amber" | "teal" | "cyan" | "blue" | "indigo" | "rose";
+  colorClass?: "emerald" | "amber" | "teal" | "cyan" | "blue" | "indigo" | "rose" | "orange";
   disabled?: boolean;
+  pulse?: boolean;
+  className?: string;
 }) => {
   const colorStyles: Record<string, { completed: string; active: string }> = {
     emerald: {
@@ -99,6 +103,10 @@ const StepIcon = ({
       completed: "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-200",
       active: "border-rose-500 text-rose-500 bg-white shadow-sm",
     },
+    orange: {
+      completed: "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-200",
+      active: "border-orange-500 text-orange-500 bg-white shadow-sm",
+    },
   };
 
   const styles = colorStyles[colorClass] || colorStyles.emerald;
@@ -115,7 +123,9 @@ const StepIcon = ({
           : active
           ? styles.active
           : "border-slate-200 text-slate-300 bg-slate-50 hover:border-slate-300 hover:bg-slate-100",
-        disabled && "opacity-50 cursor-not-allowed"
+        pulse && "animate-pulse ring-4 ring-orange-400/60 border-orange-500 shadow-lg shadow-orange-400/30",
+        disabled && "opacity-50 cursor-not-allowed",
+        customClassName
       )}
     >
       <Icon className="w-4 h-4" />
@@ -1007,6 +1017,23 @@ export default function RinnoviClient() {
                     const client = row.client;
                     const days = getDaysDiff(row.scadenza_originaria);
                     const agenda = row.agenda_entry;
+                    const isConclusoPositivo = ["RINNOVO", "INTEGRAZIONE"].includes((row.esito || "").toUpperCase());
+
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const appDateStr = agenda?.date || row.data_consulenza || null;
+                    const isPastWithoutOutcome = !!(
+                      appDateStr &&
+                      appDateStr < todayStr &&
+                      !row.consulenza_fatta &&
+                      !row.esito
+                    );
+                    const isDaRiprogrammare = !!row.da_riprogrammare;
+                    const isMancato = isDaRiprogrammare || isPastWithoutOutcome;
+                    const isRispostaScaduta = !!(
+                      row.esito === "IN ATTESA" &&
+                      row.data_risposta &&
+                      row.data_risposta < todayStr
+                    );
 
                     return (
                       <tr
@@ -1079,7 +1106,11 @@ export default function RinnoviClient() {
                               <Clock className="w-3 h-3 text-slate-400" />
                               <span>Scad: {row.scadenza_originaria ? formatDate(row.scadenza_originaria) : "—"}</span>
                             </div>
-                            {days !== null && (
+                            {isConclusoPositivo ? (
+                              <div className="text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 inline-block bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {row.esito === "INTEGRAZIONE" ? "Integrato" : "Rinnovato"}
+                              </div>
+                            ) : days !== null ? (
                               <div
                                 className={cn(
                                   "text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block",
@@ -1092,7 +1123,7 @@ export default function RinnoviClient() {
                               >
                                 {days > 0 ? `Tra ${days} gg` : days === 0 ? "Oggi!" : `Scaduto da ${Math.abs(days)} gg`}
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </td>
 
@@ -1131,13 +1162,18 @@ export default function RinnoviClient() {
                                 active={row.contattato && !row.preso_appuntamento}
                                 completed={row.preso_appuntamento}
                                 icon={Calendar}
-                                colorClass="teal"
+                                colorClass={isMancato ? "orange" : "teal"}
+                                pulse={isMancato}
                                 onClick={() => handleStepClick(row, "APPUNTAMENTO")}
                               />
                               <span
                                 className={cn(
                                   "text-[10px] font-medium uppercase",
-                                  row.preso_appuntamento ? "text-teal-600 font-semibold" : "text-slate-300"
+                                  isMancato
+                                    ? "text-orange-600 font-bold"
+                                    : row.preso_appuntamento
+                                    ? "text-teal-600 font-semibold"
+                                    : "text-slate-300"
                                 )}
                               >
                                 Appuntam.
@@ -1176,11 +1212,11 @@ export default function RinnoviClient() {
                             <div className="mt-2.5 flex flex-col items-center gap-1">
                               <div
                                 className={cn(
-                                  "text-xs flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full font-semibold shadow-2xs",
-                                  row.da_riprogrammare
+                                  "text-xs flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full font-semibold shadow-2xs transition-all",
+                                  isMancato
                                     ? agenda?.assente
-                                      ? "bg-rose-50 border border-rose-200 text-rose-800"
-                                      : "bg-amber-50 border border-amber-200 text-amber-800"
+                                      ? "animate-pulse ring-2 ring-rose-500 bg-rose-100 text-rose-900 border border-rose-400 font-bold"
+                                      : "animate-pulse ring-2 ring-orange-500 bg-orange-100 text-orange-900 border border-orange-400 font-bold"
                                     : row.riprogrammato
                                     ? "bg-teal-50 border border-teal-200 text-teal-900"
                                     : agenda
@@ -1191,10 +1227,10 @@ export default function RinnoviClient() {
                                 <Calendar
                                   className={cn(
                                     "w-3 h-3",
-                                    row.da_riprogrammare
+                                    isMancato
                                       ? agenda?.assente
                                         ? "text-rose-600"
-                                        : "text-amber-600"
+                                        : "text-orange-600"
                                       : row.riprogrammato
                                       ? "text-teal-600"
                                       : agenda
@@ -1224,13 +1260,13 @@ export default function RinnoviClient() {
 
                               {/* Flag se l'appuntamento è saltato/assente e NON ancora riprogrammato in agenda */}
                               {row.da_riprogrammare && (
-                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                <div className="flex flex-col items-center gap-1 mt-0.5">
                                   <span
                                     className={cn(
-                                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                      "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full animate-pulse shadow-xs",
                                       agenda?.assente
-                                        ? "text-rose-700 bg-rose-50 border border-rose-200"
-                                        : "text-amber-700 bg-amber-50 border border-amber-200"
+                                        ? "text-rose-900 bg-rose-100 border border-rose-300 ring-2 ring-rose-400/50"
+                                        : "text-orange-900 bg-orange-100 border border-orange-300 ring-2 ring-orange-400/50"
                                     )}
                                   >
                                     {agenda?.assente ? "Assente - Da Riprogrammare" : "Miss - Da Riprogrammare"}
@@ -1238,9 +1274,27 @@ export default function RinnoviClient() {
                                   <button
                                     type="button"
                                     onClick={() => handleBookInAgenda(row)}
-                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline"
+                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
                                   >
-                                    + Riprogramma
+                                    <RefreshCw className="w-2.5 h-2.5" />
+                                    Riprogramma
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Flag se l'appuntamento era nel passato ma non è stata segnata la consulenza fatta */}
+                              {!row.da_riprogrammare && isPastWithoutOutcome && (
+                                <div className="flex flex-col items-center gap-1 mt-0.5">
+                                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full text-orange-900 bg-orange-100 border border-orange-300 ring-2 ring-orange-400/50 animate-pulse shadow-xs">
+                                    Appuntamento Mancato
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBookInAgenda(row)}
+                                    className="text-[10px] font-bold text-teal-700 hover:text-teal-900 underline flex items-center gap-0.5"
+                                  >
+                                    <RefreshCw className="w-2.5 h-2.5" />
+                                    Riprogramma
                                   </button>
                                 </div>
                               )}
@@ -1293,9 +1347,16 @@ export default function RinnoviClient() {
                               )}
 
                               {row.data_risposta && row.esito === "IN ATTESA" && (
-                                <div className="text-[10px] font-semibold text-amber-700 flex items-center gap-1">
+                                <div
+                                  className={cn(
+                                    "text-[10px] font-semibold flex items-center gap-1 px-1.5 py-0.5 rounded",
+                                    isRispostaScaduta
+                                      ? "animate-pulse ring-2 ring-orange-500 bg-orange-100 text-orange-900 border border-orange-400 font-bold"
+                                      : "text-amber-700 bg-amber-50/60"
+                                  )}
+                                >
                                   <Clock className="w-3 h-3" />
-                                  Risp: {formatDate(row.data_risposta)}
+                                  Risp: {formatDate(row.data_risposta)} {isRispostaScaduta ? "(Scaduta!)" : ""}
                                 </div>
                               )}
                             </div>
