@@ -16,6 +16,7 @@ export default function AgendaView() {
     const searchParams = useSearchParams();
     const sectionParam = searchParams?.get("section");
     const dateParam = searchParams?.get("date") ?? getLocalDateISO();
+    const consulenteParam = searchParams?.get("consulente") || "ALL";
 
     const [activeTab, setActiveTab] = useState(() => {
         if (sectionParam && DB_SECTIONS.includes(sectionParam)) {
@@ -24,12 +25,53 @@ export default function AgendaView() {
         return DB_SECTIONS[0];
     });
     const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+    const [selectedConsulente, setSelectedConsulente] = useState<string>(consulenteParam);
+    const [consulenti, setConsulenti] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetch("/api/settings/consulente/list")
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                return res.json();
+            })
+            .then((data) => {
+                if (data.items) setConsulenti(data.items);
+            })
+            .catch((err) => console.error("Error loading consulenti:", err));
+    }, []);
 
     useEffect(() => {
         if (sectionParam && DB_SECTIONS.includes(sectionParam)) {
             setActiveTab(sectionParam);
         }
     }, [sectionParam]);
+
+    useEffect(() => {
+        setSelectedConsulente(consulenteParam);
+    }, [consulenteParam]);
+
+    const updateUrl = (newSection?: string, newDate?: string, newConsulente?: string) => {
+        const sec = newSection ?? activeTab;
+        const dt = newDate ?? dateParam;
+        const cons = newConsulente ?? selectedConsulente;
+        const params = new URLSearchParams();
+        params.set("section", sec);
+        params.set("date", dt);
+        if (cons && cons !== "ALL") {
+            params.set("consulente", cons);
+        }
+        router.push(`/agenda?${params.toString()}`);
+    };
+
+    const handleConsulenteChange = (newConsulente: string) => {
+        setSelectedConsulente(newConsulente);
+        updateUrl(activeTab, dateParam, newConsulente);
+    };
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        updateUrl(tab, dateParam, selectedConsulente);
+    };
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans pb-12">
@@ -63,7 +105,7 @@ export default function AgendaView() {
                                 if (!isNaN(d.getTime())) {
                                     d.setDate(d.getDate() - (viewMode === "calendar" ? 7 : 1));
                                     const newDate = d.toISOString().slice(0, 10);
-                                    router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                    updateUrl(activeTab, newDate, selectedConsulente);
                                 }
                             }}
                             className="h-11 w-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm flex-shrink-0"
@@ -105,7 +147,7 @@ export default function AgendaView() {
                             <input
                                 type="date"
                                 value={dateParam}
-                                onChange={(e) => router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${e.target.value}`)}
+                                onChange={(e) => updateUrl(activeTab, e.target.value, selectedConsulente)}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 appearance-none bg-transparent [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0"
                             />
 
@@ -114,7 +156,7 @@ export default function AgendaView() {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation(); // Prevent opening date picker
-                                        router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${getLocalDateISO()}`);
+                                        updateUrl(activeTab, getLocalDateISO(), selectedConsulente);
                                     }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-brand/10 text-brand rounded-lg hover:bg-brand/20 transition-colors z-20 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
                                     title="Torna ad oggi"
@@ -130,7 +172,7 @@ export default function AgendaView() {
                                 if (!isNaN(d.getTime())) {
                                     d.setDate(d.getDate() + (viewMode === "calendar" ? 7 : 1));
                                     const newDate = d.toISOString().slice(0, 10);
-                                    router.push(`/agenda?section=${encodeURIComponent(activeTab)}&date=${newDate}`);
+                                    updateUrl(activeTab, newDate, selectedConsulente);
                                 }
                             }}
                             className="h-11 w-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm flex-shrink-0"
@@ -181,7 +223,7 @@ export default function AgendaView() {
                         return (
                             <button
                                 key={tab}
-                                onClick={() => setActiveTab(tab)}
+                                onClick={() => handleTabChange(tab)}
                                 className={cn(
                                     "px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap relative flex-shrink-0",
                                     isActive
@@ -205,15 +247,31 @@ export default function AgendaView() {
                     <>
                         {/* Desktop View */}
                         <div className="hidden md:block">
-                            <AgendaTable section={activeTab} />
+                            <AgendaTable
+                                section={activeTab}
+                                selectedConsulente={selectedConsulente}
+                                onConsulenteChange={handleConsulenteChange}
+                                consulenti={consulenti}
+                            />
                         </div>
                         {/* Mobile View */}
                         <div className="md:hidden pb-20">
-                            <AgendaMobileList section={activeTab} onSectionChange={setActiveTab} />
+                            <AgendaMobileList
+                                section={activeTab}
+                                onSectionChange={handleTabChange}
+                                selectedConsulente={selectedConsulente}
+                                onConsulenteChange={handleConsulenteChange}
+                                consulenti={consulenti}
+                            />
                         </div>
                     </>
                 ) : (
-                    <AgendaCalendar section={activeTab} />
+                    <AgendaCalendar
+                        section={activeTab}
+                        selectedConsulente={selectedConsulente}
+                        onConsulenteChange={handleConsulenteChange}
+                        consulenti={consulenti}
+                    />
                 )}
             </div>
         </div>

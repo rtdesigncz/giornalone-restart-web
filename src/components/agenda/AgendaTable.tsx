@@ -9,10 +9,21 @@ import { Search, Plus, Filter, Phone, Check, MessageCircle, Copy, Users, ArrowRi
 import { getWhatsAppLink, markWhatsAppSent, toHHMM } from "@/lib/whatsapp";
 import { getLocalDateISO } from "@/lib/dateUtils";
 import { supabase } from "@/lib/supabaseClient";
+import { getSectionLabel } from "@/lib/sections";
 import EntryDrawer from "./EntryDrawer";
 import { deleteEntryWithRinnoviSync } from "@/lib/agendaDeleteUtils";
 
-export default function AgendaTable({ section }: { section: string }) {
+export default function AgendaTable({
+    section,
+    selectedConsulente = "ALL",
+    onConsulenteChange,
+    consulenti = [],
+}: {
+    section: string;
+    selectedConsulente?: string;
+    onConsulenteChange?: (c: string) => void;
+    consulenti?: any[];
+}) {
     const router = useRouter();
     const sp = useSearchParams();
     const dateParam = sp?.get("date") ?? getLocalDateISO();
@@ -110,13 +121,29 @@ export default function AgendaTable({ section }: { section: string }) {
             .catch(err => console.error("Fetch Error:", err));
     }, []);
 
+    const unassignedCount = rows.filter(r => !r.consulente_id && !r.consulente).length;
+    const selectedConsulenteObj = consulenti.find(c => c.id === selectedConsulente);
+    const selectedConsulenteName = selectedConsulenteObj?.name || (selectedConsulente === "UNASSIGNED" ? "senza consulente" : "");
+
     const filteredRows = rows.filter(r => {
+        // 1. Consultant filter
+        if (selectedConsulente && selectedConsulente !== "ALL") {
+            if (selectedConsulente === "UNASSIGNED") {
+                if (r.consulente_id || r.consulente) return false;
+            } else {
+                const cId = r.consulente_id || r.consulente?.id;
+                if (cId !== selectedConsulente) return false;
+            }
+        }
+
+        // 2. Search filter
         if (!search) return true;
         const s = search.toLowerCase();
         return (
             r.nome?.toLowerCase().includes(s) ||
             r.cognome?.toLowerCase().includes(s) ||
-            r.telefono?.includes(s)
+            r.telefono?.includes(s) ||
+            r.consulente?.name?.toLowerCase().includes(s)
         );
     });
 
@@ -167,21 +194,114 @@ export default function AgendaTable({ section }: { section: string }) {
     return (
         <div className="flex flex-col bg-white/50 backdrop-blur-sm">
             {/* Toolbar */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-white/40">
-                <div className="relative flex-1 max-w-md group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand transition-colors" size={18} />
-                    <input
-                        className="input pl-10 w-full bg-white/80 border-slate-200 focus:border-brand/50 focus:ring-brand/20 transition-all"
-                        placeholder="Cerca cliente o telefono..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
+            <div className="p-3.5 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/70">
+                <div className="flex items-center gap-2.5 flex-1 max-w-full md:max-w-3xl flex-wrap">
+                    <div className="relative w-full md:w-60 group shrink-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand transition-colors" size={16} />
+                        <input
+                            className="input pl-9 w-full bg-white border-slate-200 focus:border-brand/50 focus:ring-brand/20 transition-all text-xs h-9 rounded-xl"
+                            placeholder="Cerca cliente o telefono..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Desktop Consultant Pills */}
+                    <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
+                        <button
+                            type="button"
+                            onClick={() => onConsulenteChange?.("ALL")}
+                            className={cn(
+                                "px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 shadow-2xs cursor-pointer",
+                                selectedConsulente === "ALL"
+                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                            )}
+                        >
+                            <span>Tutti</span>
+                            <span className={cn(
+                                "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                selectedConsulente === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                            )}>
+                                {rows.length}
+                            </span>
+                        </button>
+
+                        {consulenti.map(c => {
+                            const count = rows.filter(r => (r.consulente_id || r.consulente?.id) === c.id).length;
+                            const isSelected = selectedConsulente === c.id;
+                            return (
+                                <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => onConsulenteChange?.(isSelected ? "ALL" : c.id)}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 shadow-2xs cursor-pointer",
+                                        isSelected
+                                            ? "bg-[#21b5ba] text-white border-[#21b5ba] shadow-sm"
+                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                                    )}
+                                >
+                                    <span>{c.name}</span>
+                                    <span className={cn(
+                                        "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                        isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                                    )}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+
+                        {unassignedCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => onConsulenteChange?.(selectedConsulente === "UNASSIGNED" ? "ALL" : "UNASSIGNED")}
+                                className={cn(
+                                    "px-2.5 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 shadow-2xs cursor-pointer",
+                                    selectedConsulente === "UNASSIGNED"
+                                        ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                )}
+                                title="Appuntamenti senza consulente assegnato"
+                            >
+                                <span>Non assegnati</span>
+                                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-200/60 text-amber-900">
+                                    {unassignedCount}
+                                </span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Responsive Dropdown for Smaller Screens */}
+                    <div className="flex lg:hidden items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-xs shrink-0">
+                        <Users size={14} className="text-slate-400 shrink-0" />
+                        <select
+                            value={selectedConsulente}
+                            onChange={(e) => onConsulenteChange?.(e.target.value)}
+                            className="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer pr-1"
+                        >
+                            <option value="ALL">Tutti ({rows.length})</option>
+                            {consulenti.map((c) => {
+                                const count = rows.filter((r) => (r.consulente_id || r.consulente?.id) === c.id).length;
+                                return (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name} ({count})
+                                    </option>
+                                );
+                            })}
+                            {unassignedCount > 0 && (
+                                <option value="UNASSIGNED">Non assegnati ({unassignedCount})</option>
+                            )}
+                        </select>
+                    </div>
                 </div>
+
                 <button
                     onClick={handleNewClick}
-                    className="btn btn-brand"
+                    className="btn btn-brand h-9 px-3.5 rounded-xl text-xs font-bold shadow-xs shrink-0 flex items-center justify-center self-end md:self-auto"
                 >
-                    <Plus size={18} className="mr-2" />
+                    <Plus size={16} className="mr-1.5" />
                     Nuovo
                 </button>
             </div>
@@ -213,7 +333,20 @@ export default function AgendaTable({ section }: { section: string }) {
                                     <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-2">
                                         <Filter size={20} />
                                     </div>
-                                    <p>Nessun appuntamento trovato.</p>
+                                    <p className="font-semibold text-slate-700">
+                                        {selectedConsulente !== "ALL"
+                                            ? `Nessun appuntamento per ${selectedConsulenteName || "questo consulente"} in ${getSectionLabel(section)}.`
+                                            : "Nessun appuntamento trovato."}
+                                    </p>
+                                    {selectedConsulente !== "ALL" && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onConsulenteChange?.("ALL")}
+                                            className="text-xs font-bold text-brand hover:underline mt-1"
+                                        >
+                                            Mostra tutti i consulenti ({rows.length})
+                                        </button>
+                                    )}
                                 </div>
                             </td></tr>
                         ) : (
@@ -362,6 +495,7 @@ export default function AgendaTable({ section }: { section: string }) {
                 onDelete={handleDelete}
                 isDuplicate={isDuplicateMode}
                 allowSectionChange={isMoveMode}
+                initialData={selectedConsulente && selectedConsulente !== "ALL" && selectedConsulente !== "UNASSIGNED" ? { consulente_id: selectedConsulente } : undefined}
             />
 
             

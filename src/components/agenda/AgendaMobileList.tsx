@@ -15,7 +15,19 @@ import AgendaMobileBar from "./AgendaMobileBar";
 
 // ... existing imports ...
 
-export default function AgendaMobileList({ section, onSectionChange }: { section: string, onSectionChange: (s: string) => void }) {
+export default function AgendaMobileList({
+    section,
+    onSectionChange,
+    selectedConsulente = "ALL",
+    onConsulenteChange,
+    consulenti = [],
+}: {
+    section: string;
+    onSectionChange: (s: string) => void;
+    selectedConsulente?: string;
+    onConsulenteChange?: (c: string) => void;
+    consulenti?: any[];
+}) {
         const router = useRouter();
     const sp = useSearchParams();
     const dateParam = sp?.get("date") ?? getLocalDateISO();
@@ -103,12 +115,24 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
     }, []);
 
     const filteredRows = rows.filter(r => {
+        // 1. Consultant filter
+        if (selectedConsulente && selectedConsulente !== "ALL") {
+            if (selectedConsulente === "UNASSIGNED") {
+                if (r.consulente_id || r.consulente) return false;
+            } else {
+                const cId = r.consulente_id || r.consulente?.id;
+                if (cId !== selectedConsulente) return false;
+            }
+        }
+
+        // 2. Search filter
         if (!search) return true;
         const s = search.toLowerCase();
         return (
             r.nome?.toLowerCase().includes(s) ||
             r.cognome?.toLowerCase().includes(s) ||
-            r.telefono?.includes(s)
+            r.telefono?.includes(s) ||
+            r.consulente?.name?.toLowerCase().includes(s)
         );
     });
 
@@ -176,6 +200,53 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
                 </div>
             </div>
 
+            {/* Consultant Filter Pills (Mobile) */}
+            <div className="flex gap-1.5 overflow-x-auto px-4 pb-2 no-scrollbar">
+                <button
+                    type="button"
+                    onClick={() => onConsulenteChange?.("ALL")}
+                    className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 shrink-0 shadow-2xs",
+                        selectedConsulente === "ALL"
+                            ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                            : "bg-white text-slate-600 border-slate-200"
+                    )}
+                >
+                    <span>Tutti</span>
+                    <span className={cn(
+                        "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                        selectedConsulente === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    )}>
+                        {rows.length}
+                    </span>
+                </button>
+                {consulenti.map(c => {
+                    const count = rows.filter(r => (r.consulente_id || r.consulente?.id) === c.id).length;
+                    const isSelected = selectedConsulente === c.id;
+                    return (
+                        <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => onConsulenteChange?.(isSelected ? "ALL" : c.id)}
+                            className={cn(
+                                "px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 shrink-0 shadow-2xs",
+                                isSelected
+                                    ? "bg-[#21b5ba] text-white border-[#21b5ba] shadow-xs"
+                                    : "bg-white text-slate-600 border-slate-200"
+                            )}
+                        >
+                            <span>{c.name}</span>
+                            <span className={cn(
+                                "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                            )}>
+                                {count}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
             {/* List */}
             <div className="flex-1 overflow-auto px-4 pb-24 space-y-3">
                 {/* ... existing list rendering ... */}
@@ -189,7 +260,18 @@ export default function AgendaMobileList({ section, onSectionChange }: { section
                         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 mb-2">
                             <Filter size={20} />
                         </div>
-                        <p className="text-sm">Nessun appuntamento.</p>
+                        <p className="text-sm font-semibold text-slate-700">
+                            {selectedConsulente !== "ALL" ? "Nessun appuntamento per questo consulente." : "Nessun appuntamento."}
+                        </p>
+                        {selectedConsulente !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => onConsulenteChange?.("ALL")}
+                                className="text-xs font-bold text-brand hover:underline mt-1"
+                            >
+                                Mostra tutti ({rows.length})
+                            </button>
+                        )}
                     </div>
                 ) : (
                     filteredRows.map((row) => (

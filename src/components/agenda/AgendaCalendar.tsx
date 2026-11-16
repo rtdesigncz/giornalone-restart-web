@@ -11,7 +11,17 @@ import { getLocalDateISO } from "@/lib/dateUtils";
 
 const DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
-export default function AgendaCalendar({ section }: { section: string }) {
+export default function AgendaCalendar({
+    section,
+    selectedConsulente = "ALL",
+    onConsulenteChange,
+    consulenti = [],
+}: {
+    section: string;
+    selectedConsulente?: string;
+    onConsulenteChange?: (c: string) => void;
+    consulenti?: any[];
+}) {
     const searchParams = useSearchParams();
     const dateParam = searchParams?.get("date") ?? getLocalDateISO();
 
@@ -76,8 +86,64 @@ export default function AgendaCalendar({ section }: { section: string }) {
         setDrawerOpen(true);
     };
 
+    const filteredEntries = entries.filter(e => {
+        if (!selectedConsulente || selectedConsulente === "ALL") return true;
+        if (selectedConsulente === "UNASSIGNED") return !e.consulente_id && !e.consulente;
+        return (e.consulente_id || e.consulente?.id) === selectedConsulente;
+    });
+
     return (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden relative flex flex-col h-full min-h-[600px]">
+            {/* Calendar Toolbar with Consultant Filter */}
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-white/70 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 uppercase mr-1">Consulente:</span>
+                    <button
+                        type="button"
+                        onClick={() => onConsulenteChange?.("ALL")}
+                        className={cn(
+                            "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs",
+                            selectedConsulente === "ALL"
+                                ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        )}
+                    >
+                        <span>Tutti</span>
+                        <span className={cn(
+                            "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                            selectedConsulente === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                        )}>
+                            {entries.length}
+                        </span>
+                    </button>
+                    {consulenti.map(c => {
+                        const count = entries.filter(e => (e.consulente_id || e.consulente?.id) === c.id).length;
+                        const isSelected = selectedConsulente === c.id;
+                        return (
+                            <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => onConsulenteChange?.(isSelected ? "ALL" : c.id)}
+                                className={cn(
+                                    "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs",
+                                    isSelected
+                                        ? "bg-[#21b5ba] text-white border-[#21b5ba] shadow-sm"
+                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                )}
+                            >
+                                <span>{c.name}</span>
+                                <span className={cn(
+                                    "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                    isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                                )}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             {/* Header */}
             <div className="grid grid-cols-7 border-b border-slate-200 bg-white sticky top-0 z-10">
                 {weekDates.map((dateISO, index) => {
@@ -109,7 +175,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
                 ) : (
                     <div className="grid grid-cols-7 min-h-full divide-x divide-slate-200">
                         {weekDates.map(dateISO => {
-                            const dayEntries = entries.filter(e => e.entry_date === dateISO);
+                            const dayEntries = filteredEntries.filter(e => e.entry_date === dateISO);
                             const isToday = dateISO === getLocalDateISO();
 
                             return (
@@ -165,6 +231,7 @@ export default function AgendaCalendar({ section }: { section: string }) {
                 entry={selectedEntry}
                 section={section}
                 date={selectedDate}
+                initialData={selectedConsulente && selectedConsulente !== "ALL" && selectedConsulente !== "UNASSIGNED" ? { consulente_id: selectedConsulente } : undefined}
                 onSave={() => {
                     fetchWeekEntries();
                     setDrawerOpen(false);
