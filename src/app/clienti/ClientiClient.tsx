@@ -305,8 +305,18 @@ export default function ClientiClient() {
                       >
                         {/* Nome & Cognome */}
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 text-sm group-hover:text-cyan-700 transition-colors uppercase">
-                            {c.cognome} {c.nome}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="font-bold text-slate-900 text-sm group-hover:text-cyan-700 transition-colors uppercase">
+                              {c.cognome} {c.nome}
+                            </div>
+                            {c.escluso_rinnovi && (
+                              <span
+                                className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded"
+                                title="Escluso permanentemente dai rinnovi"
+                              >
+                                No rinnovi
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-slate-400 mt-0.5">
                             {c.data_nascita

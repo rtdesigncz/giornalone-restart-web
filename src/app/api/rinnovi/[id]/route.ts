@@ -27,6 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       "motivo_negativo",
       "data_risposta",
       "note",
+      "escluso",
     ];
 
     const updates: Record<string, any> = { updated_at: new Date().toISOString() };

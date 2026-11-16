@@ -41,9 +41,10 @@ export async function GET(req: Request) {
     // 1. Auto-seed / sync clients expiring in this month into rinnovi_items if not already present
     const { data: expiringClients, error: expErr } = await supabase
       .from("clients")
-      .select("id, cognome, nome, telefono, email, pacchetto_originale, disciplina, data_scadenza, prezzo")
+      .select("id, cognome, nome, telefono, email, pacchetto_originale, disciplina, data_scadenza, prezzo, escluso_rinnovi")
       .gte("data_scadenza", startDate)
-      .lte("data_scadenza", endDate);
+      .lte("data_scadenza", endDate)
+      .eq("escluso_rinnovi", false);
 
     if (expErr) throw expErr;
 
@@ -82,7 +83,7 @@ export async function GET(req: Request) {
       .select(`
         *,
         client:clients (
-          id, nome, cognome, telefono, email, data_nascita, stato, data_inizio, data_scadenza, ultimo_accesso, accessi_effettuati, pacchetto_originale, disciplina
+          id, nome, cognome, telefono, email, data_nascita, stato, data_inizio, data_scadenza, ultimo_accesso, accessi_effettuati, pacchetto_originale, disciplina, escluso_rinnovi
         )
       `)
       .eq("mese_riferimento", mese)
@@ -90,10 +91,13 @@ export async function GET(req: Request) {
 
     if (itemsErr) throw itemsErr;
 
+    // Filter out any items for clients permanently marked escluso_rinnovi
+    const validItems = (items || []).filter((it: any) => !it.client?.escluso_rinnovi);
+
     // 3. Real-time enrichment from entries (Agenda)
     // Match entries that belong to renewal sections (without artificial date cutoffs)
-    const clientIds = (items || []).map((it: any) => it.client_id).filter(Boolean);
-    const explicitEntryIds = (items || []).map((it: any) => it.entry_id).filter(Boolean);
+    const clientIds = validItems.map((it: any) => it.client_id).filter(Boolean);
+    const explicitEntryIds = validItems.map((it: any) => it.entry_id).filter(Boolean);
     const clientEntriesMap = new Map<string, any[]>();
     const clientRinnoviItemsMap = new Map<string, any[]>();
     const entriesById = new Map<string, any>();
@@ -117,7 +121,7 @@ export async function GET(req: Request) {
     const nameToClientId = new Map<string, string>();
     const clientPhones: string[] = [];
 
-    (items || []).forEach((it: any) => {
+    validItems.forEach((it: any) => {
       const c = it.client;
       if (it.client_id) {
         if (c?.telefono) {
@@ -330,7 +334,7 @@ export async function GET(req: Request) {
     }
 
     // 4. Enrich and calculate live states
-    const enrichedList = (items || []).map((it: any) => {
+    const enrichedList = validItems.map((it: any) => {
       const explicitEntry = it.entry_id ? entriesById.get(it.entry_id) : null;
       const clientEntries = clientEntriesMap.get(it.client_id) || [];
       const allClientItems = clientRinnoviItemsMap.get(it.client_id) || [];
@@ -391,6 +395,7 @@ export async function GET(req: Request) {
 
       return {
         ...it,
+        escluso: !!it.escluso,
         data_consulenza: dataConsulenza,
         contattato,
         preso_appuntamento: presoApp,
@@ -420,6 +425,42 @@ export async function GET(req: Request) {
     // 5. Filter list by search query and category filters
     let filtered = enrichedList;
 
+    if (filtro === "ESCLUSI") {
+      filtered = filtered.filter((it: any) => !!it.escluso);
+    } else {
+      // By default, hide excluded items from normal views
+      filtered = filtered.filter((it: any) => !it.escluso);
+
+      if (filtro && filtro !== "ALL") {
+        switch (filtro) {
+          case "DA_CONTATTARE":
+            filtered = filtered.filter((it: any) => !it.contattato && !it.preso_appuntamento && !it.esito);
+            break;
+          case "CONTATTATI":
+            filtered = filtered.filter((it: any) => it.contattato);
+            break;
+          case "APP_DA_FISSARE":
+            filtered = filtered.filter((it: any) => it.contattato && !it.preso_appuntamento && !it.esito);
+            break;
+          case "APP_DA_FARE":
+            filtered = filtered.filter((it: any) => it.preso_appuntamento && !it.consulenza_fatta && !it.esito);
+            break;
+          case "CONSULENZE_FATTE":
+            filtered = filtered.filter((it: any) => it.consulenza_fatta);
+            break;
+          case "VENDUTI":
+            filtered = filtered.filter((it: any) => ["RINNOVO", "INTEGRAZIONE"].includes((it.esito || "").toUpperCase()));
+            break;
+          case "RINNOVO":
+          case "INTEGRAZIONE":
+          case "IN ATTESA":
+          case "NEGATIVO":
+            filtered = filtered.filter((it: any) => (it.esito || "").toUpperCase() === filtro.toUpperCase());
+            break;
+        }
+      }
+    }
+
     if (q) {
       const words = q.toLowerCase().split(/\s+/).filter(Boolean);
       filtered = filtered.filter((it: any) => {
@@ -443,53 +484,27 @@ export async function GET(req: Request) {
       );
     }
 
-    if (filtro && filtro !== "ALL") {
-      switch (filtro) {
-        case "DA_CONTATTARE":
-          filtered = filtered.filter((it: any) => !it.contattato && !it.preso_appuntamento && !it.esito);
-          break;
-        case "CONTATTATI":
-          filtered = filtered.filter((it: any) => it.contattato);
-          break;
-        case "APP_DA_FISSARE":
-          filtered = filtered.filter((it: any) => it.contattato && !it.preso_appuntamento && !it.esito);
-          break;
-        case "APP_DA_FARE":
-          filtered = filtered.filter((it: any) => it.preso_appuntamento && !it.consulenza_fatta && !it.esito);
-          break;
-        case "CONSULENZE_FATTE":
-          filtered = filtered.filter((it: any) => it.consulenza_fatta);
-          break;
-        case "VENDUTI":
-          filtered = filtered.filter((it: any) => ["RINNOVO", "INTEGRAZIONE"].includes((it.esito || "").toUpperCase()));
-          break;
-        case "RINNOVO":
-        case "INTEGRAZIONE":
-        case "IN ATTESA":
-        case "NEGATIVO":
-          filtered = filtered.filter((it: any) => (it.esito || "").toUpperCase() === filtro.toUpperCase());
-          break;
-      }
-    }
+    // 6. Compute KPI summary for the entire month (unfiltered, excluding excluded items)
+    const activeList = enrichedList.filter((x: any) => !x.escluso);
+    const esclusi = enrichedList.filter((x: any) => !!x.escluso).length;
 
-    // 6. Compute KPI summary for the entire month (unfiltered)
-    const total = enrichedList.length;
-    const contattati = enrichedList.filter((x: any) => x.contattato).length;
-    const daContattare = enrichedList.filter((x: any) => !x.contattato && !x.preso_appuntamento && !x.esito).length;
-    const appuntamentiDaFissare = enrichedList.filter((x: any) => x.contattato && !x.preso_appuntamento && !x.esito).length;
-    const appuntamentiDaFare = enrichedList.filter((x: any) => x.preso_appuntamento && !x.consulenza_fatta && !x.esito).length;
-    const appuntamentiTotali = enrichedList.filter((x: any) => x.preso_appuntamento).length;
-    const consulenzeFatte = enrichedList.filter((x: any) => x.consulenza_fatta).length;
-    const rinnovati = enrichedList.filter((x: any) => x.esito === "RINNOVO").length;
-    const integrazioni = enrichedList.filter((x: any) => x.esito === "INTEGRAZIONE").length;
-    const inAttesa = enrichedList.filter((x: any) => x.esito === "IN ATTESA").length;
-    const negativi = enrichedList.filter((x: any) => x.esito === "NEGATIVO").length;
+    const total = activeList.length;
+    const contattati = activeList.filter((x: any) => x.contattato).length;
+    const daContattare = activeList.filter((x: any) => !x.contattato && !x.preso_appuntamento && !x.esito).length;
+    const appuntamentiDaFissare = activeList.filter((x: any) => x.contattato && !x.preso_appuntamento && !x.esito).length;
+    const appuntamentiDaFare = activeList.filter((x: any) => x.preso_appuntamento && !x.consulenza_fatta && !x.esito).length;
+    const appuntamentiTotali = activeList.filter((x: any) => x.preso_appuntamento).length;
+    const consulenzeFatte = activeList.filter((x: any) => x.consulenza_fatta).length;
+    const rinnovati = activeList.filter((x: any) => x.esito === "RINNOVO").length;
+    const integrazioni = activeList.filter((x: any) => x.esito === "INTEGRAZIONE").length;
+    const inAttesa = activeList.filter((x: any) => x.esito === "IN ATTESA").length;
+    const negativi = activeList.filter((x: any) => x.esito === "NEGATIVO").length;
     const venduti = rinnovati + integrazioni;
     const tassoChiusura = consulenzeFatte > 0 ? Math.round((rinnovati / consulenzeFatte) * 100) : 0;
 
-    // Breakdown nuovi abbonamenti
+    // Breakdown nuovi abbonamenti (computed on activeList)
     const abbMap = new Map<string, number>();
-    enrichedList.forEach((r: any) => {
+    activeList.forEach((r: any) => {
       const n = r.nuovo_abbonamento_name?.trim();
       if (!n) return;
       const clean = n.replace(/^=+\s*/, "").trim().toUpperCase();
@@ -497,9 +512,9 @@ export async function GET(req: Request) {
     });
     const nuoviAbb = Array.from(abbMap.entries()).map(([name, cnt]) => ({ name, cnt }));
 
-    // Negativi reasons breakdown
+    // Negativi reasons breakdown (computed on activeList)
     const motiviCounts: Record<string, number> = {};
-    enrichedList
+    activeList
       .filter((x: any) => x.esito === "NEGATIVO")
       .forEach((x: any) => {
         const m = (x.motivo_negativo || "ALTRO").toUpperCase();
@@ -569,6 +584,7 @@ export async function GET(req: Request) {
         motiviCounts,
         motiviNegativo,
         nuoviAbb,
+        esclusi,
       },
       availableMonths,
     });

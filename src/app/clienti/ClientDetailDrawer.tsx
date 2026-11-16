@@ -17,6 +17,8 @@ import {
   Loader2,
   CalendarCheck,
   User,
+  EyeOff,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,7 @@ export default function ClientDetailDrawer({
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [togglingEsclusione, setTogglingEsclusione] = useState(false);
 
   useEffect(() => {
     if (!clientId) {
@@ -83,6 +86,27 @@ export default function ClientDetailDrawer({
     }
   };
 
+  const handleToggleEsclusione = async () => {
+    if (!clientId || !client || togglingEsclusione) return;
+    setTogglingEsclusione(true);
+    try {
+      const nextVal = !client.escluso_rinnovi;
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ escluso_rinnovi: nextVal }),
+      });
+      if (res.ok) {
+        setData((prev) => (prev ? { ...prev, client: { ...prev.client, escluso_rinnovi: nextVal } } : null));
+        onClientUpdated?.();
+      }
+    } catch (err) {
+      console.error("Error toggling exclusion:", err);
+    } finally {
+      setTogglingEsclusione(false);
+    }
+  };
+
   const getDaysDiff = (dateStr?: string | null) => {
     if (!dateStr) return null;
     const now = new Date();
@@ -106,7 +130,7 @@ export default function ClientDetailDrawer({
           {/* Header */}
           <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/70">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-slate-900 uppercase">
                   {client ? `${client.cognome} ${client.nome}` : "Caricamento..."}
                 </h2>
@@ -122,6 +146,12 @@ export default function ClientDetailDrawer({
                     )}
                   >
                     {client.stato.replace("_", " ")}
+                  </span>
+                )}
+                {client?.escluso_rinnovi && (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-300 flex items-center gap-1">
+                    <EyeOff size={11} className="text-rose-600" />
+                    Escluso Rinnovi
                   </span>
                 )}
               </div>
@@ -351,6 +381,52 @@ export default function ClientDetailDrawer({
                       <span>Salva Note</span>
                     </button>
                   </div>
+                </div>
+
+                {/* Campagne Rinnovi Exclusion Settings */}
+                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                          client.escluso_rinnovi ? "bg-rose-100 text-rose-700" : "bg-slate-200/80 text-slate-600"
+                        )}
+                      >
+                        <EyeOff size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-800">
+                          Escludi permanentemente dai Rinnovi
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          (Staff, dipendenti, collaboratori o VIP)
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleEsclusione}
+                      disabled={togglingEsclusione}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50",
+                        client.escluso_rinnovi ? "bg-rose-600" : "bg-slate-300"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center text-[9px]",
+                          client.escluso_rinnovi ? "translate-x-5" : "translate-x-0"
+                        )}
+                      >
+                        {togglingEsclusione && <Loader2 size={10} className="animate-spin text-slate-600" />}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed pt-1 border-t border-slate-200/60">
+                    Se attivo, questo cliente non comparirà mai nelle liste mensili dei rinnovi e non influirà sui conteggi KPI o sul tasso di conversione.
+                  </p>
                 </div>
 
                 {/* Timeline History in Giornalone */}

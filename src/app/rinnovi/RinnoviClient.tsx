@@ -23,6 +23,9 @@ import {
   ChevronDown,
   Pencil,
   FileText,
+  EyeOff,
+  RotateCcw,
+  UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dateUtils";
@@ -220,6 +223,7 @@ export default function RinnoviClient() {
     negativi: 0,
     tassoChiusura: 0,
     motiviCounts: {},
+    esclusi: 0,
   });
   const [abbOptions, setAbbOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,7 +272,7 @@ export default function RinnoviClient() {
 
   // Action Modals State
   const [actionModal, setActionModal] = useState<{
-    type: "CONFIRM_RESET" | "SET_APPUNTAMENTO" | "SET_ESITO" | null;
+    type: "CONFIRM_RESET" | "SET_APPUNTAMENTO" | "SET_ESITO" | "CONFIRM_EXCLUDE" | null;
     item: any | null;
     step?: "CONTATTATO" | "APPUNTAMENTO" | "FATTA";
   }>({ type: null, item: null });
@@ -340,6 +344,9 @@ export default function RinnoviClient() {
         body: JSON.stringify(updates),
       });
       if (!res.ok) throw new Error("Errore aggiornamento");
+      if ("escluso" in updates) {
+        fetchRinnovi();
+      }
     } catch (err) {
       console.error("Failed to update item:", err);
       fetchRinnovi();
@@ -378,6 +385,13 @@ export default function RinnoviClient() {
   const confirmActionModal = async () => {
     const { type, item, step } = actionModal;
     if (!item) return;
+
+    if (type === "CONFIRM_EXCLUDE") {
+      await updateItem(item.id, { escluso: true });
+      setActionModal({ type: null, item: null });
+      fetchRinnovi();
+      return;
+    }
 
     if (type === "CONFIRM_RESET") {
       if (step === "CONTATTATO") {
@@ -957,6 +971,37 @@ export default function RinnoviClient() {
               </select>
             </div>
 
+            {/* Esclusi Toggle Pill */}
+            <button
+              type="button"
+              onClick={() => {
+                if (filtro === "ESCLUSI") {
+                  resetFiltri();
+                } else {
+                  resetFiltri();
+                  setFiltro("ESCLUSI");
+                }
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border shadow-xs cursor-pointer",
+                filtro === "ESCLUSI"
+                  ? "bg-slate-800 text-white border-slate-900 ring-2 ring-slate-400"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-800"
+              )}
+              title="Visualizza i clienti esclusi dalla campagna di questo mese"
+            >
+              <EyeOff size={13} className={filtro === "ESCLUSI" ? "text-rose-400" : "text-slate-400"} />
+              <span>Esclusi</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.2 rounded text-[10px] font-black",
+                  filtro === "ESCLUSI" ? "bg-slate-700 text-white" : "bg-white text-slate-700 border border-slate-200"
+                )}
+              >
+                {counts.esclusi || 0}
+              </span>
+            </button>
+
             {(filtro !== "ALL" || selectedAbb || selectedMotivoNegativo || searchQuery || disciplinaFilter !== "ALL") && (
               <button
                 type="button"
@@ -972,6 +1017,27 @@ export default function RinnoviClient() {
             )}
           </div>
         </div>
+
+        {/* Banner if viewing Excluded clients */}
+        {filtro === "ESCLUSI" && (
+          <div className="bg-slate-800 text-white px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md border border-slate-700 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <EyeOff size={15} />
+              </div>
+              <p className="leading-relaxed">
+                Stai visualizzando i <b>{sortedItems.length} clienti esclusi</b> dalla campagna di <b>{formatMonthHuman(mese)}</b>. Questi clienti non vengono conteggiati nei KPI o nel tasso di chiusura.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => resetFiltri()}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition-colors shrink-0"
+            >
+              Torna alla Campagna
+            </button>
+          </div>
+        )}
 
         {/* Main Table */}
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
@@ -1052,7 +1118,7 @@ export default function RinnoviClient() {
                         {/* 1. Cliente */}
                         <td className="py-4 pl-4 pr-3 align-top max-w-[260px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span
                                 onClick={() => setDetailClientId(row.client_id)}
                                 className="font-bold text-slate-900 text-sm hover:text-cyan-700 cursor-pointer transition-colors"
@@ -1067,6 +1133,37 @@ export default function RinnoviClient() {
                               >
                                 <History size={13} />
                               </button>
+                              {row.escluso ? (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
+                                    Escluso
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateItem(row.id, { escluso: false });
+                                    }}
+                                    className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                                    title="Ripristina nella campagna di questo mese"
+                                  >
+                                    <RotateCcw size={11} />
+                                    <span>Ripristina</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActionModal({ type: "CONFIRM_EXCLUDE", item: row });
+                                  }}
+                                  className="text-slate-300 hover:text-rose-600 p-0.5 transition-colors"
+                                  title="Escludi da questa campagna"
+                                >
+                                  <EyeOff size={13} />
+                                </button>
+                              )}
                             </div>
                             {client?.telefono ? (
                               <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1 font-mono bg-slate-50 w-fit px-1.5 py-0.5 rounded border border-slate-100">
@@ -1416,6 +1513,40 @@ export default function RinnoviClient() {
         </div>
       </div>
 
+      {/* ACTION MODAL: CONFIRM EXCLUDE */}
+      {actionModal.type === "CONFIRM_EXCLUDE" && (
+        <ActionModal
+          isOpen={true}
+          title="Escludi da questa Campagna"
+          confirmLabel="Escludi dalla Campagna"
+          confirmColor="red"
+          onClose={() => setActionModal({ type: null, item: null })}
+          onConfirm={confirmActionModal}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100">
+              <EyeOff className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-medium">
+                Stai per escludere{" "}
+                <b>
+                  {actionModal.item?.client?.cognome} {actionModal.item?.client?.nome}
+                </b>{" "}
+                dalla campagna di {formatMonthHuman(mese)}.
+              </p>
+            </div>
+            <p className="text-slate-600 text-xs leading-relaxed">
+              Il cliente non verrà eliminato dal database ma:
+            </p>
+            <ul className="text-xs text-slate-600 list-disc list-inside space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <li>Non sarà conteggiato nei totali o nei KPI commerciali del mese.</li>
+              <li>Non influirà sul tasso di chiusura o di conversione.</li>
+              <li>Sarà nascosto dalla vista principale e consultabile nella sezione <b>"Esclusi"</b>.</li>
+              <li>Potrai ripristinarlo in qualsiasi momento con 1 clic.</li>
+            </ul>
+          </div>
+        </ActionModal>
+      )}
+
       {/* ACTION MODAL: CONFIRM RESET */}
       {actionModal.type === "CONFIRM_RESET" && (
         <ActionModal
@@ -1623,7 +1754,7 @@ export default function RinnoviClient() {
       <RinnoviReportModal
         isOpen={reportOpen}
         onClose={() => setReportOpen(false)}
-        items={items}
+        items={items.filter((x: any) => !x.escluso)}
         listName={formatMonthHuman(mese)}
       />
 
@@ -1790,6 +1921,7 @@ export default function RinnoviClient() {
       <ClientDetailDrawer
         clientId={detailClientId}
         onClose={() => setDetailClientId(null)}
+        onClientUpdated={fetchRinnovi}
       />
     </div>
   );

@@ -93,13 +93,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
-    const allowedFields = ["nome", "cognome", "note", "email", "telefono", "telefono_secondario", "tags"];
+    const allowedFields = ["nome", "cognome", "note", "email", "telefono", "telefono_secondario", "tags", "escluso_rinnovi"];
     const updateData: Record<string, any> = {};
 
     for (const key of allowedFields) {
       if (key in body) {
         if (key === "nome" || key === "cognome") {
           updateData[key] = String(body[key] || "").trim().toUpperCase();
+        } else if (key === "escluso_rinnovi") {
+          updateData[key] = Boolean(body[key]);
         } else {
           updateData[key] = body[key];
         }
@@ -118,6 +120,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .single();
 
     if (error) throw error;
+
+    if (typeof updateData.escluso_rinnovi === "boolean" && updateData.escluso_rinnovi === true) {
+      await supabase.from("rinnovi_items").update({ escluso: true }).eq("client_id", id);
+    }
 
     return NextResponse.json({ ok: true, client: data });
   } catch (err: any) {
