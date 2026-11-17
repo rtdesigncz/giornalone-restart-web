@@ -208,6 +208,35 @@ export default function EntryDrawer({
         });
     }, [activeConflicts, formData.entry_time, entry?.id, isDuplicate, consultantEntries]);
 
+    // Spotlight Dimming State: scurisce la schermata a dissolvenza al comparire del conflitto
+    const [isDimmed, setIsDimmed] = useState(false);
+    const prevConflictKeyRef = useRef<string>("");
+    const conflictBoxRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const conflictKey = activeConflicts.length > 0
+            ? `${formData.entry_date}_${formData.consulente_id}_${formData.entry_time}_${activeConflicts.map(c => c.id).join(",")}`
+            : "";
+
+        if (conflictKey && conflictKey !== prevConflictKeyRef.current) {
+            setIsDimmed(true);
+            const timer = setTimeout(() => {
+                setIsDimmed(false);
+            }, 900);
+            prevConflictKeyRef.current = conflictKey;
+            return () => clearTimeout(timer);
+        } else if (!conflictKey) {
+            prevConflictKeyRef.current = "";
+            setIsDimmed(false);
+        }
+    }, [activeConflicts, formData.entry_date, formData.consulente_id, formData.entry_time]);
+
+    useEffect(() => {
+        if (isDimmed && conflictBoxRef.current) {
+            conflictBoxRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }, [isDimmed]);
+
     // Compute available months for renewal reference
     useEffect(() => {
         const now = new Date();
@@ -722,10 +751,11 @@ export default function EntryDrawer({
 
     return createPortal(
         <>
-            {/* Backdrop */}
+            {/* Backdrop con effetto dissolvenza scura quando scatta un conflitto */}
             <div
                 className={cn(
-                    "fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-md transition-opacity",
+                    "fixed inset-0 z-[100] transition-all duration-1000 ease-out",
+                    isDimmed ? "bg-slate-950/85 backdrop-blur-lg" : "bg-slate-900/50 backdrop-blur-md",
                     isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
                 onClick={onClose}
@@ -734,10 +764,17 @@ export default function EntryDrawer({
             {/* Drawer Panel - Super Compact */}
             <div
                 className={cn(
-                    "fixed inset-y-0 right-0 z-[101] w-full md:w-[560px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col font-sans",
+                    "fixed inset-y-0 right-0 z-[101] w-full md:w-[560px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col font-sans relative",
                     isOpen ? "translate-x-0" : "translate-x-full invisible"
                 )}
             >
+                {/* Spotlight Dimming Overlay: oscura a dissolvenza il resto del pannello */}
+                <div
+                    className={cn(
+                        "absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] pointer-events-none z-20 transition-opacity duration-1000 ease-out",
+                        isDimmed ? "opacity-100" : "opacity-0"
+                    )}
+                />
                 {/* Header Compatto */}
                 <div className="px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-[#21b5ba]/10 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
@@ -1056,33 +1093,47 @@ export default function EntryDrawer({
                         )}
                     </div>
 
-                    {/* AVVISO SOVRAPPOSIZIONE / CONFLITTO ORARIO */}
+                    {/* AVVISO SOVRAPPOSIZIONE / CONFLITTO ORARIO CON SPOTLIGHT */}
                     {activeConflicts.length > 0 && (
-                        <div className="p-3 rounded-xl bg-amber-50/95 border border-amber-300 text-amber-900 text-xs shadow-xs animate-in fade-in duration-200">
-                            <div className="flex items-start gap-2.5">
-                                <span className="text-base leading-none select-none">⚠️</span>
-                                <div className="flex-1">
-                                    <p className="font-bold text-amber-950">
-                                        Attenzione: Possibile sovrapposizione orario!
-                                    </p>
-                                    <p className="mt-0.5 text-amber-900 leading-relaxed">
-                                        {consulenti.find(c => c.id === formData.consulente_id)?.name || "Il consulente"} ha già un appuntamento alle{" "}
-                                        <span className="font-bold text-amber-950">
-                                            {activeConflicts.map(c => `${c.entry_time}${c.nome || c.cognome ? ` (${[c.nome, c.cognome].filter(Boolean).join(" ")})` : ""}`).join(", ")}
+                        <div
+                            ref={conflictBoxRef}
+                            className={cn(
+                                "relative z-30 p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-xs shadow-xl shadow-amber-500/15 transition-all duration-300 animate-in zoom-in-95",
+                                isDimmed ? "ring-4 ring-amber-400/80 scale-[1.01]" : "ring-1 ring-amber-300/80"
+                            )}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className="relative flex h-7 w-7 items-center justify-center shrink-0 rounded-full bg-amber-500 text-white shadow-md shadow-amber-500/30 mt-0.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative text-sm font-bold">⚠️</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-extrabold text-amber-950 text-sm tracking-tight flex items-center justify-between">
+                                        <span>Attenzione: Conflitto orario!</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded-md border border-amber-300">
+                                            Slot 20 min
                                         </span>
-                                        {" "}(durata 20 min).
+                                    </p>
+                                    <p className="mt-1 text-amber-900 leading-relaxed font-medium">
+                                        <span className="font-bold underline decoration-amber-400 underline-offset-2">
+                                            {consulenti.find(c => c.id === formData.consulente_id)?.name || "Il consulente"}
+                                        </span>
+                                        {" "}ha già un appuntamento alle{" "}
+                                        <span className="font-extrabold text-amber-950 bg-amber-100/90 px-1 py-0.5 rounded border border-amber-300/60">
+                                            {activeConflicts.map(c => `${c.entry_time}${c.nome || c.cognome ? ` (${[c.nome, c.cognome].filter(Boolean).join(" ")})` : ""}`).join(", ")}
+                                        </span>.
                                     </p>
                                     {suggestedSlots.length > 0 && (
-                                        <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-[11px] font-semibold text-amber-900">
-                                                Slot liberi consigliati:
+                                        <div className="mt-2.5 pt-2 border-t border-amber-300/70 flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[11px] font-bold text-amber-950">
+                                                👉 Slot liberi consigliati:
                                             </span>
                                             {suggestedSlots.map((slot) => (
                                                 <button
                                                     key={slot}
                                                     type="button"
                                                     onClick={() => handleChange("entry_time", slot)}
-                                                    className="px-2 py-0.5 text-[11px] font-bold bg-white text-amber-900 border border-amber-300 rounded-md hover:bg-amber-100 hover:border-amber-400 transition-colors shadow-2xs"
+                                                    className="px-2.5 py-1 text-xs font-bold bg-white text-amber-950 border border-amber-400 rounded-lg hover:bg-amber-100 hover:border-amber-500 hover:scale-105 active:scale-95 transition-all shadow-xs"
                                                     title={`Imposta orario alle ${slot}`}
                                                 >
                                                     {slot}
