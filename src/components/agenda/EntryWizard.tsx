@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, ChevronRight, ChevronLeft, Save, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 import { hasAppointmentSlotChanged } from "@/lib/whatsapp";
 import { isRenewalOrVerifiche } from "./EntryDrawer";
+import { checkConflicts, suggestAvailableSlots, ExistingAppointmentEntry } from "@/lib/agendaConflictUtils";
 
 interface EntryWizardProps {
     isOpen: boolean;
@@ -88,6 +89,55 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
         fetchData();
     }, []);
 
+    // Conflict detection state (20 min fixed slot overlap)
+    const [consultantEntries, setConsultantEntries] = useState<ExistingAppointmentEntry[]>([]);
+
+    useEffect(() => {
+        const fetchSchedule = async () => {
+            const cId = formData.consulente_id;
+            const d = formData.entry_date;
+            if (!isOpen || !cId || !d || cId === "null" || cId === "") {
+                setConsultantEntries([]);
+                return;
+            }
+
+            try {
+                const { data } = await supabase
+                    .from("entries")
+                    .select("id, entry_time, section, nome, cognome, consulente_id")
+                    .eq("entry_date", d)
+                    .eq("consulente_id", cId);
+                setConsultantEntries((data as ExistingAppointmentEntry[]) || []);
+            } catch (e) {
+                console.error("Error fetching consultant schedule:", e);
+            }
+        };
+        fetchSchedule();
+    }, [isOpen, formData.consulente_id, formData.entry_date]);
+
+    const activeConflicts = useMemo(() => {
+        if (!formData.entry_time || formData.section === "TOUR SPONTANEI" || !formData.consulente_id) {
+            return [];
+        }
+        return checkConflicts({
+            currentTime: formData.entry_time,
+            currentEntryId: initialData?.id && initialData.id !== "new" ? initialData.id : null,
+            existingEntries: consultantEntries,
+            durationMinutes: 20,
+        });
+    }, [formData.entry_time, formData.section, formData.consulente_id, initialData?.id, consultantEntries]);
+
+    const suggestedSlots = useMemo(() => {
+        if (activeConflicts.length === 0) return [];
+        return suggestAvailableSlots({
+            currentTime: formData.entry_time,
+            currentEntryId: initialData?.id && initialData.id !== "new" ? initialData.id : null,
+            existingEntries: consultantEntries,
+            durationMinutes: 20,
+            maxSuggestions: 3,
+        });
+    }, [activeConflicts, formData.entry_time, initialData?.id, consultantEntries]);
+
     const handleChange = (field: string, value: any) => {
         const val = (field === "nome" || field === "cognome") && typeof value === "string" ? value.toUpperCase() : value;
         setFormData((prev: any) => ({ ...prev, [field]: val }));
@@ -132,6 +182,22 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                 alert("ATTENZIONE: La Tipologia di Abbonamento è obbligatoria per le sezioni Rinnovi e Integrazioni e Verifiche del Bisogno.");
                 setLoading(false);
                 return;
+            }
+
+            // Soft warning per sovrapposizione oraria (durata 20 min)
+            if (activeConflicts.length > 0) {
+                const conflictDetails = activeConflicts
+                    .map(c => `${c.entry_time}${c.nome || c.cognome ? ` con ${[c.nome, c.cognome].filter(Boolean).join(" ")}` : ""}`)
+                    .join(", ");
+                const confirmOverlap = window.confirm(
+                    `ATTENZIONE: Sovrapposizione orario!\n\n` +
+                    `Il consulente ha già un appuntamento alle ${conflictDetails} (durata stimata 20 min).\n\n` +
+                    `Vuoi confermare e forzare comunque la sovrapposizione?`
+                );
+                if (!confirmOverlap) {
+                    setLoading(false);
+                    return;
+                }
             }
 
             // If "Save without outcome", ensure all outcomes are false
@@ -312,6 +378,39 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                                     onChange={(e) => handleChange("entry_time", e.target.value)}
                                 />
                             </div>
+
+                            {activeConflicts.length > 0 && (
+                                <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs shadow-xs animate-in fade-in duration-200">
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-base leading-none select-none">⚠️</span>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-amber-950">Attenzione: Conflitto orario!</p>
+                                            <p className="mt-0.5 text-amber-900 leading-relaxed">
+                                                {consulenti.find(c => c.id === formData.consulente_id)?.name || "Il consulente"} ha già un appuntamento alle{" "}
+                                                <span className="font-bold text-amber-950">
+                                                    {activeConflicts.map(c => `${c.entry_time}${c.nome || c.cognome ? ` (${[c.nome, c.cognome].filter(Boolean).join(" ")})` : ""}`).join(", ")}
+                                                </span>
+                                                {" "}(durata 20 min).
+                                            </p>
+                                            {suggestedSlots.length > 0 && (
+                                                <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-[11px] font-semibold text-amber-900">Slot liberi consigliati:</span>
+                                                    {suggestedSlots.map((slot) => (
+                                                        <button
+                                                            key={slot}
+                                                            type="button"
+                                                            onClick={() => handleChange("entry_time", slot)}
+                                                            className="px-2 py-0.5 text-[11px] font-bold bg-white text-amber-900 border border-amber-300 rounded-md hover:bg-amber-100 transition-colors shadow-2xs"
+                                                        >
+                                                            {slot}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -369,6 +468,39 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
                                     ))}
                                 </select>
                             </div>
+
+                            {activeConflicts.length > 0 && (
+                                <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs shadow-xs animate-in fade-in duration-200">
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-base leading-none select-none">⚠️</span>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-amber-950">Attenzione: Conflitto orario!</p>
+                                            <p className="mt-0.5 text-amber-900 leading-relaxed">
+                                                {consulenti.find(c => c.id === formData.consulente_id)?.name || "Il consulente"} ha già un appuntamento alle{" "}
+                                                <span className="font-bold text-amber-950">
+                                                    {activeConflicts.map(c => `${c.entry_time}${c.nome || c.cognome ? ` (${[c.nome, c.cognome].filter(Boolean).join(" ")})` : ""}`).join(", ")}
+                                                </span>
+                                                {" "}il {formData.entry_date} (durata 20 min).
+                                            </p>
+                                            {suggestedSlots.length > 0 && (
+                                                <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-[11px] font-semibold text-amber-900">Slot liberi consigliati:</span>
+                                                    {suggestedSlots.map((slot) => (
+                                                        <button
+                                                            key={slot}
+                                                            type="button"
+                                                            onClick={() => handleChange("entry_time", slot)}
+                                                            className="px-2 py-0.5 text-[11px] font-bold bg-white text-amber-900 border border-amber-300 rounded-md hover:bg-amber-100 transition-colors shadow-2xs"
+                                                        >
+                                                            {slot}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {!isTelefonici && (
                                 <>
                                     <div>

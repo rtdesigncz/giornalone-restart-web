@@ -1,12 +1,13 @@
 "use client";
 
 import { X, Save, Trash2, Calendar, Clock, User, Phone, Tag, FileText, ChevronDown, Check, Dumbbell, Sparkles, CalendarCheck } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 import { getSectionLabel, DB_SECTIONS } from "@/lib/sections";
 import { hasAppointmentSlotChanged } from "@/lib/whatsapp";
+import { checkConflicts, suggestAvailableSlots, ExistingAppointmentEntry } from "@/lib/agendaConflictUtils";
 
 import OutcomeButtons from "../outcomes/OutcomeButtons";
 import EntryWizard from "./EntryWizard";
@@ -157,6 +158,55 @@ export default function EntryDrawer({
     const [availableMonths, setAvailableMonths] = useState<string[]>([]);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autocompleteContainerRef = useRef<HTMLDivElement>(null);
+
+    // Conflict detection state (20 min fixed slot overlap)
+    const [consultantEntries, setConsultantEntries] = useState<ExistingAppointmentEntry[]>([]);
+
+    useEffect(() => {
+        const fetchConsultantSchedule = async () => {
+            const cId = formData.consulente_id;
+            const d = formData.entry_date;
+            if (!isOpen || !cId || !d || cId === "null" || cId === "") {
+                setConsultantEntries([]);
+                return;
+            }
+
+            try {
+                const { data } = await supabase
+                    .from("entries")
+                    .select("id, entry_time, section, nome, cognome, consulente_id")
+                    .eq("entry_date", d)
+                    .eq("consulente_id", cId);
+                setConsultantEntries((data as ExistingAppointmentEntry[]) || []);
+            } catch (e) {
+                console.error("Error fetching consultant schedule for conflict detection:", e);
+            }
+        };
+        fetchConsultantSchedule();
+    }, [isOpen, formData.consulente_id, formData.entry_date]);
+
+    const activeConflicts = useMemo(() => {
+        if (!formData.entry_time || effectiveSection === "TOUR SPONTANEI" || !formData.consulente_id) {
+            return [];
+        }
+        return checkConflicts({
+            currentTime: formData.entry_time,
+            currentEntryId: entry?.id && !isDuplicate ? entry.id : null,
+            existingEntries: consultantEntries,
+            durationMinutes: 20,
+        });
+    }, [formData.entry_time, effectiveSection, formData.consulente_id, entry?.id, isDuplicate, consultantEntries]);
+
+    const suggestedSlots = useMemo(() => {
+        if (activeConflicts.length === 0) return [];
+        return suggestAvailableSlots({
+            currentTime: formData.entry_time,
+            currentEntryId: entry?.id && !isDuplicate ? entry.id : null,
+            existingEntries: consultantEntries,
+            durationMinutes: 20,
+            maxSuggestions: 3,
+        });
+    }, [activeConflicts, formData.entry_time, entry?.id, isDuplicate, consultantEntries]);
 
     // Compute available months for renewal reference
     useEffect(() => {
@@ -444,6 +494,22 @@ export default function EntryDrawer({
             alert("L'orario è obbligatorio per questa sezione.");
             setLoading(false);
             return;
+        }
+
+        // Soft warning per sovrapposizione oraria (durata 20 min)
+        if (activeConflicts.length > 0) {
+            const conflictDetails = activeConflicts
+                .map(c => `${c.entry_time}${c.nome || c.cognome ? ` con ${[c.nome, c.cognome].filter(Boolean).join(" ")}` : ""}`)
+                .join(", ");
+            const confirmOverlap = window.confirm(
+                `ATTENZIONE: Sovrapposizione orario!\n\n` +
+                `Il consulente ha già un appuntamento alle ${conflictDetails} (durata stimata 20 min).\n\n` +
+                `Vuoi confermare e forzare comunque la sovrapposizione?`
+            );
+            if (!confirmOverlap) {
+                setLoading(false);
+                return;
+            }
         }
 
         try {
@@ -989,6 +1055,45 @@ export default function EntryDrawer({
                             <div></div>
                         )}
                     </div>
+
+                    {/* AVVISO SOVRAPPOSIZIONE / CONFLITTO ORARIO */}
+                    {activeConflicts.length > 0 && (
+                        <div className="p-3 rounded-xl bg-amber-50/95 border border-amber-300 text-amber-900 text-xs shadow-xs animate-in fade-in duration-200">
+                            <div className="flex items-start gap-2.5">
+                                <span className="text-base leading-none select-none">⚠️</span>
+                                <div className="flex-1">
+                                    <p className="font-bold text-amber-950">
+                                        Attenzione: Possibile sovrapposizione orario!
+                                    </p>
+                                    <p className="mt-0.5 text-amber-900 leading-relaxed">
+                                        {consulenti.find(c => c.id === formData.consulente_id)?.name || "Il consulente"} ha già un appuntamento alle{" "}
+                                        <span className="font-bold text-amber-950">
+                                            {activeConflicts.map(c => `${c.entry_time}${c.nome || c.cognome ? ` (${[c.nome, c.cognome].filter(Boolean).join(" ")})` : ""}`).join(", ")}
+                                        </span>
+                                        {" "}(durata 20 min).
+                                    </p>
+                                    {suggestedSlots.length > 0 && (
+                                        <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[11px] font-semibold text-amber-900">
+                                                Slot liberi consigliati:
+                                            </span>
+                                            {suggestedSlots.map((slot) => (
+                                                <button
+                                                    key={slot}
+                                                    type="button"
+                                                    onClick={() => handleChange("entry_time", slot)}
+                                                    className="px-2 py-0.5 text-[11px] font-bold bg-white text-amber-900 border border-amber-300 rounded-md hover:bg-amber-100 hover:border-amber-400 transition-colors shadow-2xs"
+                                                    title={`Imposta orario alle ${slot}`}
+                                                >
+                                                    {slot}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* RIGA 4: Note Aggiuntive */}
                     <div>
