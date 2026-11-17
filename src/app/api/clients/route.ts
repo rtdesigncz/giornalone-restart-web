@@ -16,26 +16,48 @@ export async function GET(req: Request) {
     const q = (searchParams.get("q") || "").trim();
     const stato = searchParams.get("stato") || "ALL";
     const disciplina = searchParams.get("disciplina") || "ALL";
+    const tipoAbbonamento = searchParams.get("tipo_abbonamento") || "ALL";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") || "50", 10)));
     const sort = searchParams.get("sort") || "cognome";
     const order = searchParams.get("order") === "desc" ? false : true;
 
-    // Fetch summary counts
+    // Fetch summary counts and subscription breakdown
     const [
       { count: totalCount },
       { count: attiviPureCount },
       { count: inScadenzaCount },
       { count: scadutiCount },
+      { data: tipiList },
+      { data: allClientsForStats },
     ] = await Promise.all([
       supabase.from("clients").select("*", { count: "exact", head: true }),
       supabase.from("clients").select("*", { count: "exact", head: true }).eq("stato", "ATTIVO"),
       supabase.from("clients").select("*", { count: "exact", head: true }).eq("stato", "IN_SCADENZA"),
       supabase.from("clients").select("*", { count: "exact", head: true }).eq("stato", "SCADUTO"),
+      supabase.from("tipi_abbonamento").select("id, name, sort_order").order("sort_order"),
+      supabase.from("clients").select("stato, tipo_abbonamento_id"),
     ]);
 
     // I clienti "in scadenza" hanno un abbonamento valido e sono a tutti gli effetti ATTIVI
     const attiviTotali = (attiviPureCount || 0) + (inScadenzaCount || 0);
+
+    // Calcolo statistiche attivi / scaduti per ogni tipo di abbonamento
+    const statsMap: Record<string, { id: string; name: string; total: number; attivi: number; scaduti: number }> = {};
+    (tipiList || []).forEach((t: any) => {
+      statsMap[t.id] = { id: t.id, name: t.name, total: 0, attivi: 0, scaduti: 0 };
+    });
+
+    (allClientsForStats || []).forEach((c: any) => {
+      const isAttivo = c.stato === "ATTIVO" || c.stato === "IN_SCADENZA";
+      if (c.tipo_abbonamento_id && statsMap[c.tipo_abbonamento_id]) {
+        statsMap[c.tipo_abbonamento_id].total++;
+        if (isAttivo) statsMap[c.tipo_abbonamento_id].attivi++;
+        else if (c.stato === "SCADUTO") statsMap[c.tipo_abbonamento_id].scaduti++;
+      }
+    });
+
+    const abbonamentoStats = Object.values(statsMap).filter((t: any) => t.total > 0);
 
     // Build main query
     let query = supabase
@@ -53,6 +75,10 @@ export async function GET(req: Request) {
 
     if (disciplina && disciplina !== "ALL") {
       query = query.eq("disciplina", disciplina);
+    }
+
+    if (tipoAbbonamento && tipoAbbonamento !== "ALL") {
+      query = query.eq("tipo_abbonamento_id", tipoAbbonamento);
     }
 
     if (q) {
@@ -89,6 +115,7 @@ export async function GET(req: Request) {
         in_scadenza: inScadenzaCount || 0,
         scaduti: scadutiCount || 0,
       },
+      abbonamentoStats,
     });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });

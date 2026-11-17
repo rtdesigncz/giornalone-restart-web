@@ -32,6 +32,8 @@ export default function ClientiClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStato, setSelectedStato] = useState<string>("ALL");
   const [selectedDisciplina, setSelectedDisciplina] = useState<string>("ALL");
+  const [selectedTipoAbbonamento, setSelectedTipoAbbonamento] = useState<string>("ALL");
+  const [abbonamentoStats, setAbbonamentoStats] = useState<Array<{ id: string; name: string; total: number; attivi: number; scaduti: number }>>([]);
 
   // Modals & Drawer
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -44,6 +46,7 @@ export default function ClientiClient() {
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
       if (selectedStato !== "ALL") params.set("stato", selectedStato);
       if (selectedDisciplina !== "ALL") params.set("disciplina", selectedDisciplina);
+      if (selectedTipoAbbonamento !== "ALL") params.set("tipo_abbonamento", selectedTipoAbbonamento);
       params.set("page", String(pagination.page));
       params.set("limit", String(pagination.limit));
 
@@ -53,6 +56,9 @@ export default function ClientiClient() {
       if (data.clients) {
         setClients(data.clients);
         setCounts(data.counts || { total: 0, attivi: 0, in_scadenza: 0, scaduti: 0 });
+        if (data.abbonamentoStats) {
+          setAbbonamentoStats(data.abbonamentoStats);
+        }
         setPagination((prev) => ({
           ...prev,
           total: data.pagination?.total || 0,
@@ -64,7 +70,7 @@ export default function ClientiClient() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedStato, selectedDisciplina, pagination.page, pagination.limit]);
+  }, [searchQuery, selectedStato, selectedDisciplina, selectedTipoAbbonamento, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -260,6 +266,172 @@ export default function ClientiClient() {
               <option value="SALA">Solo Sala Attrezzi</option>
               <option value="SALA+CORSI">Open (Sala + Corsi)</option>
             </select>
+          </div>
+        </div>
+
+        {/* Pillole Filtro Abbonamento con Distinzione Attivi / Scaduti */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Filter size={14} className="text-[#21b5ba]" />
+                Filtra per Abbonamento
+              </span>
+              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                • Clicca sul tipo per filtrare o direttamente su Attivi/Scaduti
+              </span>
+            </div>
+            {selectedTipoAbbonamento !== "ALL" && (
+              <button
+                onClick={() => {
+                  setSelectedTipoAbbonamento("ALL");
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+              >
+                <span>Azzera filtro abbonamento</span>
+                <span>✕</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 custom-scrollbar">
+            {/* Pillola Tutti */}
+            <div
+              className={cn(
+                "flex items-center gap-2 p-1.5 pl-3 pr-2 rounded-xl border text-xs transition-all shadow-2xs select-none shrink-0",
+                selectedTipoAbbonamento === "ALL"
+                  ? "bg-slate-900 border-slate-900 text-white shadow-sm ring-2 ring-slate-900/20"
+                  : "bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300"
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTipoAbbonamento("ALL");
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="font-bold cursor-pointer"
+              >
+                Tutti gli Abbonamenti
+              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="Filtra tutti gli ATTIVI"
+                  onClick={() => {
+                    setSelectedTipoAbbonamento("ALL");
+                    setSelectedStato("ATTIVO");
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md font-extrabold text-[10px] transition-all cursor-pointer",
+                    selectedTipoAbbonamento === "ALL" && selectedStato === "ATTIVO"
+                      ? "bg-emerald-400 text-slate-950 ring-2 ring-white/80"
+                      : selectedTipoAbbonamento === "ALL"
+                      ? "bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50"
+                      : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                  )}
+                >
+                  🟢 {counts.attivi} Attivi
+                </button>
+                <button
+                  type="button"
+                  title="Filtra tutti gli SCADUTI"
+                  onClick={() => {
+                    setSelectedTipoAbbonamento("ALL");
+                    setSelectedStato("SCADUTO");
+                    setPagination((p) => ({ ...p, page: 1 }));
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md font-extrabold text-[10px] transition-all cursor-pointer",
+                    selectedTipoAbbonamento === "ALL" && selectedStato === "SCADUTO"
+                      ? "bg-rose-400 text-slate-950 ring-2 ring-white/80"
+                      : selectedTipoAbbonamento === "ALL"
+                      ? "bg-rose-500/30 text-rose-300 hover:bg-rose-500/50"
+                      : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                  )}
+                >
+                  🔴 {counts.scaduti} Scaduti
+                </button>
+              </div>
+            </div>
+
+            {/* Pillole per Tipologia Abbonamento */}
+            {abbonamentoStats.map((item) => {
+              const isSelected = selectedTipoAbbonamento === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-2 p-1.5 pl-3 pr-2 rounded-xl border text-xs transition-all shadow-2xs select-none shrink-0",
+                    isSelected
+                      ? "bg-[#21b5ba] border-[#21b5ba] text-white shadow-md ring-2 ring-[#21b5ba]/30"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTipoAbbonamento(isSelected ? "ALL" : item.id);
+                      setPagination((p) => ({ ...p, page: 1 }));
+                    }}
+                    className="font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{item.name}</span>
+                    <span
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded-full font-extrabold",
+                        isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      {item.total}
+                    </span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      title={`Filtra solo ${item.name} ATTIVI`}
+                      onClick={() => {
+                        setSelectedTipoAbbonamento(item.id);
+                        setSelectedStato("ATTIVO");
+                        setPagination((p) => ({ ...p, page: 1 }));
+                      }}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md font-extrabold text-[10px] transition-all cursor-pointer",
+                        isSelected && selectedStato === "ATTIVO"
+                          ? "bg-emerald-400 text-slate-950 ring-2 ring-white"
+                          : isSelected
+                          ? "bg-white/20 text-white hover:bg-white/30"
+                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60"
+                      )}
+                    >
+                      🟢 {item.attivi} Attivi
+                    </button>
+                    <button
+                      type="button"
+                      title={`Filtra solo ${item.name} SCADUTI`}
+                      onClick={() => {
+                        setSelectedTipoAbbonamento(item.id);
+                        setSelectedStato("SCADUTO");
+                        setPagination((p) => ({ ...p, page: 1 }));
+                      }}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md font-extrabold text-[10px] transition-all cursor-pointer",
+                        isSelected && selectedStato === "SCADUTO"
+                          ? "bg-rose-400 text-slate-950 ring-2 ring-white"
+                          : isSelected
+                          ? "bg-white/20 text-white hover:bg-white/30"
+                          : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60"
+                      )}
+                    >
+                      🔴 {item.scaduti} Scaduti
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
