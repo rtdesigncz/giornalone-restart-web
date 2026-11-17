@@ -324,7 +324,7 @@ export default function EntryWizard({ isOpen, onClose, onSave, initialData, sect
     const totalSteps = 5;
 
     return createPortal(
-        <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col animate-in fade-in duration-200 relative">
+        <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col animate-in fade-in duration-200">
             {/* Spotlight Dimming Overlay: oscura a dissolvenza il resto dello schermo */}
             <div
                 className={cn(

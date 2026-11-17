@@ -211,7 +211,6 @@ export default function EntryDrawer({
     // Spotlight Dimming State: scurisce la schermata a dissolvenza al comparire del conflitto
     const [isDimmed, setIsDimmed] = useState(false);
     const prevConflictKeyRef = useRef<string>("");
-    const conflictBoxRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const conflictKey = activeConflicts.length > 0
@@ -230,12 +229,6 @@ export default function EntryDrawer({
             setIsDimmed(false);
         }
     }, [activeConflicts, formData.entry_date, formData.consulente_id, formData.entry_time]);
-
-    useEffect(() => {
-        if (isDimmed && conflictBoxRef.current) {
-            conflictBoxRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-    }, [isDimmed]);
 
     // Compute available months for renewal reference
     useEffect(() => {
@@ -764,7 +757,7 @@ export default function EntryDrawer({
             {/* Drawer Panel - Super Compact */}
             <div
                 className={cn(
-                    "fixed inset-y-0 right-0 z-[101] w-full md:w-[560px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col font-sans relative",
+                    "fixed inset-y-0 right-0 z-[101] w-full md:w-[560px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col font-sans",
                     isOpen ? "translate-x-0" : "translate-x-full invisible"
                 )}
             >
@@ -1096,7 +1089,6 @@ export default function EntryDrawer({
                     {/* AVVISO SOVRAPPOSIZIONE / CONFLITTO ORARIO CON SPOTLIGHT */}
                     {activeConflicts.length > 0 && (
                         <div
-                            ref={conflictBoxRef}
                             className={cn(
                                 "relative z-30 p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-xs shadow-xl shadow-amber-500/15 transition-all duration-300 animate-in zoom-in-95",
                                 isDimmed ? "ring-4 ring-amber-400/80 scale-[1.01]" : "ring-1 ring-amber-300/80"
