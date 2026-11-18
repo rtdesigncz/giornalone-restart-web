@@ -67,8 +67,6 @@ export async function deleteEntryWithRinnoviSync(
         const matchingMonth = entryMonth ? byClient.filter((r: any) => r.mese_riferimento === entryMonth) : [];
         if (matchingMonth.length > 0) {
           linkedRinnoviIds.push(...matchingMonth.map((r: any) => r.id));
-        } else {
-          linkedRinnoviIds.push(...byClient.map((r: any) => r.id));
         }
       }
     }

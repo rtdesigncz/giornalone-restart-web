@@ -430,11 +430,14 @@ export default function RinnoviClient() {
         setPendingAgendaItem({ item, date: tempDate });
         setDrawerInitialData({
           section: "APPUNTAMENTI RINNOVI E INTEGRAZIONI",
+          lockSectionChange: true,
           nome: item.client?.nome || "",
           cognome: item.client?.cognome || "",
           telefono: item.client?.telefono || "",
           client_id: item.client_id,
           entry_date: tempDate,
+          mese_riferimento: item.mese_riferimento,
+          rinnovo_item_id: item.id,
           note: `RINNOVO ${formatMonthHuman(item.mese_riferimento)} - Precedente: ${item.abbonamento_originario || ""}`,
         });
         setDrawerOpen(true);
@@ -475,10 +478,14 @@ export default function RinnoviClient() {
     setPendingAgendaItem({ item, date: new Date().toISOString().slice(0, 10) });
     setDrawerInitialData({
       section: "APPUNTAMENTI RINNOVI E INTEGRAZIONI",
+      lockSectionChange: true,
       nome: item.client?.nome || "",
       cognome: item.client?.cognome || "",
       telefono: item.client?.telefono || "",
       client_id: item.client_id,
+      entry_date: new Date().toISOString().slice(0, 10),
+      mese_riferimento: item.mese_riferimento,
+      rinnovo_item_id: item.id,
       note: `RINNOVO ${formatMonthHuman(item.mese_riferimento)} - Scadenza: ${item.scadenza_originaria || ""} - ${item.abbonamento_originario || ""}`,
     });
     setDrawerOpen(true);

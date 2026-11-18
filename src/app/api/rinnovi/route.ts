@@ -256,9 +256,17 @@ export async function GET(req: Request) {
           }
 
           // If entry is sold and belongs to another month's campaign
-          if (entry.venduto && entryDate.slice(0, 7) === other.mese_riferimento && other.mese_riferimento !== targetMonth) {
-            return false;
+          if (entry.venduto && other.mese_riferimento !== targetMonth) {
+            if (entryDate.slice(0, 7) === other.mese_riferimento) return false;
           }
+        }
+      }
+
+      // 1b. If appointment is already marked venduto and is not explicitly tied to this renewal item,
+      // it can NEVER attach implicitly across months!
+      if (entry.venduto && !isExplicitEntry) {
+        if (entryDate.slice(0, 7) !== targetMonth) {
+          return false;
         }
       }
 
@@ -289,13 +297,10 @@ export async function GET(req: Request) {
       }
 
       // Upcoming appointments (today onwards):
-      // Belongs to targetMonth if:
-      // 1. targetMonth matches the client's next active expiration (data_scadenza starts with targetMonth)
-      //    AND targetMonth is current or future
-      // 2. OR the upcoming entryDate falls within the window of targetMonth
+      // Only attach to targetMonth if targetMonth matches client's next expiration AND entryDate falls within targetMonth window
       const isClientNextExpiration = client?.data_scadenza && client.data_scadenza.startsWith(targetMonth);
       if (isClientNextExpiration && targetMonth >= todayStr.slice(0, 7)) {
-        return true;
+        return entryDate >= windowStart && entryDate <= windowEnd;
       }
 
       return entryDate >= windowStart && entryDate <= windowEnd;

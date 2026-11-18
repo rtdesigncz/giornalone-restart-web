@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { isRenewalSection } from "@/components/agenda/EntryDrawer";
 
 export function useOutcomeManager(onUpdate: () => void) {
     const [salePopup, setSalePopup] = useState<{ open: boolean, entry: any | null }>({ open: false, entry: null });
@@ -59,11 +60,10 @@ export function useOutcomeManager(onUpdate: () => void) {
         if (updates.miss) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.assente = false; }
         if (updates.assente) { updates.venduto = false; updates.negativo = false; updates.presentato = false; updates.miss = false; }
 
-        const { data: updatedEntry } = await supabase.from("entries").update(updates).eq("id", id).select("id, client_id, section, nome, cognome, telefono").maybeSingle();
+        const { data: updatedEntry } = await supabase.from("entries").update(updates).eq("id", id).select("id, client_id, section, entry_date, nome, cognome, telefono").maybeSingle();
 
         if (updatedEntry) {
-            const entrySec = (updatedEntry.section || "").toUpperCase();
-            const isRinnoviSec = entrySec.includes("RINNOV") || entrySec.includes("INTEGRAZION");
+            const isRinnoviSec = isRenewalSection(updatedEntry.section);
 
             // 1. SYNC RINNOVI
             if (updatedEntry.client_id && isRinnoviSec) {
@@ -88,7 +88,27 @@ export function useOutcomeManager(onUpdate: () => void) {
                     rinUpdates.esito = null;
                 }
                 if (Object.keys(rinUpdates).length > 0) {
-                    await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", updatedEntry.client_id);
+                    // Update ONLY the exact linked rinnovi_item for this entry
+                    const { data: itemByEntry } = await supabase
+                        .from("rinnovi_items")
+                        .select("id")
+                        .eq("entry_id", updatedEntry.id)
+                        .maybeSingle();
+
+                    if (itemByEntry) {
+                        await supabase.from("rinnovi_items").update(rinUpdates).eq("id", itemByEntry.id);
+                    } else {
+                        // Fallback: match by client_id AND entry_date, but NEVER update all items indiscriminately
+                        const { data: itemByDate } = await supabase
+                            .from("rinnovi_items")
+                            .select("id")
+                            .eq("client_id", updatedEntry.client_id)
+                            .eq("data_consulenza", updatedEntry.entry_date)
+                            .maybeSingle();
+                        if (itemByDate) {
+                            await supabase.from("rinnovi_items").update({ ...rinUpdates, entry_id: updatedEntry.id }).eq("id", itemByDate.id);
+                        }
+                    }
                 }
             }
 
@@ -218,7 +238,7 @@ export function useOutcomeManager(onUpdate: () => void) {
                 negativo: false
             }).eq("id", entryToMiss.id);
 
-            const isRinSec = ((entryToMiss.section || "").toUpperCase()).includes("RINNOV") || ((entryToMiss.section || "").toUpperCase()).includes("INTEGRAZION");
+            const isRinSec = isRenewalSection(entryToMiss.section);
 
             if (entryToMiss.client_id && isRinSec) {
                 const rinUpdates: any = {};
@@ -229,7 +249,17 @@ export function useOutcomeManager(onUpdate: () => void) {
                     rinUpdates.consulenza_fatta = false;
                     rinUpdates.esito = null;
                 }
-                await supabase.from("rinnovi_items").update(rinUpdates).eq("client_id", entryToMiss.client_id);
+                
+                // Target ONLY the linked renewal item
+                const { data: linkedItem } = await supabase
+                    .from("rinnovi_items")
+                    .select("id")
+                    .eq("entry_id", entryToMiss.id)
+                    .maybeSingle();
+
+                if (linkedItem) {
+                    await supabase.from("rinnovi_items").update(rinUpdates).eq("id", linkedItem.id);
+                }
             }
 
             // Sync with Leads (gestione_items) when rescheduling non-Rinnovi appointments

@@ -29,6 +29,15 @@ interface EntryDrawerProps {
     initialData?: Partial<Entry>;
 }
 
+export const isRenewalSection = (sec: string | undefined | null) => {
+    if (!sec) return false;
+    const upper = sec.toUpperCase();
+    return (
+        upper === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" ||
+        upper.includes("RINNOV")
+    );
+};
+
 export const isRenewalOrVerifiche = (sec: string | undefined | null) => {
     if (!sec) return false;
     const upper = sec.toUpperCase();
@@ -243,23 +252,30 @@ export default function EntryDrawer({
         if (selectedClient?.data_scadenza) {
             set.add(selectedClient.data_scadenza.slice(0, 7));
         }
-        setAvailableMonths(Array.from(set).sort());
-    }, [selectedClient]);
-
-    // Pre-select default renewal reference month from client's active expiration
-    useEffect(() => {
-        if (selectedClient?.data_scadenza) {
-            const defMese = selectedClient.data_scadenza.slice(0, 7);
-            setSelectedMeseRiferimento(defMese);
-            setFormData(prev => ({ ...prev, mese_riferimento: defMese }));
-        } else if (initialData?.mese_riferimento) {
-            setSelectedMeseRiferimento(initialData.mese_riferimento);
+        if (initialData?.mese_riferimento) {
+            set.add(initialData.mese_riferimento);
         }
-    }, [selectedClient, initialData]);
+        if (selectedMeseRiferimento) {
+            set.add(selectedMeseRiferimento);
+        }
+        setAvailableMonths(Array.from(set).sort());
+    }, [selectedClient, initialData, selectedMeseRiferimento]);
 
-    // Fetch linked renewal month if editing an existing entry
+    // Handle initial / linked / default renewal reference month without overwriting
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            setSelectedMeseRiferimento("");
+            return;
+        }
+
+        // Priority 1: explicitly passed in initialData (e.g. from Rinnovi campaign)
+        if (initialData?.mese_riferimento) {
+            setSelectedMeseRiferimento(initialData.mese_riferimento);
+            setFormData(prev => ({ ...prev, mese_riferimento: initialData.mese_riferimento }));
+            return;
+        }
+
+        // Priority 2: if editing an existing entry, fetch linked renewal month from DB
         if (entry?.id && entry.id !== "new") {
             supabase
                 .from("rinnovi_items")
@@ -272,8 +288,16 @@ export default function EntryDrawer({
                         setFormData(prev => ({ ...prev, mese_riferimento: data.mese_riferimento }));
                     }
                 });
+            return;
         }
-    }, [isOpen, entry]);
+
+        // Priority 3: Only for new entries when no month is yet selected, pre-suggest client data_scadenza
+        if (!selectedMeseRiferimento && selectedClient?.data_scadenza) {
+            const defMese = selectedClient.data_scadenza.slice(0, 7);
+            setSelectedMeseRiferimento(defMese);
+            setFormData(prev => ({ ...prev, mese_riferimento: defMese }));
+        }
+    }, [isOpen, entry, initialData, selectedClient?.data_scadenza]);
 
     // Close autocomplete on click outside
     useEffect(() => {
@@ -566,6 +590,7 @@ export default function EntryDrawer({
             }
 
             const targetSection = isDuplicate || allowSectionChange ? effectiveSection : formData.section;
+            const isRenewal = isRenewalSection(targetSection);
             const isSubRequired = isRenewalOrVerifiche(targetSection);
 
             // Auto-resolve subscription from client if missing
@@ -586,6 +611,14 @@ export default function EntryDrawer({
 
             if (isSubRequired && (!resolvedTipoId || resolvedTipoId === "null")) {
                 alert("ATTENZIONE: La Tipologia di Abbonamento è obbligatoria per le sezioni Rinnovi e Integrazioni e Verifiche del Bisogno.");
+                setLoading(false);
+                return;
+            }
+
+            // MANDATORY VALIDATION: Scadenza / Campagna di riferimento for Rinnovi
+            const finalMeseRiferimento = selectedMeseRiferimento || formData.mese_riferimento;
+            if (isRenewal && !finalMeseRiferimento) {
+                alert("ATTENZIONE: Per gli appuntamenti della sezione Rinnovi e Integrazioni è OBBLIGATORIO indicare il Mese di Scadenza / Campagna a cui appartiene il rinnovo.");
                 setLoading(false);
                 return;
             }
@@ -637,8 +670,7 @@ export default function EntryDrawer({
             }
 
             // Sync with rinnovi_items if this appointment is in Rinnovi section and linked to a client
-            const isRenewal = targetSection === "APPUNTAMENTI RINNOVI E INTEGRAZIONI" || targetSection?.includes("RINNOV");
-            if (resolvedClientId && isRenewal) {
+            if (resolvedClientId && isRenewal && finalMeseRiferimento) {
                 try {
                     const { data: cl } = await supabase
                         .from("clients")
@@ -646,60 +678,79 @@ export default function EntryDrawer({
                         .eq("id", resolvedClientId)
                         .maybeSingle();
 
-                    const meseRef = selectedMeseRiferimento || (cl?.data_scadenza ? cl.data_scadenza.slice(0, 7) : null);
-                    if (meseRef) {
+                    const meseRef = finalMeseRiferimento;
+                    let targetRinId = initialData?.rinnovo_item_id || null;
+
+                    if (!targetRinId) {
                         const { data: existingRin } = await supabase
                             .from("rinnovi_items")
                             .select("id")
                             .eq("client_id", resolvedClientId)
                             .eq("mese_riferimento", meseRef)
                             .maybeSingle();
-
-                        const hasOutcome = !!(formData.venduto || formData.presentato || formData.negativo || formData.assente || formData.miss);
-                        const esitoVal = formData.venduto
-                            ? "venduto"
-                            : formData.presentato
-                            ? "presentato"
-                            : formData.negativo
-                            ? "negativo"
-                            : formData.assente
-                            ? "assente"
-                            : formData.miss
-                            ? "miss"
-                            : null;
-
                         if (existingRin) {
-                            await supabase.from("rinnovi_items").update({
-                                preso_appuntamento: true,
-                                data_consulenza: formData.entry_date,
-                                contattato: true,
-                                entry_id: savedData.id,
-                                ...(hasOutcome ? { consulenza_fatta: true, esito: esitoVal } : {}),
-                            }).eq("id", existingRin.id);
-                        } else {
-                            await supabase.from("rinnovi_items").insert({
-                                client_id: resolvedClientId,
-                                mese_riferimento: meseRef,
-                                scadenza_originaria: cl?.data_scadenza || `${meseRef}-01`,
-                                abbonamento_originario: cl?.pacchetto_originale ? cleanSubscription(cl.pacchetto_originale) : null,
-                                disciplina: cl?.disciplina || "ALTRO",
-                                prezzo_originario: cl?.prezzo || 0,
-                                contattato: true,
-                                preso_appuntamento: true,
-                                data_consulenza: formData.entry_date,
-                                entry_id: savedData.id,
-                                consulenza_fatta: hasOutcome,
-                                esito: esitoVal,
-                            });
+                            targetRinId = existingRin.id;
                         }
-
-                        // Disassociate any other renewal item previously attached to this entry_id
-                        await supabase
-                            .from("rinnovi_items")
-                            .update({ entry_id: null, preso_appuntamento: false })
-                            .eq("entry_id", savedData.id)
-                            .neq("mese_riferimento", meseRef);
                     }
+
+                    const hasOutcome = !!(formData.venduto || formData.presentato || formData.negativo || formData.assente || formData.miss);
+                    const esitoVal = formData.venduto
+                        ? "RINNOVO"
+                        : (formData.presentato && !formData.negativo && !formData.assente)
+                        ? "IN ATTESA"
+                        : formData.negativo
+                        ? "NEGATIVO"
+                        : null;
+
+                    const updatePayload: any = {
+                        preso_appuntamento: true,
+                        data_consulenza: formData.entry_date,
+                        contattato: true,
+                        entry_id: savedData.id,
+                    };
+
+                    if (hasOutcome) {
+                        updatePayload.consulenza_fatta = !formData.assente;
+                        if (esitoVal) updatePayload.esito = esitoVal;
+                        if (formData.venduto) {
+                            const matchedTipo = tipi.find((t: any) => t.id === resolvedTipoId);
+                            if (matchedTipo?.name) updatePayload.nuovo_abbonamento_name = matchedTipo.name;
+                        }
+                    }
+
+                    if (targetRinId) {
+                        await supabase.from("rinnovi_items").update(updatePayload).eq("id", targetRinId);
+                    } else {
+                        const { data: newRin } = await supabase.from("rinnovi_items").insert({
+                            client_id: resolvedClientId,
+                            mese_riferimento: meseRef,
+                            scadenza_originaria: cl?.data_scadenza || `${meseRef}-01`,
+                            abbonamento_originario: cl?.pacchetto_originale ? cleanSubscription(cl.pacchetto_originale) : null,
+                            disciplina: cl?.disciplina || "ALTRO",
+                            prezzo_originario: cl?.prezzo || 0,
+                            contattato: true,
+                            preso_appuntamento: true,
+                            data_consulenza: formData.entry_date,
+                            entry_id: savedData.id,
+                            consulenza_fatta: hasOutcome && !formData.assente,
+                            esito: esitoVal,
+                            nuovo_abbonamento_name: updatePayload.nuovo_abbonamento_name || null,
+                        }).select("id").single();
+                        if (newRin?.id) targetRinId = newRin.id;
+                    }
+
+                    // Disassociate any other renewal item previously attached to this entry_id
+                    let disassocQuery = supabase
+                        .from("rinnovi_items")
+                        .update({ entry_id: null, preso_appuntamento: false })
+                        .eq("entry_id", savedData.id);
+
+                    if (targetRinId) {
+                        disassocQuery = disassocQuery.neq("id", targetRinId);
+                    } else {
+                        disassocQuery = disassocQuery.neq("mese_riferimento", meseRef);
+                    }
+                    await disassocQuery;
                 } catch (rinErr) {
                     console.error("Error auto-syncing rinnovi_item from EntryDrawer:", rinErr);
                 }
@@ -735,9 +786,19 @@ export default function EntryDrawer({
                     telefono: entry.telefono,
                     consulente_id: entry.consulente_id || "",
                     tipo_abbonamento_id: entry.tipo_abbonamento_id || "",
+                    mese_riferimento: selectedMeseRiferimento || initialData?.mese_riferimento || "",
+                    rinnovo_item_id: initialData?.rinnovo_item_id || null,
                     note: entry.note,
                     miss: false, venduto: false, presentato: false, negativo: false, assente: false, comeback: false, contattato: false, whatsapp_sent: false
-                } : { ...entry }) : initialData}
+                } : {
+                    ...entry,
+                    mese_riferimento: selectedMeseRiferimento || initialData?.mese_riferimento || "",
+                    rinnovo_item_id: initialData?.rinnovo_item_id || null,
+                }) : {
+                    ...initialData,
+                    mese_riferimento: selectedMeseRiferimento || initialData?.mese_riferimento || "",
+                    rinnovo_item_id: initialData?.rinnovo_item_id || null,
+                }}
             />
         );
     }
@@ -942,21 +1003,32 @@ export default function EntryDrawer({
                             </div>
                         )}
 
-                        {/* Alternative 3: Scadenza di Riferimento Rinnovo */}
-                        {isRenewalOrVerifiche(effectiveSection) && (
-                            <div className="mt-3 p-3.5 rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40 shadow-xs animate-in fade-in">
+                        {/* Alternative 3: Scadenza di Riferimento Rinnovo (Obbligatorio per sezione Rinnovi) */}
+                        {isRenewalSection(effectiveSection) && (
+                            <div className={cn(
+                                "mt-3 p-3.5 rounded-2xl border transition-all duration-200 shadow-xs animate-in fade-in",
+                                !selectedMeseRiferimento
+                                    ? "border-rose-400 bg-rose-50/40 ring-2 ring-rose-200/60"
+                                    : "border-indigo-200/90 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40"
+                            )}>
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                                        <div className={cn(
+                                            "w-7 h-7 rounded-xl text-white flex items-center justify-center shadow-xs",
+                                            !selectedMeseRiferimento ? "bg-rose-600" : "bg-indigo-600"
+                                        )}>
                                             <CalendarCheck size={14} strokeWidth={2.5} />
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-xs font-black text-indigo-950 uppercase tracking-tight">
-                                                    Scadenza di Riferimento Rinnovo
+                                                <span className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                    Scadenza di Riferimento Rinnovo <span className="text-rose-600 font-black">*</span>
                                                 </span>
-                                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700">
-                                                    Campagna Rinnovi
+                                                <span className={cn(
+                                                    "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                                                    !selectedMeseRiferimento ? "bg-rose-100 text-rose-700 font-extrabold" : "bg-indigo-100 text-indigo-700"
+                                                )}>
+                                                    {!selectedMeseRiferimento ? "OBBLIGATORIO" : "Campagna Rinnovi"}
                                                 </span>
                                             </div>
                                             <p className="text-[10px] text-slate-500 font-medium">
@@ -986,7 +1058,7 @@ export default function EntryDrawer({
                                                 setSelectedMeseRiferimento(val);
                                                 handleChange("mese_riferimento", val);
                                             }}
-                                            placeholder="-- Seleziona Mese di Scadenza --"
+                                            placeholder="-- Seleziona Mese di Scadenza (Obbligatorio) --"
                                         />
                                     </div>
                                     {selectedClient?.data_scadenza && selectedMeseRiferimento !== selectedClient.data_scadenza.slice(0, 7) && (
