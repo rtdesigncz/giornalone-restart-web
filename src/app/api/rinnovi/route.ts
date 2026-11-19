@@ -91,8 +91,25 @@ export async function GET(req: Request) {
 
     if (itemsErr) throw itemsErr;
 
-    // Filter out any items for clients permanently marked escluso_rinnovi
-    const validItems = (items || []).filter((it: any) => !it.client?.escluso_rinnovi);
+    // Filter out any items for clients permanently marked escluso_rinnovi,
+    // and clean up obsolete virgin ghost items whose client expiration was moved/corrected to a different month
+    const obsoleteGhostIds: string[] = [];
+    const validItems = (items || []).filter((it: any) => {
+      if (!it.client || it.client.escluso_rinnovi) return false;
+
+      const clientMonth = it.client.data_scadenza ? it.client.data_scadenza.slice(0, 7) : null;
+      const isVirgin = !it.preso_appuntamento && !it.esito && !it.entry_id && !it.consulenza_fatta;
+
+      if (isVirgin && clientMonth && clientMonth !== mese) {
+        obsoleteGhostIds.push(it.id);
+        return false;
+      }
+      return true;
+    });
+
+    if (obsoleteGhostIds.length > 0) {
+      supabase.from("rinnovi_items").delete().in("id", obsoleteGhostIds).then();
+    }
 
     // 3. Real-time enrichment from entries (Agenda)
     // Match entries that belong to renewal sections (without artificial date cutoffs)
