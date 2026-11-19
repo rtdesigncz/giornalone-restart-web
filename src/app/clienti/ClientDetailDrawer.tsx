@@ -19,6 +19,8 @@ import {
   User,
   EyeOff,
   ShieldAlert,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,12 @@ export default function ClientDetailDrawer({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [togglingEsclusione, setTogglingEsclusione] = useState(false);
 
+  // States per modifica data di scadenza
+  const [isEditingScadenza, setIsEditingScadenza] = useState(false);
+  const [scadenzaDraft, setScadenzaDraft] = useState("");
+  const [savingScadenza, setSavingScadenza] = useState(false);
+  const [scadenzaSuccess, setScadenzaSuccess] = useState(false);
+
   useEffect(() => {
     if (!clientId) {
       setData(null);
@@ -53,6 +61,8 @@ export default function ClientDetailDrawer({
         if (res.client) {
           setData(res);
           setNoteDraft(res.client.note || "");
+          setScadenzaDraft(res.client.data_scadenza ? res.client.data_scadenza.slice(0, 10) : "");
+          setIsEditingScadenza(false);
         }
       })
       .catch((err) => console.error("Error loading client details:", err))
@@ -83,6 +93,33 @@ export default function ClientDetailDrawer({
       console.error(err);
     } finally {
       setSavingNote(false);
+    }
+  };
+
+  const handleSaveScadenza = async () => {
+    if (!clientId || !scadenzaDraft) return;
+    setSavingScadenza(true);
+    setScadenzaSuccess(false);
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_scadenza: scadenzaDraft }),
+      });
+      const json = await res.json();
+      if (res.ok && json.client) {
+        setData((prev) => (prev ? { ...prev, client: { ...prev.client, ...json.client } } : null));
+        setIsEditingScadenza(false);
+        setScadenzaSuccess(true);
+        setTimeout(() => setScadenzaSuccess(false), 2500);
+        onClientUpdated?.();
+      } else {
+        alert("Errore salvataggio scadenza: " + (json.error || "Errore sconosciuto"));
+      }
+    } catch (err: any) {
+      alert("Errore: " + err.message);
+    } finally {
+      setSavingScadenza(false);
     }
   };
 
@@ -267,21 +304,79 @@ export default function ClientDetailDrawer({
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-400 text-[11px]">Data Scadenza</div>
-                      <div
-                        className={cn(
-                          "font-semibold mt-0.5",
-                          isExpired
-                            ? "text-rose-300"
-                            : isExpiring
-                            ? "text-amber-300"
-                            : "text-emerald-300"
+                      <div className="flex items-center justify-between text-slate-400 text-[11px] mb-0.5">
+                        <span>Data Scadenza</span>
+                        {!isEditingScadenza && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScadenzaDraft(client.data_scadenza ? client.data_scadenza.slice(0, 10) : "");
+                              setIsEditingScadenza(true);
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-1.5 py-0.5 rounded transition-colors"
+                            title="Modifica data di scadenza"
+                          >
+                            <Pencil size={10} />
+                            <span>Modifica</span>
+                          </button>
                         )}
-                      >
-                        {client.data_scadenza
-                          ? new Date(client.data_scadenza).toLocaleDateString("it-IT")
-                          : "—"}
                       </div>
+
+                      {isEditingScadenza ? (
+                        <div className="mt-1 space-y-1.5 animate-in fade-in duration-150">
+                          <input
+                            type="date"
+                            value={scadenzaDraft}
+                            onChange={(e) => setScadenzaDraft(e.target.value)}
+                            className="w-full bg-slate-800 border border-white/20 text-white text-xs rounded-lg px-2 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                          />
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handleSaveScadenza}
+                              disabled={savingScadenza || !scadenzaDraft}
+                              className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-bold py-1 px-2 rounded-lg transition-colors shadow-xs"
+                            >
+                              {savingScadenza ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Check size={12} />
+                              )}
+                              <span>Salva</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingScadenza(false)}
+                              disabled={savingScadenza}
+                              className="px-2 py-1 text-[11px] text-slate-400 hover:text-white rounded-lg transition-colors"
+                            >
+                              Annulla
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "font-semibold mt-0.5",
+                              isExpired
+                                ? "text-rose-300"
+                                : isExpiring
+                                ? "text-amber-300"
+                                : "text-emerald-300"
+                            )}
+                          >
+                            {client.data_scadenza
+                              ? new Date(client.data_scadenza).toLocaleDateString("it-IT")
+                              : "—"}
+                          </div>
+                          {scadenzaSuccess && (
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5 animate-in fade-in">
+                              <CheckCircle2 size={11} /> Aggiornata!
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

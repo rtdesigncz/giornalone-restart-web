@@ -435,15 +435,15 @@ export async function POST(req: Request) {
           ultimo_accesso: (c.ultimo_accesso && (!existingRecord.ultimo_accesso || c.ultimo_accesso > existingRecord.ultimo_accesso)) ? c.ultimo_accesso : existingRecord.ultimo_accesso,
         };
 
-        // Subscription: only overwrite if CSV is newer or equal
-        if (existingRecord.data_scadenza && c.data_scadenza && existingRecord.data_scadenza > c.data_scadenza) {
-          delete mergedPayload.data_scadenza;
-          delete mergedPayload.data_inizio;
-          delete mergedPayload.pacchetto_originale;
-          delete mergedPayload.tipo_abbonamento_id;
-          delete mergedPayload.disciplina;
-          delete mergedPayload.stato;
-          delete mergedPayload.prezzo;
+        // If CSV specifies subscription data, update it as TeamSystem is the source of truth
+        if (c.data_scadenza) {
+          mergedPayload.data_scadenza = c.data_scadenza;
+          mergedPayload.data_inizio = c.data_inizio || mergedPayload.data_inizio;
+          mergedPayload.pacchetto_originale = c.pacchetto_originale || mergedPayload.pacchetto_originale;
+          mergedPayload.tipo_abbonamento_id = c.tipo_abbonamento_id || mergedPayload.tipo_abbonamento_id;
+          mergedPayload.disciplina = c.disciplina || mergedPayload.disciplina;
+          mergedPayload.stato = c.stato;
+          mergedPayload.prezzo = c.prezzo;
         }
 
         toUpdate.push({ id: existingRecord.id, ...mergedPayload });

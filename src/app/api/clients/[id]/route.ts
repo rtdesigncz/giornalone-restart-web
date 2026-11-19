@@ -93,7 +93,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
 
-    const allowedFields = ["nome", "cognome", "note", "email", "telefono", "telefono_secondario", "tags", "escluso_rinnovi"];
+    const allowedFields = [
+      "nome",
+      "cognome",
+      "note",
+      "email",
+      "telefono",
+      "telefono_secondario",
+      "tags",
+      "escluso_rinnovi",
+      "data_scadenza",
+      "data_inizio",
+    ];
     const updateData: Record<string, any> = {};
 
     for (const key of allowedFields) {
@@ -102,6 +113,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           updateData[key] = String(body[key] || "").trim().toUpperCase();
         } else if (key === "escluso_rinnovi") {
           updateData[key] = Boolean(body[key]);
+        } else if (key === "data_scadenza") {
+          const val = body.data_scadenza ? String(body.data_scadenza).trim() : null;
+          updateData.data_scadenza = val;
+          if (val) {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const thirtyDaysAhead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            if (val < todayStr) {
+              updateData.stato = "SCADUTO";
+            } else if (val <= thirtyDaysAhead) {
+              updateData.stato = "IN_SCADENZA";
+            } else {
+              updateData.stato = "ATTIVO";
+            }
+          }
         } else {
           updateData[key] = body[key];
         }
@@ -123,6 +148,61 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (typeof updateData.escluso_rinnovi === "boolean" && updateData.escluso_rinnovi === true) {
       await supabase.from("rinnovi_items").update({ escluso: true }).eq("client_id", id);
+    }
+
+    // If data_scadenza was updated, keep rinnovi_items synchronized
+    if (updateData.data_scadenza) {
+      const newMonth = updateData.data_scadenza.slice(0, 7);
+
+      // Find any virgin/unworked renewal item for this client
+      const { data: virginItems } = await supabase
+        .from("rinnovi_items")
+        .select("id, mese_riferimento")
+        .eq("client_id", id)
+        .is("entry_id", null)
+        .is("esito", null)
+        .eq("consulenza_fatta", false)
+        .eq("preso_appuntamento", false);
+
+      if (virginItems && virginItems.length > 0) {
+        // If an item already exists in the new target month
+        const inNewMonth = virginItems.find((v) => v.mese_riferimento === newMonth);
+        if (inNewMonth) {
+          // Delete other virgin duplicates in older/other months
+          const others = virginItems.filter((v) => v.id !== inNewMonth.id);
+          if (others.length > 0) {
+            await supabase.from("rinnovi_items").delete().in("id", others.map((o) => o.id));
+          }
+          await supabase.from("rinnovi_items").update({ scadenza_originaria: updateData.data_scadenza }).eq("id", inNewMonth.id);
+        } else {
+          // Check if there is already an active/worked item in the new month
+          const { data: existingInNewMonth } = await supabase
+            .from("rinnovi_items")
+            .select("id")
+            .eq("client_id", id)
+            .eq("mese_riferimento", newMonth)
+            .maybeSingle();
+
+          if (existingInNewMonth) {
+            // Already present in new month, remove old virgin items
+            await supabase.from("rinnovi_items").delete().in("id", virginItems.map((o) => o.id));
+          } else {
+            // Move the first virgin item to the new month and clean up others
+            const [itemToMove, ...duplicates] = virginItems;
+            await supabase
+              .from("rinnovi_items")
+              .update({
+                mese_riferimento: newMonth,
+                scadenza_originaria: updateData.data_scadenza,
+              })
+              .eq("id", itemToMove.id);
+
+            if (duplicates.length > 0) {
+              await supabase.from("rinnovi_items").delete().in("id", duplicates.map((o) => o.id));
+            }
+          }
+        }
+      }
     }
 
     return NextResponse.json({ ok: true, client: data });
