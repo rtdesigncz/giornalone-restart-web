@@ -474,6 +474,11 @@ export async function POST(req: Request) {
         const cPhone = normalizePhone(c.telefono);
         if (cCog && cNom && cBirth) dbByNameBirth.set(`${cCog}_${cNom}_${cBirth}`, c);
         if (cCog && cNom && cPhone) dbByNamePhone.set(`${cCog}_${cNom}_${cPhone}`, c);
+        if (cCog && cNom) {
+          const nameKey = `${cCog}_${cNom}`;
+          if (!dbByName.has(nameKey)) dbByName.set(nameKey, []);
+          dbByName.get(nameKey)!.push(c);
+        }
         if (cPhone) {
           if (!dbByPhone.has(cPhone)) dbByPhone.set(cPhone, []);
           dbByPhone.get(cPhone)!.push(c);
