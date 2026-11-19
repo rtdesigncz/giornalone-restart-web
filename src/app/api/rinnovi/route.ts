@@ -252,7 +252,6 @@ export async function GET(req: Request) {
       otherRenewalItems: any[],
       isExplicitEntry: boolean
     ) {
-      if (isExplicitEntry) return true;
       const entryDate = entry.entry_date;
       if (!entryDate) return false;
 
@@ -278,6 +277,9 @@ export async function GET(req: Request) {
           }
         }
       }
+
+      // If validated explicit entry and not claimed by another item, it is pertinent
+      if (isExplicitEntry) return true;
 
       // 1b. If appointment is already marked venduto and is not explicitly tied to this renewal item,
       // it can NEVER attach implicitly across months!
@@ -362,17 +364,44 @@ export async function GET(req: Request) {
       const allClientItems = clientRinnoviItemsMap.get(it.client_id) || [];
       const otherRenewalItems = allClientItems.filter((x: any) => x.id !== it.id);
 
+      // Validate explicitEntry: ensure it is not already claimed by another renewal month, and is within valid campaign window
+      let validExplicitEntry = explicitEntry;
+      if (validExplicitEntry) {
+        const isClaimedByEarlier = otherRenewalItems.some(
+          (o: any) => o.entry_id === validExplicitEntry.id && o.mese_riferimento < mese
+        );
+        const entryDate = validExplicitEntry.entry_date;
+        const isOutOfRange = !entryDate || entryDate < wStart || entryDate > wEnd;
+
+        if (isClaimedByEarlier || isOutOfRange) {
+          // Self-heal: clear invalid entry_id and associated outcomes on this item
+          supabase
+            .from("rinnovi_items")
+            .update({
+              entry_id: null,
+              preso_appuntamento: false,
+              consulenza_fatta: false,
+              esito: null,
+              nuovo_abbonamento_name: null,
+              data_consulenza: null,
+            })
+            .eq("id", it.id)
+            .then();
+          validExplicitEntry = null;
+        }
+      }
+
       const pertinentEntries = clientEntries.filter((e: any) =>
-        isEntryPertinentToMonth(e, mese, it.client, it, otherRenewalItems, explicitEntry?.id === e.id)
+        isEntryPertinentToMonth(e, mese, it.client, it, otherRenewalItems, validExplicitEntry?.id === e.id)
       );
 
-      // If explicitEntry is present and wasn't in clientEntries, include it
-      if (explicitEntry && !pertinentEntries.some((e: any) => e.id === explicitEntry.id)) {
-        pertinentEntries.unshift(explicitEntry);
+      // If validExplicitEntry is present and wasn't in clientEntries, include it
+      if (validExplicitEntry && !pertinentEntries.some((e: any) => e.id === validExplicitEntry.id)) {
+        pertinentEntries.unshift(validExplicitEntry);
       }
 
       const resolved = resolveClientAgenda(pertinentEntries);
-      const agenda = explicitEntry || resolved?.entry || null;
+      const agenda = validExplicitEntry || resolved?.entry || null;
       
       const riprogrammato = resolved?.riprogrammato || false;
       const daRiprogrammare = resolved?.daRiprogrammare || false;

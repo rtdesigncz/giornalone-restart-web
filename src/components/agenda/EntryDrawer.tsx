@@ -742,7 +742,14 @@ export default function EntryDrawer({
                     // Disassociate any other renewal item previously attached to this entry_id
                     let disassocQuery = supabase
                         .from("rinnovi_items")
-                        .update({ entry_id: null, preso_appuntamento: false })
+                        .update({
+                            entry_id: null,
+                            preso_appuntamento: false,
+                            consulenza_fatta: false,
+                            esito: null,
+                            nuovo_abbonamento_name: null,
+                            data_consulenza: null,
+                        })
                         .eq("entry_id", savedData.id);
 
                     if (targetRinId) {
